@@ -1,0 +1,10 @@
+name: LoveTweaks
+version: 1.0-SNAPSHOT
+main: me.lovelace.loveTweaks.LoveTweaks
+api-version: 1.20
+commands:
+  lovetweaks:
+    description: LoveTweaks commands
+    usage: /lovetweaks <reload|givescroll>
+    permission: lovetweaks.admin
+    permission-message: You do not have permission to use this command.
