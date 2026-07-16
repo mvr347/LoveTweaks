@@ -105,15 +105,15 @@ public class ScoreboardListener implements Listener, CommandExecutor {
             return;
         }
 
-        String sectionId = holder.getSectionAt(slot);
-        if (sectionId == null) return;
+        String placeholderId = holder.getSectionAt(slot);
+        if (placeholderId == null) return;
 
         if (click == ClickType.MIDDLE) {
-            state.toggleSection(sectionId, cfg.getMaxSections());
+            state.togglePlaceholder(placeholderId, cfg.getMaxPlaceholders());
         } else if (click == ClickType.LEFT) {
-            if (state.hasSectionActive(sectionId)) state.moveSectionUp(sectionId);
+            if (state.hasPlaceholderActive(placeholderId)) state.movePlaceholderUp(placeholderId);
         } else if (click == ClickType.RIGHT) {
-            if (state.hasSectionActive(sectionId)) state.moveSectionDown(sectionId);
+            if (state.hasPlaceholderActive(placeholderId)) state.movePlaceholderDown(placeholderId);
         } else {
             return;
         }

@@ -39,16 +39,18 @@ public class ScoreboardDataManager {
     private PlayerScoreboardState loadFromFile(UUID uuid) {
         String key = uuid.toString();
         if (!data.contains(key)) {
-            List<String> defaults = new ArrayList<>(plugin.getScoreboardConfig().getSectionOrder());
+            List<String> defaults = new ArrayList<>(plugin.getScoreboardConfig().getPlaceholderOrder());
             return new PlayerScoreboardState(true, defaults);
         }
         boolean enabled = data.getBoolean(key + ".enabled", true);
-        List<String> sections = data.getStringList(key + ".sections");
-        // Remove any section IDs that no longer exist in config
-        List<String> validSections = new ArrayList<>(sections);
-        List<String> known = plugin.getScoreboardConfig().getSectionOrder();
-        validSections.retainAll(known);
-        return new PlayerScoreboardState(enabled, validSections);
+        List<String> placeholders = data.getStringList(key + ".placeholders");
+        if (placeholders.isEmpty()) {
+            placeholders = data.getStringList(key + ".sections");
+        }
+        List<String> validPlaceholders = new ArrayList<>(placeholders);
+        List<String> known = plugin.getScoreboardConfig().getPlaceholderOrder();
+        validPlaceholders.retainAll(known);
+        return new PlayerScoreboardState(enabled, validPlaceholders);
     }
 
     public void savePlayer(UUID uuid) {
@@ -56,7 +58,7 @@ public class ScoreboardDataManager {
         if (state == null) return;
         String key = uuid.toString();
         data.set(key + ".enabled", state.isScoreboardEnabled());
-        data.set(key + ".sections", state.getActiveSections());
+        data.set(key + ".placeholders", state.getActivePlaceholders());
         try {
             data.save(dataFile);
         } catch (IOException e) {

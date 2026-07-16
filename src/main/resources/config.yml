@@ -20,48 +20,160 @@ scoreboard:
   fixed-bottom: '  &c✌ &7V O I D C O R E &c✌   '
   # Интервал обновления в тиках (20 = 1 секунда)
   update-interval: 20
-  # Максимальное кол-во разделов, которые игрок может включить одновременно
-  max-sections: 8
+  # Максимальное кол-во плейсхолдеров, которые игрок может включить одновременно
+  max-placeholders: 8
   # Миры, в которых скорборд не отображается
   disabled-worlds:
     - world_nether
     - world_the_end
 
-  # Разделы скорборда — порядок в этом списке задаёт порядок по умолчанию.
-  # Каждый раздел появляется в паре: каждые 2 раздела разделяются пустой строкой.
-  # icon: MATERIAL_NAME или basehead-<base64>
-  sections:
+  # Плейсхолдеры скорборда — каждый плейсхолдер это одна строка
+  # condition: ALWAYS, IF_HAS_CLAN, IF_HAS_GROUP, IF_HAS_BEHAVIOR
+  # sort-group: группирует плейсхолдеры для визуального разделения (0=игрок, 5=группа, 10=клан, 20=поведение, 30=статистика, 35=дата/время)
+  placeholders:
     karma:
       display-name: '&eКарма'
       icon: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYTRmZWY3NTNkNWI0ZmYyYTljYWU3NWJjMmVkZWIzMTUzMDI1YWJjNWNjMjc0NDI4NWYzMTk2NGY5NDA4YTFmIn19fQ=='
+      template: '&e⚖&f %objective_score_rating% &7очков кармы'
       lore:
         - '&7Счёт кармы на сервере'
-      lines:
-        - '&e⚖&f %objective_score_rating% &7очков кармы'
+      condition: 'ALWAYS'
+      sort-group: 0
 
     coords:
       display-name: '&bКоординаты'
       icon: 'COMPASS'
+      template: '&6x &b%player_x%&r, &6y &b%player_y%&r, &6z &b%player_z%'
       lore:
         - '&7Текущие координаты игрока'
-      lines:
-        - '&6x &b%player_x%&r, &6y &b%player_y%&r, &6z &b%player_z%'
+      condition: 'ALWAYS'
+      sort-group: 0
+
+    playtime:
+      display-name: '&bВремя на сервере'
+      icon: 'CLOCK'
+      template: '&b⏱ &r%playtime_since_join% &7часов'
+      lore:
+        - '&7Время, проведённое на сервере'
+      condition: 'ALWAYS'
+      sort-group: 0
 
     kills:
       display-name: '&cУбийства'
       icon: 'IRON_SWORD'
+      template: '&c⚔ &r%statistic_player_kills% &7убийств'
       lore:
         - '&7Количество убийств игроков'
-      lines:
-        - '&c⚔ &r%statistic_player_kills% &7убийств'
+      condition: 'ALWAYS'
+      sort-group: 30
 
     deaths:
       display-name: '&7Смерти'
       icon: 'SKELETON_SKULL'
+      template: '&c☠ &r%statistic_deaths% &7смертей'
       lore:
         - '&7Количество смертей'
-      lines:
-        - '&c☠ &r%statistic_deaths% &7смертей'
+      condition: 'ALWAYS'
+      sort-group: 30
+
+    mob_kills:
+      display-name: '&aУбийства мобов'
+      icon: 'ZOMBIE_HEAD'
+      template: '&a⚔ &r%statistic_mob_kills% &7мобов'
+      lore:
+        - '&7Количество убитых мобов'
+      condition: 'ALWAYS'
+      sort-group: 30
+
+    kd_ratio:
+      display-name: '&eК/Д'
+      icon: 'DIAMOND_SWORD'
+      template: '&eК/Д: &f%kd_ratio%'
+      lore:
+        - '&7Соотношение убийств/смертей'
+      condition: 'ALWAYS'
+      sort-group: 30
+
+    ping:
+      display-name: '&7Пинг'
+      icon: 'REDSTONE'
+      template: '&7📡 &r%player_ping% &7мс'
+      lore:
+        - '&7Соединение с сервером'
+      condition: 'ALWAYS'
+      sort-group: 30
+
+    clan_tag:
+      display-name: '&6Клан'
+      icon: 'BANNER'
+      template: '&6%clans_colored_tag%'
+      lore:
+        - '&7Тег клана'
+      condition: 'IF_HAS_CLAN'
+      sort-group: 10
+
+    clan_name:
+      display-name: '&6Имя клана'
+      icon: 'BANNER'
+      template: '&6Клан: &f%clans_name%'
+      lore:
+        - '&7Полное имя клана'
+      condition: 'IF_HAS_CLAN'
+      sort-group: 10
+
+    clan_level:
+      display-name: '&6Уровень клана'
+      icon: 'YELLOW_CONCRETE'
+      template: '&6Уровень: &f%clans_level%'
+      lore:
+        - '&7Уровень клана'
+      condition: 'IF_HAS_CLAN'
+      sort-group: 10
+
+    group:
+      display-name: '&7Группа'
+      icon: 'BOOK'
+      template: '&7Группа: &e%lovesubnames_current%'
+      lore:
+        - '&7Группа игрока'
+      condition: 'IF_HAS_GROUP'
+      sort-group: 5
+
+    behavior:
+      display-name: '&8Стиль игры'
+      icon: 'PAPER'
+      template: '&8Стиль: &f%lovebehavior_playstyle_name%'
+      lore:
+        - '&7Стиль игры'
+      condition: 'IF_HAS_BEHAVIOR'
+      sort-group: 20
+
+    date:
+      display-name: '&7Дата'
+      icon: 'CALENDAR_CLUSTER'
+      template: '&7%server_time_dd% %server_time_MMM% %server_time_yyyy%'
+      lore:
+        - '&7Текущая дата'
+      condition: 'ALWAYS'
+      sort-group: 35
+
+    time:
+      display-name: '&7Время'
+      icon: 'CLOCK'
+      template: '&7%server_time_hh:mm:ss a%'
+      lore:
+        - '&7Текущее время'
+      condition: 'ALWAYS'
+      sort-group: 35
+
+    server_time:
+      display-name: '&7Дата и время'
+      icon: 'CLOCK'
+      template: '&7%server_time_dd% %server_time_MMM%, %server_time_hh:mm:ss a%'
+      lore:
+        - '&7Дата и время сервера'
+      condition: 'ALWAYS'
+      sort-group: 35
 
   # ─── GUI настроек скорборда (/scoreboard) ──────────────────────────────────
   gui:
@@ -71,7 +183,16 @@ scoreboard:
       material: 'GRAY_STAINED_GLASS_PANE'
       display-name: ' '
 
-    # Кнопка «Вкл/Выкл» скорборда (слот 0)
+    # Профиль игрока (слот 0)
+    profile-button:
+      material: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvY2MyNDJiZTA5MjI2YTNhZjlkYTM0YzZkMzA1YTEyMzA2M2FhZjQyMWFlZTAzZDk4M2MxYmY1MjE1YzQyMWU4In19fQ=='
+      display-name: '&bПрофиль'
+      lore:
+        - ''
+        - '&aЛКМ &7— открыть профиль'
+      command: ''
+
+    # Кнопка «Вкл/Выкл» скорборда (слот 51)
     toggle-on:
       material: 'LIME_DYE'
       display-name: '&aСкорборд'
@@ -88,7 +209,7 @@ scoreboard:
         - '&7Скорборд выключен.'
         - '&aЛКМ &7— включить'
 
-    # Кнопка «Назад» (слот 25) — command выполняется от имени игрока (без /)
+    # Кнопка «Назад» (слот 52)
     back-button:
       material: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYmQ2OWUwNmU1ZGFkZmQ4NGU1ZjNkMWMyMTA2M2YyNTUzYjJmYTk0NWVlMWQ0ZDcxNTJmZGM1NDI1YmMxMmE5In19fQ=='
       display-name: '&7« Назад'
@@ -97,10 +218,15 @@ scoreboard:
         - '&aЛКМ &7— вернуться в настройки'
       command: 'settings'
 
-    # Кнопка «Закрыть» (слот 26)
+    # Кнопка «Закрыть» (слот 53)
     close-button:
       material: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvM2VkMWFiYTczZjYzOWY0YmM0MmJkNDgxOTZjNzE1MTk3YmUyNzEyYzNiOTYyYzk3ZWJmOWU5ZWQ4ZWZhMDI1In19fQ=='
       display-name: '&cЗакрыть'
       lore:
         - ''
         - '&aЛКМ &7— закрыть меню'
+
+    # Внешний вид заблокированного плейсхолдера
+    locked-placeholder:
+      material: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMTU4YjAyN2U5NTQ4MWQ3Y2NlMDY5YWY0ZTdlNjY4YzY3MjhiNzc2NDc4YzMwYmY1YjE2YzQ1OTNhYzI3YzZmMyJ9fX0='
+      display-name: '&8🔒'

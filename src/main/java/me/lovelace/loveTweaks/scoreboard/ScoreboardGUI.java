@@ -15,23 +15,28 @@ import org.bukkit.inventory.meta.SkullMeta;
 
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public final class ScoreboardGUI {
 
     private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacySection();
 
-    public static final int SLOT_TOGGLE = 0;
-    public static final int SLOT_BACK = 25;
-    public static final int SLOT_CLOSE = 26;
-    public static final int SECTIONS_START = 9;
-    public static final int MAX_SECTION_SLOTS = 8; // slots 9-16
+    public static final int SLOT_PROFILE = 0;
+    public static final int SLOT_TOGGLE = 51;
+    public static final int SLOT_BACK = 52;
+    public static final int SLOT_CLOSE = 53;
+    public static final int PLACEHOLDERS_START = 18;
+    public static final int PLACEHOLDERS_END = 35;
+    public static final int MAX_PLACEHOLDER_SLOTS = 18;
 
     private static final int[] FILLER_SLOTS = {
         1, 2, 3, 4, 5, 6, 7, 8,
-        17,
-        18, 19, 20, 21, 22, 23, 24
+        9, 10, 11, 12, 13, 14, 15, 16, 17,
+        36, 37, 38, 39, 40, 41, 42, 43, 44,
+        45, 46, 47, 48, 49, 50
     };
 
     private ScoreboardGUI() {}
@@ -39,7 +44,7 @@ public final class ScoreboardGUI {
     public static void open(Player player, PlayerScoreboardState state, ScoreboardConfig config) {
         ScoreboardGUIHolder holder = new ScoreboardGUIHolder(player.getUniqueId());
         Component title = LEGACY.deserialize(colorize(config.getGuiTitle()));
-        Inventory inv = Bukkit.createInventory(holder, 27, title);
+        Inventory inv = Bukkit.createInventory(holder, 54, title);
         holder.setInventory(inv);
         populate(inv, holder, player, state, config);
         player.openInventory(inv);
@@ -53,37 +58,96 @@ public final class ScoreboardGUI {
 
     private static void populate(Inventory inv, ScoreboardGUIHolder holder, Player player,
                                  PlayerScoreboardState state, ScoreboardConfig config) {
-        // Toggle
-        inv.setItem(SLOT_TOGGLE, buildToggle(state, config));
+        // Profile button (slot 0)
+        inv.setItem(SLOT_PROFILE, buildProfileHead(player, config));
 
         // Filler
         ItemStack filler = buildItem(config.getFillerMaterial(), config.getFillerName(), List.of());
         for (int slot : FILLER_SLOTS) inv.setItem(slot, filler);
 
-        // Sections: active first (in order), then inactive (in config order)
-        List<String> ordered = new ArrayList<>(state.getActiveSections());
-        for (String id : config.getSectionOrder()) {
-            if (!ordered.contains(id)) ordered.add(id);
+        // Organize placeholders by sort group for display
+        Map<Integer, List<String>> groupedPlaceholders = groupPlaceholders(state, player, config);
+
+        int currentSlot = PLACEHOLDERS_START;
+        for (int groupKey : groupedPlaceholders.keySet()) {
+            List<String> placeholdersInGroup = groupedPlaceholders.get(groupKey);
+
+            for (String id : placeholdersInGroup) {
+                if (currentSlot > PLACEHOLDERS_END) break;
+
+                ScoreboardPlaceholder placeholder = config.getPlaceholder(id);
+                if (placeholder == null) continue;
+
+                boolean active = state.hasPlaceholderActive(id);
+                boolean conditionMet = placeholder.conditionType().isMet(player);
+
+                ItemStack item;
+                if (conditionMet) {
+                    item = buildPlaceholderItem(placeholder, active, state, config);
+                } else {
+                    item = buildLockedPlaceholderItem(placeholder, config);
+                }
+
+                inv.setItem(currentSlot, item);
+                holder.mapSlot(currentSlot, id);
+                currentSlot++;
+            }
+
+            if (currentSlot <= PLACEHOLDERS_END) {
+                currentSlot++;
+            }
         }
 
-        for (int i = 0; i < ordered.size() && i < MAX_SECTION_SLOTS; i++) {
-            String id = ordered.get(i);
-            ScoreboardSection section = config.getSection(id);
-            if (section == null) continue;
-            int slot = SECTIONS_START + i;
-            boolean active = state.hasSectionActive(id);
-            inv.setItem(slot, buildSectionItem(section, active, state, config));
-            holder.mapSlot(slot, id);
+        // Fill remaining slots with filler
+        for (int i = currentSlot; i <= PLACEHOLDERS_END; i++) {
+            inv.setItem(i, filler);
         }
 
-        // Filler for unused section slots
-        for (int i = ordered.size(); i < MAX_SECTION_SLOTS; i++) {
-            inv.setItem(SECTIONS_START + i, filler);
-        }
-
-        // Back / Close
+        // Buttons
+        inv.setItem(SLOT_TOGGLE, buildToggle(state, config));
         inv.setItem(SLOT_BACK, buildItem(config.getBackMaterial(), config.getBackName(), config.getBackLore()));
         inv.setItem(SLOT_CLOSE, buildItem(config.getCloseMaterial(), config.getCloseName(), config.getCloseLore()));
+    }
+
+    private static Map<Integer, List<String>> groupPlaceholders(PlayerScoreboardState state, Player player,
+                                                                  ScoreboardConfig config) {
+        Map<Integer, List<String>> groups = new LinkedHashMap<>();
+        List<String> active = state.getActivePlaceholders();
+        List<String> order = config.getPlaceholderOrder();
+
+        for (String id : active) {
+            ScoreboardPlaceholder ph = config.getPlaceholder(id);
+            if (ph != null) {
+                groups.computeIfAbsent(ph.sortGroup(), k -> new ArrayList<>()).add(id);
+            }
+        }
+
+        for (String id : order) {
+            ScoreboardPlaceholder ph = config.getPlaceholder(id);
+            if (ph != null && !active.contains(id)) {
+                groups.computeIfAbsent(ph.sortGroup(), k -> new ArrayList<>()).add(id);
+            }
+        }
+
+        return groups;
+    }
+
+    private static ItemStack buildProfileHead(Player player, ScoreboardConfig config) {
+        ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+        SkullMeta meta = (SkullMeta) head.getItemMeta();
+        if (meta != null) {
+            meta.setOwningPlayer(player);
+            meta.displayName(LEGACY.deserialize(colorize(config.getProfileName())));
+
+            List<Component> lore = new ArrayList<>();
+            for (String line : config.getProfileLore()) {
+                lore.add(LEGACY.deserialize(colorize(line)));
+            }
+            meta.lore(lore);
+            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_ENCHANTS, ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
+            head.setItemMeta(meta);
+        }
+        return head;
     }
 
     private static ItemStack buildToggle(PlayerScoreboardState state, ScoreboardConfig config) {
@@ -94,47 +158,42 @@ public final class ScoreboardGUI {
         }
     }
 
-    private static ItemStack buildSectionItem(ScoreboardSection section, boolean active,
-                                              PlayerScoreboardState state, ScoreboardConfig config) {
+    private static ItemStack buildPlaceholderItem(ScoreboardPlaceholder placeholder, boolean active,
+                                                    PlayerScoreboardState state, ScoreboardConfig config) {
         String name;
         String iconMat;
         List<String> lore = new ArrayList<>();
 
         if (active) {
-            name = "&a" + stripColor(section.displayName()) + " &8[&a✔&8]";
-            // Use section's configured icon for active state; fall back to LIME_DYE
-            iconMat = section.icon().equalsIgnoreCase("PAPER") ? "LIME_DYE" : section.icon();
+            name = "&a" + stripColor(placeholder.displayName()) + " &8[&a✔&8]";
+            iconMat = placeholder.icon().equalsIgnoreCase("PAPER") ? "LIME_DYE" : placeholder.icon();
         } else {
-            name = "&7" + stripColor(section.displayName()) + " &8[&7✘&8]";
+            name = "&7" + stripColor(placeholder.displayName()) + " &8[&7✘&8]";
             iconMat = "GRAY_DYE";
         }
 
-        // Base description from section config
-        if (!section.lore().isEmpty()) {
-            for (String l : section.lore()) lore.add(colorize(l));
+        if (!placeholder.lore().isEmpty()) {
+            for (String l : placeholder.lore()) lore.add(colorize(l));
         }
 
-        // Preview of scoreboard lines
         lore.add("");
-        lore.add("§8Предпросмотр строк:");
-        for (String line : section.lines()) {
-            lore.add("  §7" + colorize(line));
-        }
+        lore.add("§8Шаблон:");
+        lore.add("  §7" + colorize(placeholder.template()));
         lore.add("");
 
         if (active) {
-            List<String> activeSections = state.getActiveSections();
-            int pos = activeSections.indexOf(section.id()) + 1;
-            int total = activeSections.size();
+            List<String> activePlaceholders = state.getActivePlaceholders();
+            int pos = activePlaceholders.indexOf(placeholder.id()) + 1;
+            int total = activePlaceholders.size();
             lore.add("§7Позиция: §f#" + pos + " §7из §f" + total);
             lore.add("");
             if (pos > 1) lore.add("§8▸ §7ЛКМ §8— сдвинуть выше");
             if (pos < total) lore.add("§8▸ §7ПКМ §8— сдвинуть ниже");
             lore.add("§8▸ §7СКМ §8— отключить");
         } else {
-            boolean maxed = state.getActiveSections().size() >= config.getMaxSections();
+            boolean maxed = state.getActivePlaceholders().size() >= config.getMaxPlaceholders();
             if (maxed) {
-                lore.add("§c  Достигнут максимум разделов! §7(§f" + config.getMaxSections() + "§7)");
+                lore.add("§c  Достигнут максимум! §7(§f" + config.getMaxPlaceholders() + "§7)");
             }
             lore.add("§8▸ §7СКМ §8— включить");
         }
@@ -142,7 +201,32 @@ public final class ScoreboardGUI {
         return buildItem(iconMat, name, lore);
     }
 
-    // Creates an ItemStack from a material string (supports basehead-<base64>) with display name and lore.
+    private static ItemStack buildLockedPlaceholderItem(ScoreboardPlaceholder placeholder, ScoreboardConfig config) {
+        List<String> lore = new ArrayList<>();
+
+        if (!placeholder.lore().isEmpty()) {
+            for (String l : placeholder.lore()) lore.add(colorize(l));
+        }
+
+        lore.add("");
+        lore.add("§cЗаблокирован");
+        String conditionMsg = getConditionMessage(placeholder.conditionType());
+        if (!conditionMsg.isEmpty()) {
+            lore.add("§7" + conditionMsg);
+        }
+
+        return buildItem(config.getLockedMaterial(), "&8🔒 " + stripColor(placeholder.displayName()), lore);
+    }
+
+    private static String getConditionMessage(ScoreboardPlaceholderCondition condition) {
+        return switch (condition) {
+            case ALWAYS -> "";
+            case IF_HAS_CLAN -> "Требуется клан";
+            case IF_HAS_GROUP -> "Требуется группа";
+            case IF_HAS_BEHAVIOR -> "Требуется стиль игры";
+        };
+    }
+
     static ItemStack buildItem(String materialStr, String displayName, List<String> lore) {
         ItemStack item = resolveItem(materialStr);
         ItemMeta meta = item.getItemMeta();
@@ -176,7 +260,6 @@ public final class ScoreboardGUI {
             SkullMeta meta = (SkullMeta) skull.getItemMeta();
             if (meta == null) return skull;
 
-            // Paper API: create profile with deterministic UUID from base64 hash, set texture property
             PlayerProfile profile = Bukkit.createProfile(UUID.nameUUIDFromBytes(base64.getBytes()));
             profile.setProperty(new ProfileProperty("textures", base64));
             meta.setPlayerProfile(profile);
@@ -191,7 +274,6 @@ public final class ScoreboardGUI {
         return text.replace('&', '§');
     }
 
-    // Strips existing §/& color codes so we can apply our own active/inactive color prefix.
     private static String stripColor(String text) {
         return text.replaceAll("[&§][0-9a-fk-orA-FK-OR]", "");
     }
