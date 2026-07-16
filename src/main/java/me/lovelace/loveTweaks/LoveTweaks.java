@@ -1,16 +1,16 @@
 package me.lovelace.loveTweaks;
 
-import me.lovelace.loveTweaks.achievements.CustomAchievementManager;
-import me.lovelace.loveTweaks.achievements.data.PlayerAchievementData;
 import me.lovelace.loveTweaks.items.TeleportScroll;
-import me.lovelace.loveTweaks.listeners.AchievementListener;
-import me.lovelace.loveTweaks.listeners.AchievementProgressListener;
-import me.lovelace.loveTweaks.listeners.EnderChestListener;
 import me.lovelace.loveTweaks.listeners.EnchantmentListener;
+import me.lovelace.loveTweaks.listeners.EnderChestListener;
 import me.lovelace.loveTweaks.listeners.HungerListener;
 import me.lovelace.loveTweaks.listeners.MilkListener;
+import me.lovelace.loveTweaks.listeners.ScoreboardListener;
 import me.lovelace.loveTweaks.listeners.TeleportScrollListener;
 import me.lovelace.loveTweaks.managers.TeleportScrollManager;
+import me.lovelace.loveTweaks.scoreboard.ScoreboardConfig;
+import me.lovelace.loveTweaks.scoreboard.ScoreboardDataManager;
+import me.lovelace.loveTweaks.scoreboard.ScoreboardDisplayManager;
 import org.bukkit.GameMode;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.Command;
@@ -18,6 +18,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
 
 public final class LoveTweaks extends JavaPlugin {
@@ -25,42 +26,43 @@ public final class LoveTweaks extends JavaPlugin {
     private static LoveTweaks instance;
 
     private LoveTweaksConfig loveTweaksConfig;
-    private CustomAchievementManager customAchievementManager;
-    private PlayerAchievementData playerAchievementData;
     private NamespacedKey enderChestKey;
     private TeleportScrollManager teleportScrollManager;
+
+    private ScoreboardDataManager scoreboardDataManager;
+    private ScoreboardDisplayManager scoreboardDisplayManager;
+    private BukkitTask scoreboardTask;
 
     @Override
     public void onEnable() {
         instance = this;
 
-        // Конфиг → менеджеры → listeners (строгий порядок)
-        this.loveTweaksConfig = new LoveTweaksConfig(this);
+        loveTweaksConfig = new LoveTweaksConfig(this);
         getLogger().info("LoveTweaks config loaded.");
 
-        this.customAchievementManager = new CustomAchievementManager(this);
-        getLogger().info("Custom Achievement Manager initialized.");
+        enderChestKey = new NamespacedKey(this, "ender_chest_inventory");
 
-        this.playerAchievementData = new PlayerAchievementData(this);
-        getLogger().info("Player Achievement Data loaded.");
-
-        this.enderChestKey = new NamespacedKey(this, "ender_chest_inventory");
-
-        // Инициализируем ключ PDC для свитка телепортации
         TeleportScroll.init(this);
-        this.teleportScrollManager = new TeleportScrollManager(this);
+        teleportScrollManager = new TeleportScrollManager(this);
         getLogger().info("TeleportScroll manager initialized.");
 
-        // Register listeners
+        // Scoreboard
+        scoreboardDataManager = new ScoreboardDataManager(this);
+        scoreboardDisplayManager = new ScoreboardDisplayManager(this, scoreboardDataManager, getScoreboardConfig());
+        getLogger().info("Scoreboard system initialized.");
+
+        // Listeners
         getServer().getPluginManager().registerEvents(new EnderChestListener(this), this);
         getServer().getPluginManager().registerEvents(new EnchantmentListener(this), this);
-        getServer().getPluginManager().registerEvents(new AchievementListener(this), this);
-        getServer().getPluginManager().registerEvents(new AchievementProgressListener(this), this);
         getServer().getPluginManager().registerEvents(new HungerListener(this), this);
         getServer().getPluginManager().registerEvents(new MilkListener(this), this);
         getServer().getPluginManager().registerEvents(new TeleportScrollListener(this, teleportScrollManager), this);
 
-        // Дополнительное истощение голода для игроков в SURVIVAL/ADVENTURE (усложнение игры)
+        ScoreboardListener scoreboardListener = new ScoreboardListener(this, scoreboardDataManager, scoreboardDisplayManager);
+        getServer().getPluginManager().registerEvents(scoreboardListener, this);
+        getCommand("scoreboard").setExecutor(scoreboardListener);
+
+        // Hunger exhaustion task
         if (loveTweaksConfig.getExtraExhaustionPerSecond() > 0) {
             new BukkitRunnable() {
                 @Override
@@ -71,23 +73,35 @@ public final class LoveTweaks extends JavaPlugin {
                         }
                     }
                 }
-            }.runTaskTimer(LoveTweaks.this, 20L, 20L);
+            }.runTaskTimer(this, 20L, 20L);
         }
+
+        // Scoreboard update task
+        startScoreboardTask();
+    }
+
+    private void startScoreboardTask() {
+        if (scoreboardTask != null) scoreboardTask.cancel();
+        int interval = getScoreboardConfig().getUpdateInterval();
+        scoreboardTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                scoreboardDisplayManager.updateAll();
+            }
+        }.runTaskTimer(this, interval, interval);
     }
 
     @Override
     public void onDisable() {
-        if (playerAchievementData != null) {
-            playerAchievementData.saveData();
-        }
+        if (scoreboardDisplayManager != null) scoreboardDisplayManager.removeAll();
+        if (scoreboardDataManager != null) scoreboardDataManager.saveAll();
         getLogger().info("LoveTweaks disabled.");
     }
 
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        if (!command.getName().equalsIgnoreCase("lovetweaks")) {
-            return false;
-        }
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
+                             @NotNull String label, @NotNull String[] args) {
+        if (!command.getName().equalsIgnoreCase("lovetweaks")) return false;
 
         if (args.length == 0) {
             sender.sendMessage("§eИспользование: §f/lovetweaks <reload|givescroll>");
@@ -97,9 +111,10 @@ public final class LoveTweaks extends JavaPlugin {
         return switch (args[0].toLowerCase()) {
             case "reload" -> {
                 loveTweaksConfig.loadConfig();
-                customAchievementManager.loadAchievements();
-                playerAchievementData.loadData();
-                sender.sendMessage("§aLoveTweaks config reloaded!");
+                scoreboardDataManager.reload();
+                scoreboardDisplayManager.refreshPAPI();
+                startScoreboardTask();
+                sender.sendMessage("§aLoveTweaks конфиг перезагружен!");
                 yield true;
             }
             case "givescroll" -> {
@@ -128,27 +143,11 @@ public final class LoveTweaks extends JavaPlugin {
         };
     }
 
-    public static LoveTweaks getInstance() {
-        return instance;
-    }
-
-    public LoveTweaksConfig getLoveTweaksConfig() {
-        return loveTweaksConfig;
-    }
-
-    public CustomAchievementManager getCustomAchievementManager() {
-        return customAchievementManager;
-    }
-
-    public PlayerAchievementData getPlayerAchievementData() {
-        return playerAchievementData;
-    }
-
-    public NamespacedKey getEnderChestKey() {
-        return enderChestKey;
-    }
-
-    public TeleportScrollManager getTeleportScrollManager() {
-        return teleportScrollManager;
-    }
+    public static LoveTweaks getInstance() { return instance; }
+    public LoveTweaksConfig getLoveTweaksConfig() { return loveTweaksConfig; }
+    public ScoreboardConfig getScoreboardConfig() { return loveTweaksConfig.getScoreboardConfig(); }
+    public ScoreboardDataManager getScoreboardDataManager() { return scoreboardDataManager; }
+    public ScoreboardDisplayManager getScoreboardDisplayManager() { return scoreboardDisplayManager; }
+    public NamespacedKey getEnderChestKey() { return enderChestKey; }
+    public TeleportScrollManager getTeleportScrollManager() { return teleportScrollManager; }
 }

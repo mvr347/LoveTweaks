@@ -1,10 +1,16 @@
 name: LoveTweaks
-version: 1.0-SNAPSHOT
+version: '${project.version}'
 main: me.lovelace.loveTweaks.LoveTweaks
-api-version: 1.20
+api-version: '1.21'
+soft-depend:
+  - PlaceholderAPI
+
 commands:
   lovetweaks:
-    description: LoveTweaks commands
+    description: Команды администратора LoveTweaks
     usage: /lovetweaks <reload|givescroll>
     permission: lovetweaks.admin
-    permission-message: You do not have permission to use this command.
+    permission-message: У вас нет прав для этой команды.
+  scoreboard:
+    description: Открыть настройки скорборда
+    usage: /scoreboard
