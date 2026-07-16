@@ -1,5 +1,6 @@
 package me.lovelace.loveTweaks.scoreboard;
 
+import io.papermc.paper.scoreboard.numbers.NumberFormat;
 import me.lovelace.loveTweaks.LoveTweaks;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -60,6 +61,11 @@ public class ScoreboardDisplayManager {
         }
 
         List<String> lines = buildLines(player, state);
+        if (lines == null) {
+            removeScoreboard(player);
+            return;
+        }
+
         UUID uuid = player.getUniqueId();
         Scoreboard board = boards.get(uuid);
         int prevCount = lineCountCache.getOrDefault(uuid, -1);
@@ -96,52 +102,36 @@ public class ScoreboardDisplayManager {
         lineCountCache.clear();
     }
 
+    /**
+     * Renders the active placeholders (in the player's chosen scoreboard order) two per row,
+     * with a separator line after every pair — matching the reference layout: a lone trailing
+     * placeholder still gets its own separator rather than being paired up. Returns null when
+     * there's nothing valid to show, so the caller hides the scoreboard entirely.
+     */
     List<String> buildLines(Player player, PlayerScoreboardState state) {
-        List<String> lines = new ArrayList<>();
-        List<String> active = state.getActivePlaceholders();
-
-        if (active.isEmpty()) {
-            lines.add(config.getFixedBottom());
-            state.ensureAutoDisable();
-            return lines;
-        }
-
-        lines.add("");
-
-        int lastGroup = -1;
-        int actualPlaceholdersAdded = 0;
-
-        for (String phId : active) {
-            ScoreboardPlaceholder ph = config.getPlaceholder(phId);
-            if (ph == null) continue;
-
-            if (!ph.conditionType().isMet(player)) {
-                continue;
-            }
-
-            if (lastGroup != ph.sortGroup()) {
-                if (lastGroup != -1) {
-                    lines.add("");
-                }
-                lastGroup = ph.sortGroup();
-            }
+        List<String> valid = new ArrayList<>();
+        for (String id : state.getActivePlaceholders()) {
+            ScoreboardPlaceholder ph = config.getPlaceholder(id);
+            if (ph == null || !ph.isUnlocked(player)) continue;
 
             String expanded = applyPAPI(player, ph.template());
-            if (!expanded.isEmpty() && !expanded.equals(ph.template())) {
-                lines.add(expanded);
-                actualPlaceholdersAdded++;
-            }
+            if (expanded.isBlank()) continue;
+            valid.add(expanded);
         }
 
-        if (actualPlaceholdersAdded == 0) {
-            lines.clear();
-            lines.add("");
+        if (valid.isEmpty()) {
             state.ensureAutoDisable();
-        } else {
-            lines.add("");
+            return null;
         }
 
-        lines.add(config.getFixedBottom());
+        List<String> lines = new ArrayList<>();
+        String separator = config.getSeparator();
+        for (int i = 0; i < valid.size(); i += 2) {
+            lines.add(valid.get(i));
+            if (i + 1 < valid.size()) lines.add(valid.get(i + 1));
+            lines.add(separator);
+        }
+        lines.add(config.getBottom());
         return lines;
     }
 
@@ -158,6 +148,7 @@ public class ScoreboardDisplayManager {
             team.addEntry(entry);
             setTeamPrefix(team, player, lines.get(i));
             obj.getScore(entry).setScore(lines.size() - i);
+            obj.getScore(entry).numberFormat(NumberFormat.blank());
         }
 
         return board;

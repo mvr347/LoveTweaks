@@ -6,8 +6,11 @@ public record ScoreboardPlaceholder(
     String id,
     String displayName,
     String template,
-    String icon,
     List<String> lore,
-    ScoreboardPlaceholderCondition conditionType,
+    ScoreboardRequirement requirement,
     int sortGroup
-) {}
+) {
+    public boolean isUnlocked(org.bukkit.entity.Player player) {
+        return requirement == null || requirement.isMet(player);
+    }
+}

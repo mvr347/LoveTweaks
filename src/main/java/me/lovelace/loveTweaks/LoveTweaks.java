@@ -94,7 +94,7 @@ public final class LoveTweaks extends JavaPlugin {
     @Override
     public void onDisable() {
         if (scoreboardDisplayManager != null) scoreboardDisplayManager.removeAll();
-        if (scoreboardDataManager != null) scoreboardDataManager.saveAll();
+        if (scoreboardDataManager != null) scoreboardDataManager.close();
         getLogger().info("LoveTweaks disabled.");
     }
 
