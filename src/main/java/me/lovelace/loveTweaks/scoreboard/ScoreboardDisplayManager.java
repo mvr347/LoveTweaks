@@ -96,33 +96,49 @@ public class ScoreboardDisplayManager {
         lineCountCache.clear();
     }
 
-    // Builds the ordered list of lines (top → bottom) for the sidebar.
-    // Structure:
-    //   [empty]                   ← always (visual gap under title)
-    //   section1_line             ← pair 1
-    //   section2_line             ← pair 1
-    //   [empty]                   ← pair separator
-    //   section3_line             ← pair 2
-    //   ...
-    //   fixedBottom               ← always
     List<String> buildLines(Player player, PlayerScoreboardState state) {
         List<String> lines = new ArrayList<>();
-        List<String> active = state.getActiveSections();
+        List<String> active = state.getActivePlaceholders();
 
-        if (!active.isEmpty()) {
-            lines.add(""); // top gap
+        if (active.isEmpty()) {
+            lines.add(config.getFixedBottom());
+            state.ensureAutoDisable();
+            return lines;
+        }
 
-            for (int i = 0; i < active.size(); i += 2) {
-                ScoreboardSection s1 = config.getSection(active.get(i));
-                if (s1 != null) lines.addAll(s1.lines());
+        lines.add("");
 
-                if (i + 1 < active.size()) {
-                    ScoreboardSection s2 = config.getSection(active.get(i + 1));
-                    if (s2 != null) lines.addAll(s2.lines());
-                }
+        int lastGroup = -1;
+        int actualPlaceholdersAdded = 0;
 
-                lines.add(""); // gap after each pair
+        for (String phId : active) {
+            ScoreboardPlaceholder ph = config.getPlaceholder(phId);
+            if (ph == null) continue;
+
+            if (!ph.conditionType().isMet(player)) {
+                continue;
             }
+
+            if (lastGroup != ph.sortGroup()) {
+                if (lastGroup != -1) {
+                    lines.add("");
+                }
+                lastGroup = ph.sortGroup();
+            }
+
+            String expanded = applyPAPI(player, ph.template());
+            if (!expanded.isEmpty() && !expanded.equals(ph.template())) {
+                lines.add(expanded);
+                actualPlaceholdersAdded++;
+            }
+        }
+
+        if (actualPlaceholdersAdded == 0) {
+            lines.clear();
+            lines.add("");
+            state.ensureAutoDisable();
+        } else {
+            lines.add("");
         }
 
         lines.add(config.getFixedBottom());
