@@ -1,50 +1,106 @@
 ender-chests:
-  # Превращает эндер-сундук в обычный сундук (общее хранилище блока, не личный инвентарь)
   as-normal-chests: true
 
 enchantments:
-  # Полностью убирает зачарование "Починка" из всех источников
   disable-mending: true
-  # Отключить ВСЕ зачарования (более радикальный вариант)
   disable-all-enchantments: false
 
-achievements:
-  # Отменять прогресс ванильных достижений (advancements)
-  disable-vanilla-achievements: false
-  # Список ID кастомных достижений
-  custom-achievement-ids:
-    - first_diamond
-    - dragon_slayer
-    - deep_miner
-
-custom-achievements:
-  first_diamond:
-    name: "Алмазный первопроходец"
-    description: "Добудьте первый алмаз"
-    icon: DIAMOND
-    criteria:
-      - "BREAK_BLOCK:DIAMOND_ORE:1"
-
-  dragon_slayer:
-    name: "Убийца дракона"
-    description: "Победите Эндер-дракона"
-    icon: DRAGON_EGG
-    criteria:
-      - "KILL_ENTITY:ENDER_DRAGON:1"
-
-  deep_miner:
-    name: "Шахтёр глубин"
-    description: "Сломайте 500 блоков камня"
-    icon: STONE
-    criteria:
-      - "BREAK_BLOCK:STONE:500"
-
 hunger:
-  # Дополнительное истощение в секунду (0.25 — между лёгким и средним усложнением)
   extra-exhaustion-per-second: 0.25
-  # Множитель насыщения от еды (0.5 = вдвое меньше ванили)
   saturation-multiplier: 0.5
 
 milk:
-  # Отключить молоко (не будет снимать эффекты)
   disable-milk: true
+
+# ─── Scoreboard ───────────────────────────────────────────────────────────────
+scoreboard:
+  # Название скорборда (§-коды или &-коды, всегда отображается)
+  title: '&FVOIDCORE'
+  # Нижняя строка-сепаратор (всегда отображается, если скорборд включён)
+  fixed-bottom: '  &c✌ &7V O I D C O R E &c✌   '
+  # Интервал обновления в тиках (20 = 1 секунда)
+  update-interval: 20
+  # Максимальное кол-во разделов, которые игрок может включить одновременно
+  max-sections: 8
+  # Миры, в которых скорборд не отображается
+  disabled-worlds:
+    - world_nether
+    - world_the_end
+
+  # Разделы скорборда — порядок в этом списке задаёт порядок по умолчанию.
+  # Каждый раздел появляется в паре: каждые 2 раздела разделяются пустой строкой.
+  # icon: MATERIAL_NAME или basehead-<base64>
+  sections:
+    karma:
+      display-name: '&eКарма'
+      icon: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYTRmZWY3NTNkNWI0ZmYyYTljYWU3NWJjMmVkZWIzMTUzMDI1YWJjNWNjMjc0NDI4NWYzMTk2NGY5NDA4YTFmIn19fQ=='
+      lore:
+        - '&7Счёт кармы на сервере'
+      lines:
+        - '&e⚖&f %objective_score_rating% &7очков кармы'
+
+    coords:
+      display-name: '&bКоординаты'
+      icon: 'COMPASS'
+      lore:
+        - '&7Текущие координаты игрока'
+      lines:
+        - '&6x &b%player_x%&r, &6y &b%player_y%&r, &6z &b%player_z%'
+
+    kills:
+      display-name: '&cУбийства'
+      icon: 'IRON_SWORD'
+      lore:
+        - '&7Количество убийств игроков'
+      lines:
+        - '&c⚔ &r%statistic_player_kills% &7убийств'
+
+    deaths:
+      display-name: '&7Смерти'
+      icon: 'SKELETON_SKULL'
+      lore:
+        - '&7Количество смертей'
+      lines:
+        - '&c☠ &r%statistic_deaths% &7смертей'
+
+  # ─── GUI настроек скорборда (/scoreboard) ──────────────────────────────────
+  gui:
+    title: '&8⚙ &lСкорборд'
+
+    filler:
+      material: 'GRAY_STAINED_GLASS_PANE'
+      display-name: ' '
+
+    # Кнопка «Вкл/Выкл» скорборда (слот 0)
+    toggle-on:
+      material: 'LIME_DYE'
+      display-name: '&aСкорборд'
+      lore:
+        - ''
+        - '&7Скорборд включён.'
+        - '&cЛКМ &7— выключить'
+
+    toggle-off:
+      material: 'GRAY_DYE'
+      display-name: '&7Скорборд'
+      lore:
+        - ''
+        - '&7Скорборд выключен.'
+        - '&aЛКМ &7— включить'
+
+    # Кнопка «Назад» (слот 25) — command выполняется от имени игрока (без /)
+    back-button:
+      material: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYmQ2OWUwNmU1ZGFkZmQ4NGU1ZjNkMWMyMTA2M2YyNTUzYjJmYTk0NWVlMWQ0ZDcxNTJmZGM1NDI1YmMxMmE5In19fQ=='
+      display-name: '&7« Назад'
+      lore:
+        - ''
+        - '&aЛКМ &7— вернуться в настройки'
+      command: 'settings'
+
+    # Кнопка «Закрыть» (слот 26)
+    close-button:
+      material: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvM2VkMWFiYTczZjYzOWY0YmM0MmJkNDgxOTZjNzE1MTk3YmUyNzEyYzNiOTYyYzk3ZWJmOWU5ZWQ4ZWZhMDI1In19fQ=='
+      display-name: '&cЗакрыть'
+      lore:
+        - ''
+        - '&aЛКМ &7— закрыть меню'
