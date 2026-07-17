@@ -13,6 +13,7 @@ public class ScoreboardConfig {
     public static final int MAX_PLACEHOLDER_SLOTS = PLACEHOLDER_ROW_START.length * PLACEHOLDER_ROW_WIDTH;
 
     private String title;
+    private String top;
     private String bottom;
     private String separator;
     private int updateInterval;
@@ -56,7 +57,8 @@ public class ScoreboardConfig {
         if (sb == null) return;
 
         title = sb.getString("title", "&FVOIDCORE");
-        bottom = sb.getString("bottom", "  &c✌ &7V O I D C O R E &c✌   ");
+        top = sb.getString("top", "&c✌ &7V O I D C O R E &c✌");
+        bottom = sb.getString("bottom", "&c✌ &7V O I D C O R E &c✌");
         separator = sb.getString("separator", "");
         updateInterval = sb.getInt("update-interval", 20);
         maxPlaceholders = sb.getInt("max-placeholders", 8);
@@ -207,6 +209,7 @@ public class ScoreboardConfig {
     }
 
     public String getTitle() { return title; }
+    public String getTop() { return top; }
     public String getBottom() { return bottom; }
     public String getSeparator() { return separator; }
     public int getUpdateInterval() { return updateInterval; }

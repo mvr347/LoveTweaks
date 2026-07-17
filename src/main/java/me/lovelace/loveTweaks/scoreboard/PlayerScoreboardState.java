@@ -31,20 +31,26 @@ public class PlayerScoreboardState {
         }
     }
 
-    public void movePlaceholderUp(String id) {
+    /** @return true if the placeholder actually moved (false when it was already first). */
+    public boolean movePlaceholderUp(String id) {
         int idx = activePlaceholders.indexOf(id);
         if (idx > 0) {
             activePlaceholders.remove(idx);
             activePlaceholders.add(idx - 1, id);
+            return true;
         }
+        return false;
     }
 
-    public void movePlaceholderDown(String id) {
+    /** @return true if the placeholder actually moved (false when it was already last). */
+    public boolean movePlaceholderDown(String id) {
         int idx = activePlaceholders.indexOf(id);
         if (idx >= 0 && idx < activePlaceholders.size() - 1) {
             activePlaceholders.remove(idx);
             activePlaceholders.add(idx + 1, id);
+            return true;
         }
+        return false;
     }
 
     public void ensureAutoDisable() {
