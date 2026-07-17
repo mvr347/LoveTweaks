@@ -14,10 +14,10 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
 import java.util.ArrayList;
-import java.util.Base64;
-import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public final class ScoreboardGUI {
@@ -28,23 +28,14 @@ public final class ScoreboardGUI {
     public static final int SLOT_TOGGLE = 51;
     public static final int SLOT_BACK = 52;
     public static final int SLOT_CLOSE = 53;
-    public static final int PLACEHOLDERS_START = 18;
-    public static final int PLACEHOLDERS_END = 35;
-    public static final int MAX_PLACEHOLDER_SLOTS = 18;
-
-    private static final int[] FILLER_SLOTS = {
-        1, 2, 3, 4, 5, 6, 7, 8,
-        9, 10, 11, 12, 13, 14, 15, 16, 17,
-        36, 37, 38, 39, 40, 41, 42, 43, 44,
-        45, 46, 47, 48, 49, 50
-    };
+    public static final int GUI_SIZE = 54;
 
     private ScoreboardGUI() {}
 
     public static void open(Player player, PlayerScoreboardState state, ScoreboardConfig config) {
         ScoreboardGUIHolder holder = new ScoreboardGUIHolder(player.getUniqueId());
         Component title = LEGACY.deserialize(colorize(config.getGuiTitle()));
-        Inventory inv = Bukkit.createInventory(holder, 54, title);
+        Inventory inv = Bukkit.createInventory(holder, GUI_SIZE, title);
         holder.setInventory(inv);
         populate(inv, holder, player, state, config);
         player.openInventory(inv);
@@ -56,80 +47,46 @@ public final class ScoreboardGUI {
         populate(inv, holder, player, state, config);
     }
 
+    /**
+     * Placeholder slots are fixed by {@link ScoreboardConfig#getPlaceholderSlots()} (grouped by
+     * category, assigned once at config load). Clicking a placeholder never moves it to a
+     * different GUI slot — LMB/RMB only reorder its position within the rendered scoreboard.
+     */
     private static void populate(Inventory inv, ScoreboardGUIHolder holder, Player player,
                                  PlayerScoreboardState state, ScoreboardConfig config) {
-        // Profile button (slot 0)
         inv.setItem(SLOT_PROFILE, buildProfileHead(player, config));
 
-        // Filler
+        Map<String, Integer> slots = config.getPlaceholderSlots();
+
+        Set<Integer> reserved = new HashSet<>(slots.values());
+        reserved.add(SLOT_PROFILE);
+        reserved.add(SLOT_TOGGLE);
+        reserved.add(SLOT_BACK);
+        reserved.add(SLOT_CLOSE);
+
         ItemStack filler = buildItem(config.getFillerMaterial(), config.getFillerName(), List.of());
-        for (int slot : FILLER_SLOTS) inv.setItem(slot, filler);
-
-        // Organize placeholders by sort group for display
-        Map<Integer, List<String>> groupedPlaceholders = groupPlaceholders(state, player, config);
-
-        int currentSlot = PLACEHOLDERS_START;
-        for (int groupKey : groupedPlaceholders.keySet()) {
-            List<String> placeholdersInGroup = groupedPlaceholders.get(groupKey);
-
-            for (String id : placeholdersInGroup) {
-                if (currentSlot > PLACEHOLDERS_END) break;
-
-                ScoreboardPlaceholder placeholder = config.getPlaceholder(id);
-                if (placeholder == null) continue;
-
-                boolean active = state.hasPlaceholderActive(id);
-                boolean conditionMet = placeholder.conditionType().isMet(player);
-
-                ItemStack item;
-                if (conditionMet) {
-                    item = buildPlaceholderItem(placeholder, active, state, config);
-                } else {
-                    item = buildLockedPlaceholderItem(placeholder, config);
-                }
-
-                inv.setItem(currentSlot, item);
-                holder.mapSlot(currentSlot, id);
-                currentSlot++;
-            }
-
-            if (currentSlot <= PLACEHOLDERS_END) {
-                currentSlot++;
-            }
+        for (int slot = 0; slot < inv.getSize(); slot++) {
+            if (!reserved.contains(slot)) inv.setItem(slot, filler);
         }
 
-        // Fill remaining slots with filler
-        for (int i = currentSlot; i <= PLACEHOLDERS_END; i++) {
-            inv.setItem(i, filler);
+        boolean maxed = state.getActivePlaceholders().size() >= config.getMaxPlaceholders();
+        for (Map.Entry<String, Integer> entry : slots.entrySet()) {
+            String id = entry.getKey();
+            ScoreboardPlaceholder placeholder = config.getPlaceholder(id);
+            if (placeholder == null) continue;
+
+            boolean active = state.hasPlaceholderActive(id);
+            ItemStack item = placeholder.isUnlocked(player)
+                    ? buildPlaceholderItem(placeholder, active, maxed, state, config)
+                    : buildLockedPlaceholderItem(placeholder, config);
+
+            inv.setItem(entry.getValue(), item);
+            holder.mapSlot(entry.getValue(), id);
         }
 
-        // Buttons
         inv.setItem(SLOT_TOGGLE, buildToggle(state, config));
         inv.setItem(SLOT_BACK, buildItem(config.getBackMaterial(), config.getBackName(), config.getBackLore()));
         inv.setItem(SLOT_CLOSE, buildItem(config.getCloseMaterial(), config.getCloseName(), config.getCloseLore()));
-    }
-
-    private static Map<Integer, List<String>> groupPlaceholders(PlayerScoreboardState state, Player player,
-                                                                  ScoreboardConfig config) {
-        Map<Integer, List<String>> groups = new LinkedHashMap<>();
-        List<String> active = state.getActivePlaceholders();
-        List<String> order = config.getPlaceholderOrder();
-
-        for (String id : active) {
-            ScoreboardPlaceholder ph = config.getPlaceholder(id);
-            if (ph != null) {
-                groups.computeIfAbsent(ph.sortGroup(), k -> new ArrayList<>()).add(id);
-            }
-        }
-
-        for (String id : order) {
-            ScoreboardPlaceholder ph = config.getPlaceholder(id);
-            if (ph != null && !active.contains(id)) {
-                groups.computeIfAbsent(ph.sortGroup(), k -> new ArrayList<>()).add(id);
-            }
-        }
-
-        return groups;
     }
 
     private static ItemStack buildProfileHead(Player player, ScoreboardConfig config) {
@@ -151,80 +108,65 @@ public final class ScoreboardGUI {
     }
 
     private static ItemStack buildToggle(PlayerScoreboardState state, ScoreboardConfig config) {
+        if (state.getActivePlaceholders().isEmpty()) {
+            return buildItem(config.getToggleEmptyMaterial(), config.getToggleEmptyName(), config.getToggleEmptyLore());
+        }
         if (state.isScoreboardEnabled()) {
             return buildItem(config.getToggleOnMaterial(), config.getToggleOnName(), config.getToggleOnLore());
-        } else {
-            return buildItem(config.getToggleOffMaterial(), config.getToggleOffName(), config.getToggleOffLore());
         }
+        return buildItem(config.getToggleOffMaterial(), config.getToggleOffName(), config.getToggleOffLore());
     }
 
-    private static ItemStack buildPlaceholderItem(ScoreboardPlaceholder placeholder, boolean active,
+    private static ItemStack buildPlaceholderItem(ScoreboardPlaceholder placeholder, boolean active, boolean maxed,
                                                     PlayerScoreboardState state, ScoreboardConfig config) {
-        String name;
-        String iconMat;
-        List<String> lore = new ArrayList<>();
-
+        String icon;
+        String nameColor;
         if (active) {
-            name = "&a" + stripColor(placeholder.displayName()) + " &8[&a✔&8]";
-            iconMat = placeholder.icon().equalsIgnoreCase("PAPER") ? "LIME_DYE" : placeholder.icon();
+            icon = config.getPlaceholderOnMaterial();
+            nameColor = "&a";
+        } else if (maxed) {
+            icon = config.getPlaceholderBlockedMaterial();
+            nameColor = "&8";
         } else {
-            name = "&7" + stripColor(placeholder.displayName()) + " &8[&7✘&8]";
-            iconMat = "GRAY_DYE";
+            icon = config.getPlaceholderOffMaterial();
+            nameColor = "&7";
         }
 
+        List<String> lore = new ArrayList<>();
         if (!placeholder.lore().isEmpty()) {
             for (String l : placeholder.lore()) lore.add(colorize(l));
+            lore.add("");
         }
-
-        lore.add("");
-        lore.add("§8Шаблон:");
-        lore.add("  §7" + colorize(placeholder.template()));
-        lore.add("");
 
         if (active) {
             List<String> activePlaceholders = state.getActivePlaceholders();
             int pos = activePlaceholders.indexOf(placeholder.id()) + 1;
             int total = activePlaceholders.size();
-            lore.add("§7Позиция: §f#" + pos + " §7из §f" + total);
+            lore.add("&7Позиция в скорборде: &f#" + pos + " &7из &f" + total);
             lore.add("");
-            if (pos > 1) lore.add("§8▸ §7ЛКМ §8— сдвинуть выше");
-            if (pos < total) lore.add("§8▸ §7ПКМ §8— сдвинуть ниже");
-            lore.add("§8▸ §7СКМ §8— отключить");
+            if (pos > 1) lore.add("&aЛКМ &7— сдвинуть выше");
+            if (pos < total) lore.add("&aПКМ &7— сдвинуть ниже");
+            lore.add("&cСКМ &7— выключить");
+        } else if (maxed) {
+            lore.add("&cДостигнут максимум &7(&f" + config.getMaxPlaceholders() + "&7)");
         } else {
-            boolean maxed = state.getActivePlaceholders().size() >= config.getMaxPlaceholders();
-            if (maxed) {
-                lore.add("§c  Достигнут максимум! §7(§f" + config.getMaxPlaceholders() + "§7)");
-            }
-            lore.add("§8▸ §7СКМ §8— включить");
+            lore.add("&aСКМ &7— включить");
         }
 
-        return buildItem(iconMat, name, lore);
+        return buildItem(icon, nameColor + stripColor(placeholder.displayName()), lore);
     }
 
     private static ItemStack buildLockedPlaceholderItem(ScoreboardPlaceholder placeholder, ScoreboardConfig config) {
         List<String> lore = new ArrayList<>();
-
         if (!placeholder.lore().isEmpty()) {
             for (String l : placeholder.lore()) lore.add(colorize(l));
+            lore.add("");
         }
+        lore.add("&cНедоступно");
+        String reason = placeholder.requirement() != null ? placeholder.requirement().reason() : null;
+        if (reason != null && !reason.isBlank()) lore.add(colorize(reason));
 
-        lore.add("");
-        lore.add("§cЗаблокирован");
-        String conditionMsg = getConditionMessage(placeholder.conditionType());
-        if (!conditionMsg.isEmpty()) {
-            lore.add("§7" + conditionMsg);
-        }
-
-        return buildItem(config.getLockedMaterial(), "&8🔒 " + stripColor(placeholder.displayName()), lore);
-    }
-
-    private static String getConditionMessage(ScoreboardPlaceholderCondition condition) {
-        return switch (condition) {
-            case ALWAYS -> "";
-            case IF_HAS_CLAN -> "Требуется клан";
-            case IF_HAS_GROUP -> "Требуется группа";
-            case IF_HAS_BEHAVIOR -> "Требуется стиль игры";
-        };
+        return buildItem(config.getPlaceholderBlockedMaterial(), "&8" + stripColor(placeholder.displayName()), lore);
     }
 
     static ItemStack buildItem(String materialStr, String displayName, List<String> lore) {

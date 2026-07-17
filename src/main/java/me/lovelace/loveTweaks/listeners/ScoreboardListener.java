@@ -82,7 +82,7 @@ public class ScoreboardListener implements Listener, CommandExecutor {
         PlayerScoreboardState state = dataManager.getState(player.getUniqueId());
 
         if (slot == ScoreboardGUI.SLOT_TOGGLE) {
-            if (click == ClickType.LEFT || click == ClickType.RIGHT) {
+            if ((click == ClickType.LEFT || click == ClickType.RIGHT) && !state.getActivePlaceholders().isEmpty()) {
                 state.setScoreboardEnabled(!state.isScoreboardEnabled());
                 displayManager.updateScoreboard(player);
                 ScoreboardGUI.refresh(event.getInventory(), holder, player, state, cfg);

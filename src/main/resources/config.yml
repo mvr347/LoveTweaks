@@ -14,165 +14,164 @@ milk:
 
 # ─── Scoreboard ───────────────────────────────────────────────────────────────
 scoreboard:
-  # Название скорборда (§-коды или &-коды, всегда отображается)
+  # Название скорборда (§-коды или &-коды, всегда отображается как заголовок)
   title: '&FVOIDCORE'
-  # Нижняя строка-сепаратор (всегда отображается, если скорборд включён)
-  fixed-bottom: '  &c✌ &7V O I D C O R E &c✌   '
+  # Строка-разделитель между парами плейсхолдеров (по умолчанию пустая строка)
+  separator: ''
+  # Нижняя строка (всегда отображается последней, если скорборд включён)
+  bottom: '  &c✌ &7V O I D C O R E &c✌   '
   # Интервал обновления в тиках (20 = 1 секунда)
   update-interval: 20
-  # Максимальное кол-во плейсхолдеров, которые игрок может включить одновременно
+  # Максимальное кол-во плейсхолдеров, которые игрок может включить одновременно.
+  # Плейсхолдеры отображаются на скорборде парами (по 2 в ряд), каждая пара
+  # завершается строкой-разделителем — при 8 плейсхолдерах получится ровно
+  # 8 строк + 4 разделителя = 12 строк тела скорборда.
   max-placeholders: 8
   # Миры, в которых скорборд не отображается
   disabled-worlds:
     - world_nether
     - world_the_end
 
-  # Плейсхолдеры скорборда — каждый плейсхолдер это одна строка
-  # condition: ALWAYS, IF_HAS_CLAN, IF_HAS_GROUP, IF_HAS_BEHAVIOR
-  # sort-group: группирует плейсхолдеры для визуального разделения (0=игрок, 5=группа, 10=клан, 20=поведение, 30=статистика, 35=дата/время)
+  # Плейсхолдеры скорборда — каждый плейсхолдер это одна строка.
+  # requirement (необязательно): плейсхолдер блокируется в GUI и пропускается на
+  #   скорборде, пока не выполнено условие.
+  #     placeholder: PAPI-выражение для проверки, например '%clans_in_clan%'
+  #     equals (необязательно): требуемое значение; если не указано — условие
+  #       считается выполненным, если PAPI вернул непустой результат
+  #     reason: причина блокировки, показывается в лore кнопки
+  # sort-group: группирует плейсхолдеры по категориям для расположения в GUI
+  #   /scoreboard (0=игрок, 5=пометка, 10=клан, 20=стиль игры, 30=статистика,
+  #   35=дата/время) — порядок скорборда определяется самим игроком (ЛКМ/ПКМ),
+  #   sort-group влияет только на раскладку кнопок в меню.
   placeholders:
     karma:
       display-name: '&eКарма'
-      icon: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYTRmZWY3NTNkNWI0ZmYyYTljYWU3NWJjMmVkZWIzMTUzMDI1YWJjNWNjMjc0NDI4NWYzMTk2NGY5NDA4YTFmIn19fQ=='
-      template: '&e⚖&f %objective_score_rating% &7очков кармы'
+      template: '&e⚖ &f%lovebehavior_politeness_points% &7очков кармы'
       lore:
-        - '&7Счёт кармы на сервере'
-      condition: 'ALWAYS'
+        - '&7Очки кармы (вежливости) на сервере'
       sort-group: 0
 
     coords:
       display-name: '&bКоординаты'
-      icon: 'COMPASS'
       template: '&6x &b%player_x%&r, &6y &b%player_y%&r, &6z &b%player_z%'
       lore:
         - '&7Текущие координаты игрока'
-      condition: 'ALWAYS'
       sort-group: 0
 
     playtime:
       display-name: '&bВремя на сервере'
-      icon: 'CLOCK'
-      template: '&b⏱ &r%playtime_since_join% &7часов'
+      template: '&b⏱ &f%playtime_since_join% &7часов на сервере'
       lore:
         - '&7Время, проведённое на сервере'
-      condition: 'ALWAYS'
       sort-group: 0
+
+    suffix:
+      display-name: '&dПометка'
+      template: '&d✦ &f%lovesubnames_current% &7пометка'
+      lore:
+        - '&7Текущая пометка (суффикс) игрока'
+      sort-group: 5
+      requirement:
+        placeholder: '%lovesubnames_current%'
+        reason: '&7Нужна активная пометка'
+
+    clan_tag:
+      display-name: '&6Тег клана'
+      template: '&6⚑ &f%clans_colored_tag% &7тег клана'
+      lore:
+        - '&7Тег вашего клана'
+      sort-group: 10
+      requirement:
+        placeholder: '%clans_in_clan%'
+        equals: 'true'
+        reason: '&7Нужно состоять в клане'
+
+    clan_name:
+      display-name: '&6Клан'
+      template: '&6⚑ &f%clans_name% &7название клана'
+      lore:
+        - '&7Полное название вашего клана'
+      sort-group: 10
+      requirement:
+        placeholder: '%clans_in_clan%'
+        equals: 'true'
+        reason: '&7Нужно состоять в клане'
+
+    clan_level:
+      display-name: '&6Уровень клана'
+      template: '&6◆ &f%clans_level% &7уровень клана'
+      lore:
+        - '&7Уровень вашего клана'
+      sort-group: 10
+      requirement:
+        placeholder: '%clans_in_clan%'
+        equals: 'true'
+        reason: '&7Нужно состоять в клане'
+
+    behavior:
+      display-name: '&8Стиль игры'
+      template: '&8☯ &f%lovebehavior_playstyle_name% &7стиль игры'
+      lore:
+        - '&7Ваш текущий стиль игры'
+      sort-group: 20
+      requirement:
+        placeholder: '%lovebehavior_playstyle_name%'
+        reason: '&7Нужен определённый стиль игры'
 
     kills:
       display-name: '&cУбийства'
-      icon: 'IRON_SWORD'
-      template: '&c⚔ &r%statistic_player_kills% &7убийств'
+      template: '&c⚔ &f%statistic_player_kills% &7убийств'
       lore:
         - '&7Количество убийств игроков'
-      condition: 'ALWAYS'
       sort-group: 30
 
     deaths:
       display-name: '&7Смерти'
-      icon: 'SKELETON_SKULL'
-      template: '&c☠ &r%statistic_deaths% &7смертей'
+      template: '&c☠ &f%statistic_deaths% &7смертей'
       lore:
         - '&7Количество смертей'
-      condition: 'ALWAYS'
       sort-group: 30
 
     mob_kills:
       display-name: '&aУбийства мобов'
-      icon: 'ZOMBIE_HEAD'
-      template: '&a⚔ &r%statistic_mob_kills% &7мобов'
+      template: '&a⚔ &f%statistic_mob_kills% &7мобов'
       lore:
         - '&7Количество убитых мобов'
-      condition: 'ALWAYS'
       sort-group: 30
 
     kd_ratio:
       display-name: '&eК/Д'
-      icon: 'DIAMOND_SWORD'
-      template: '&eК/Д: &f%kd_ratio%'
+      template: '&e⚔ &f%kd_ratio% &7соотношение К/Д'
       lore:
-        - '&7Соотношение убийств/смертей'
-      condition: 'ALWAYS'
+        - '&7Соотношение убийств к смертям'
       sort-group: 30
 
     ping:
       display-name: '&7Пинг'
-      icon: 'REDSTONE'
-      template: '&7📡 &r%player_ping% &7мс'
+      template: '&7⚡ &f%player_ping% &7мс пинга'
       lore:
         - '&7Соединение с сервером'
-      condition: 'ALWAYS'
       sort-group: 30
-
-    clan_tag:
-      display-name: '&6Клан'
-      icon: 'BANNER'
-      template: '&6%clans_colored_tag%'
-      lore:
-        - '&7Тег клана'
-      condition: 'IF_HAS_CLAN'
-      sort-group: 10
-
-    clan_name:
-      display-name: '&6Имя клана'
-      icon: 'BANNER'
-      template: '&6Клан: &f%clans_name%'
-      lore:
-        - '&7Полное имя клана'
-      condition: 'IF_HAS_CLAN'
-      sort-group: 10
-
-    clan_level:
-      display-name: '&6Уровень клана'
-      icon: 'YELLOW_CONCRETE'
-      template: '&6Уровень: &f%clans_level%'
-      lore:
-        - '&7Уровень клана'
-      condition: 'IF_HAS_CLAN'
-      sort-group: 10
-
-    group:
-      display-name: '&7Группа'
-      icon: 'BOOK'
-      template: '&7Группа: &e%lovesubnames_current%'
-      lore:
-        - '&7Группа игрока'
-      condition: 'IF_HAS_GROUP'
-      sort-group: 5
-
-    behavior:
-      display-name: '&8Стиль игры'
-      icon: 'PAPER'
-      template: '&8Стиль: &f%lovebehavior_playstyle_name%'
-      lore:
-        - '&7Стиль игры'
-      condition: 'IF_HAS_BEHAVIOR'
-      sort-group: 20
 
     date:
       display-name: '&7Дата'
-      icon: 'CALENDAR_CLUSTER'
-      template: '&7%server_time_dd% %server_time_MMM% %server_time_yyyy%'
+      template: '&7▸ &f%server_time_dd% %server_time_MMM% %server_time_yyyy% &7дата'
       lore:
         - '&7Текущая дата'
-      condition: 'ALWAYS'
       sort-group: 35
 
     time:
       display-name: '&7Время'
-      icon: 'CLOCK'
-      template: '&7%server_time_hh:mm:ss a%'
+      template: '&7▸ &f%server_time_hh:mm:ss a% &7время'
       lore:
         - '&7Текущее время'
-      condition: 'ALWAYS'
       sort-group: 35
 
     server_time:
       display-name: '&7Дата и время'
-      icon: 'CLOCK'
-      template: '&7%server_time_dd% %server_time_MMM%, %server_time_hh:mm:ss a%'
+      template: '&7▸ &f%server_time_dd% %server_time_MMM%, %server_time_hh:mm:ss a% &7дата и время'
       lore:
         - '&7Дата и время сервера'
-      condition: 'ALWAYS'
       sort-group: 35
 
   # ─── GUI настроек скорборда (/scoreboard) ──────────────────────────────────
@@ -192,22 +191,45 @@ scoreboard:
         - '&aЛКМ &7— открыть профиль'
       command: ''
 
-    # Кнопка «Вкл/Выкл» скорборда (слот 51)
+    # Внешний вид плейсхолдера, когда он ВКЛЮЧЁН (отображается на скорборде)
+    placeholder-on:
+      material: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODg5MDgyNTQ1MWMwMWJkMDNiMDMwNzkwNjIxYWI3NTM0NDgzMTlmODQ3NDliYjAyYzkwZjNhMjg0ODliZDcyIn19fQ=='
+
+    # Внешний вид плейсхолдера, когда он ВЫКЛЮЧЕН
+    placeholder-off:
+      material: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYTRmZWY3NTNkNWI0ZmYyYTljYWU3NWJjMmVkZWIzMTUzMDI1YWJjNWNjMjc0NDI4NWYzMTk2NGY5NDA4YTFmIn19fQ=='
+
+    # Внешний вид плейсхолдера, когда он ЗАБЛОКИРОВАН (не выполнено requirement)
+    # или недоступен для включения, потому что уже включён максимум (max-placeholders)
+    placeholder-blocked:
+      material: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvM2VkMWFiYTczZjYzOWY0YmM0MmJkNDgxOTZjNzE1MTk3YmUyNzEyYzNiOTYyYzk3ZWJmOWU5ZWQ4ZWZhMDI1In19fQ=='
+
+    # Кнопка «Вкл/Выкл» скорборда (слот 51) — скорборд включён и есть что показывать
     toggle-on:
-      material: 'LIME_DYE'
-      display-name: '&aСкорборд'
+      material: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvN2FmNmMzY2FjOTRjODk0NGQwNDQxNTBjMWRkNWU0ZTZhYjUzYTAxMzgyZGFlNDYzOTE0ZmIzYmU1YTI3MzE5ZCJ9fX0='
+      display-name: '&aСкорборд включён'
       lore:
         - ''
-        - '&7Скорборд включён.'
+        - '&7Скорборд отображается на экране.'
         - '&cЛКМ &7— выключить'
 
+    # Скорборд выключен вручную, но есть включённые плейсхолдеры
     toggle-off:
-      material: 'GRAY_DYE'
+      material: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZmM1MzQ1MjkwZDdlNDRkZWEzYTg5MGQ0ZDAxNDBmYzEwYTUyYTkwOTc2NzQzOGYwZjViNWQyODc3Y2JhNDg0YyJ9fX0='
+      display-name: '&7Скорборд выключен'
+      lore:
+        - ''
+        - '&7Скорборд скрыт с экрана.'
+        - '&aЛКМ &7— включить'
+
+    # Ни один плейсхолдер не включён — скорборду нечего показывать
+    toggle-empty:
+      material: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjNjMDA1NmI3YjI4MWZlMmQ0ZmRkNjc1NzdiMDI2ZWE3NDIyNmYzNjQ5YTFkNTBkYjI3NDI1YmNmYjRiMGE5YyJ9fX0='
       display-name: '&7Скорборд'
       lore:
         - ''
-        - '&7Скорборд выключен.'
-        - '&aЛКМ &7— включить'
+        - '&7Нет ни одного включённого плейсхолдера.'
+        - '&7Выберите плейсхолдеры ниже &8(СКМ)'
 
     # Кнопка «Назад» (слот 52)
     back-button:
@@ -225,8 +247,3 @@ scoreboard:
       lore:
         - ''
         - '&aЛКМ &7— закрыть меню'
-
-    # Внешний вид заблокированного плейсхолдера
-    locked-placeholder:
-      material: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMTU4YjAyN2U5NTQ4MWQ3Y2NlMDY5YWY0ZTdlNjY4YzY3MjhiNzc2NDc4YzMwYmY1YjE2YzQ1OTNhYzI3YzZmMyJ9fX0='
-      display-name: '&8🔒'
