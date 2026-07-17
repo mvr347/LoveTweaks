@@ -105,8 +105,10 @@ public class ScoreboardDisplayManager {
     /**
      * Renders the active placeholders (in the player's chosen scoreboard order) two per row,
      * with a separator line after every pair — matching the reference layout: a lone trailing
-     * placeholder still gets its own separator rather than being paired up. Returns null when
-     * there's nothing valid to show, so the caller hides the scoreboard entirely.
+     * placeholder still gets its own separator rather than being paired up. The top/bottom
+     * branding lines are padded with leading spaces so they sit centered relative to the widest
+     * content line. Returns null when there's nothing valid to show, so the caller hides the
+     * scoreboard entirely.
      */
     List<String> buildLines(Player player, PlayerScoreboardState state) {
         List<String> valid = new ArrayList<>();
@@ -124,15 +126,33 @@ public class ScoreboardDisplayManager {
             return null;
         }
 
+        int widest = 0;
+        for (String line : valid) widest = Math.max(widest, visibleLength(line));
+
+        String top = center(applyPAPI(player, config.getTop()), widest);
+        String bottom = center(applyPAPI(player, config.getBottom()), widest);
+
         List<String> lines = new ArrayList<>();
+        lines.add(top);
         String separator = config.getSeparator();
         for (int i = 0; i < valid.size(); i += 2) {
             lines.add(valid.get(i));
             if (i + 1 < valid.size()) lines.add(valid.get(i + 1));
             lines.add(separator);
         }
-        lines.add(config.getBottom());
+        lines.add(bottom);
         return lines;
+    }
+
+    /** Visible character count of a legacy-colored string, ignoring `&`/`§` color codes. */
+    private static int visibleLength(String legacyText) {
+        return legacyText.replaceAll("[&§][0-9a-fk-orA-FK-OR]", "").length();
+    }
+
+    /** Pads a legacy-colored line with leading spaces so it centers against {@code targetWidth}. */
+    private static String center(String legacyText, int targetWidth) {
+        int pad = (targetWidth - visibleLength(legacyText)) / 2;
+        return pad > 0 ? " ".repeat(pad) + legacyText : legacyText;
     }
 
     private Scoreboard createBoard(Player player, List<String> lines) {

@@ -7,6 +7,7 @@ import me.lovelace.loveTweaks.scoreboard.ScoreboardDataManager;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardDisplayManager;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardGUI;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardGUIHolder;
+import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -82,11 +83,15 @@ public class ScoreboardListener implements Listener, CommandExecutor {
         PlayerScoreboardState state = dataManager.getState(player.getUniqueId());
 
         if (slot == ScoreboardGUI.SLOT_TOGGLE) {
-            if ((click == ClickType.LEFT || click == ClickType.RIGHT) && !state.getActivePlaceholders().isEmpty()) {
-                state.setScoreboardEnabled(!state.isScoreboardEnabled());
-                displayManager.updateScoreboard(player);
-                ScoreboardGUI.refresh(event.getInventory(), holder, player, state, cfg);
+            if (click != ClickType.LEFT && click != ClickType.RIGHT) return;
+            if (state.getActivePlaceholders().isEmpty()) {
+                playFeedback(player, false);
+                return;
             }
+            state.setScoreboardEnabled(!state.isScoreboardEnabled());
+            playFeedback(player, true);
+            displayManager.updateScoreboard(player);
+            ScoreboardGUI.refresh(event.getInventory(), holder, player, state, cfg);
             return;
         }
 
@@ -109,17 +114,36 @@ public class ScoreboardListener implements Listener, CommandExecutor {
         if (placeholderId == null) return;
 
         if (click == ClickType.MIDDLE) {
+            boolean wasActive = state.hasPlaceholderActive(placeholderId);
             state.togglePlaceholder(placeholderId, cfg.getMaxPlaceholders());
+            boolean changed = state.hasPlaceholderActive(placeholderId) != wasActive;
+            playFeedback(player, changed);
+            if (!changed) return; // was already at max-placeholders, nothing to refresh
         } else if (click == ClickType.LEFT) {
-            if (state.hasPlaceholderActive(placeholderId)) state.movePlaceholderUp(placeholderId);
+            if (!state.hasPlaceholderActive(placeholderId)) return;
+            boolean moved = state.movePlaceholderUp(placeholderId);
+            playFeedback(player, moved);
+            if (!moved) return; // already first in the scoreboard order
         } else if (click == ClickType.RIGHT) {
-            if (state.hasPlaceholderActive(placeholderId)) state.movePlaceholderDown(placeholderId);
+            if (!state.hasPlaceholderActive(placeholderId)) return;
+            boolean moved = state.movePlaceholderDown(placeholderId);
+            playFeedback(player, moved);
+            if (!moved) return; // already last in the scoreboard order
         } else {
             return;
         }
 
         displayManager.updateScoreboard(player);
         ScoreboardGUI.refresh(event.getInventory(), holder, player, state, cfg);
+    }
+
+    /** Every click needs an audible response — a silent no-op reads as a broken button. */
+    private void playFeedback(Player player, boolean changed) {
+        if (changed) {
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 1f, 1.4f);
+        } else {
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 0.6f, 0.6f);
+        }
     }
 
     @EventHandler
