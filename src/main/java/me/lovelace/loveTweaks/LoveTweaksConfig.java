@@ -1,8 +1,14 @@
 package me.lovelace.loveTweaks;
 
+import me.lovelace.loveTweaks.items.FirstJoinItem;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardConfig;
+import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public class LoveTweaksConfig {
 
@@ -22,6 +28,10 @@ public class LoveTweaksConfig {
 
     // Milk
     private boolean disableMilk;
+
+    // Стартовый набор при первом заходе на сервер
+    private boolean firstJoinEnabled;
+    private final List<FirstJoinItem> firstJoinItems = new ArrayList<>();
 
     // Scoreboard (delegated to ScoreboardConfig)
     private final ScoreboardConfig scoreboardConfig = new ScoreboardConfig();
@@ -43,7 +53,36 @@ public class LoveTweaksConfig {
         saturationMultiplier = (float) config.getDouble("hunger.saturation-multiplier", 0.5);
         disableMilk = config.getBoolean("milk.disable-milk", true);
 
+        loadFirstJoinItems(config);
+
         scoreboardConfig.load(config);
+    }
+
+    private void loadFirstJoinItems(FileConfiguration config) {
+        firstJoinEnabled = config.getBoolean("first-join.enabled", false);
+
+        firstJoinItems.clear();
+        for (Map<?, ?> raw : config.getMapList("first-join.items")) {
+            Object materialObj = raw.get("material");
+            Material material = materialObj != null
+                    ? Material.matchMaterial(String.valueOf(materialObj).toUpperCase())
+                    : null;
+            if (material == null) material = Material.PAPER;
+
+            int amount = 1;
+            if (raw.get("amount") instanceof Number n) amount = Math.max(1, n.intValue());
+
+            boolean teleportScroll = Boolean.TRUE.equals(raw.get("teleport-scroll"));
+
+            String displayName = raw.get("display-name") != null ? String.valueOf(raw.get("display-name")) : null;
+
+            List<String> lore = new ArrayList<>();
+            if (raw.get("lore") instanceof List<?> loreList) {
+                for (Object line : loreList) lore.add(String.valueOf(line));
+            }
+
+            firstJoinItems.add(new FirstJoinItem(material, amount, teleportScroll, displayName, lore));
+        }
     }
 
     public boolean isEnderChestsAsNormalChests() { return enderChestsAsNormalChests; }
@@ -52,5 +91,7 @@ public class LoveTweaksConfig {
     public float getExtraExhaustionPerSecond() { return extraExhaustionPerSecond; }
     public float getSaturationMultiplier() { return saturationMultiplier; }
     public boolean isDisableMilk() { return disableMilk; }
+    public boolean isFirstJoinEnabled() { return firstJoinEnabled; }
+    public List<FirstJoinItem> getFirstJoinItems() { return firstJoinItems; }
     public ScoreboardConfig getScoreboardConfig() { return scoreboardConfig; }
 }

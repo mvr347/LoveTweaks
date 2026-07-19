@@ -126,11 +126,20 @@ public class ScoreboardDisplayManager {
             return null;
         }
 
-        int widest = 0;
+        String rawTop = applyPAPI(player, config.getTop());
+        String rawBottom = applyPAPI(player, config.getBottom());
+
+        // Ширина берётся из ВСЕХ строк — включая top/bottom, а не только плейсхолдеров.
+        // Раньше top/bottom центрировались относительно ширины плейсхолдеров, поэтому если
+        // сама строка top/bottom оказывалась шире всех плейсхолдеров, она вообще не получала
+        // отступ (оставалась прижатой влево), а более короткие плейсхолдеры центрировались
+        // по заведомо неверной (слишком маленькой) ширине. Учитывая top/bottom здесь, центр
+        // всегда пересчитывается динамически от самой широкой строки скорборда.
+        int widest = Math.max(visibleLength(rawTop), visibleLength(rawBottom));
         for (String line : valid) widest = Math.max(widest, visibleLength(line));
 
-        String top = center(applyPAPI(player, config.getTop()), widest);
-        String bottom = center(applyPAPI(player, config.getBottom()), widest);
+        String top = center(rawTop, widest);
+        String bottom = center(rawBottom, widest);
 
         List<String> lines = new ArrayList<>();
         lines.add(top);
@@ -144,9 +153,16 @@ public class ScoreboardDisplayManager {
         return lines;
     }
 
+    // Matches both a plain legacy code (&a, §a, ...) and the hex-color sequence Bukkit uses
+    // (&x&1&2&3&4&5&6 / §x§1§2§3§4§5§6) — the latter's leading "x" isn't a normal code char,
+    // so without this it leaked into the visible-length count and threw off centering.
+    private static final java.util.regex.Pattern COLOR_CODES = java.util.regex.Pattern.compile(
+            "[&§]x([&§][0-9a-fA-F]){6}|[&§][0-9a-fk-orA-FK-OR]"
+    );
+
     /** Visible character count of a legacy-colored string, ignoring `&`/`§` color codes. */
     private static int visibleLength(String legacyText) {
-        return legacyText.replaceAll("[&§][0-9a-fk-orA-FK-OR]", "").length();
+        return COLOR_CODES.matcher(legacyText).replaceAll("").length();
     }
 
     /** Pads a legacy-colored line with leading spaces so it centers against {@code targetWidth}. */

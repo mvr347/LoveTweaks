@@ -3,6 +3,7 @@ package me.lovelace.loveTweaks;
 import me.lovelace.loveTweaks.items.TeleportScroll;
 import me.lovelace.loveTweaks.listeners.EnchantmentListener;
 import me.lovelace.loveTweaks.listeners.EnderChestListener;
+import me.lovelace.loveTweaks.listeners.FirstJoinItemsListener;
 import me.lovelace.loveTweaks.listeners.HungerListener;
 import me.lovelace.loveTweaks.listeners.MilkListener;
 import me.lovelace.loveTweaks.listeners.ScoreboardListener;
@@ -57,6 +58,7 @@ public final class LoveTweaks extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new HungerListener(this), this);
         getServer().getPluginManager().registerEvents(new MilkListener(this), this);
         getServer().getPluginManager().registerEvents(new TeleportScrollListener(this, teleportScrollManager), this);
+        getServer().getPluginManager().registerEvents(new FirstJoinItemsListener(this), this);
 
         ScoreboardListener scoreboardListener = new ScoreboardListener(this, scoreboardDataManager, scoreboardDisplayManager);
         getServer().getPluginManager().registerEvents(scoreboardListener, this);

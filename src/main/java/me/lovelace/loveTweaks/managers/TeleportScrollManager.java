@@ -10,10 +10,10 @@ import org.bukkit.metadata.MetadataValue;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Менеджер сессий телепортации через свиток.
@@ -32,10 +32,14 @@ public class TeleportScrollManager {
 
     private final LoveTweaks plugin;
 
-    // Активные сессии: UUID инициатора → сессия
-    private final Map<UUID, TeleportSession> sessions = new HashMap<>();
+    // Активные сессии: UUID инициатора → сессия.
+    // ConcurrentHashMap обязателен: onPlayerChat читает isWaitingForInput() из асинхронного
+    // потока чата, пока главный поток параллельно пишет в эту же карту (put/remove) —
+    // обычный HashMap в таких условиях даёт неопределённое поведение (порча структуры,
+    // видимость изменений между потоками), что и приводило к "залипанию" сессий.
+    private final Map<UUID, TeleportSession> sessions = new ConcurrentHashMap<>();
     // Время последнего реального движения по позиции (не поворота камеры)
-    private final Map<UUID, Long> lastMoveTime = new HashMap<>();
+    private final Map<UUID, Long> lastMoveTime = new ConcurrentHashMap<>();
 
     public TeleportScrollManager(LoveTweaks plugin) {
         this.plugin = plugin;
@@ -188,67 +192,93 @@ public class TeleportScrollManager {
         return sessions.containsKey(uuid);
     }
 
+    /**
+     * Отменяет все сессии, у которых данный UUID является целью телепортации (игрок 2).
+     * Нужно вызывать при выходе игрока с сервера, чтобы отсчёт не продолжал ждать/сверять
+     * позицию офлайн-игрока до следующей проверки — сессия закрывается немедленно.
+     */
+    public void cancelSessionsTargeting(UUID targetUuid) {
+        for (Map.Entry<UUID, TeleportSession> entry : sessions.entrySet()) {
+            if (targetUuid.equals(entry.getValue().getTargetUuid())) {
+                cancelSession(entry.getKey(), "Телепортация отменена!", null);
+            }
+        }
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Внутренняя логика
     // ─────────────────────────────────────────────────────────────────────────
 
+    /**
+     * Запускает отсчёт как цепочку одноразовых {@code runTaskLater}-задач, а не повторяющийся
+     * {@code runTaskTimer}. Каждый шаг сам планирует следующий только если сессия всё ещё
+     * активна — если что-то пойдёт не так с отменой (например, сессия удалена из map, но
+     * ссылка на BukkitTask почему-то не была отменена), цепочка просто не продолжится сама
+     * по себе, в отличие от повторяющегося таймера, который тикает независимо от состояния
+     * сессии, пока его явно не cancel()-нуть. Это исключает саму возможность "бесконечной"
+     * телепортации из-за незакрытой задачи.
+     */
     private void startCountdown(Player initiator, Player target, TeleportSession session) {
         final UUID initiatorUuid = initiator.getUniqueId();
         final UUID targetUuid = target.getUniqueId();
         final String initiatorName = initiator.getName();
 
-        // Используем int[] для изменяемого счётчика внутри лямбды
-        final int[] secondsLeft = {COUNTDOWN_SECONDS};
+        scheduleCountdownStep(initiatorUuid, targetUuid, initiatorName, session, COUNTDOWN_SECONDS);
+    }
 
-        BukkitTask countdownTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            // Проверяем что сессия всё ещё актуальна
-            TeleportSession current = sessions.get(initiatorUuid);
-            if (current == null) {
-                return;
-            }
+    private void scheduleCountdownStep(UUID initiatorUuid, UUID targetUuid, String initiatorName,
+                                        TeleportSession session, int secondsLeft) {
+        BukkitTask task = Bukkit.getScheduler().runTaskLater(plugin, () ->
+                runCountdownStep(initiatorUuid, targetUuid, initiatorName, secondsLeft), 20L);
+        session.setCountdownTask(task);
+    }
 
-            Player p = Bukkit.getPlayer(initiatorUuid);
-            Player t = Bukkit.getPlayer(targetUuid);
+    private void runCountdownStep(UUID initiatorUuid, UUID targetUuid, String initiatorName, int secondsLeft) {
+        // Проверяем что сессия всё ещё актуальна (могла быть отменена, например, при выходе игрока)
+        TeleportSession current = sessions.get(initiatorUuid);
+        if (current == null) {
+            return;
+        }
 
-            // Один из игроков вышел с сервера
-            if (p == null || t == null) {
-                cancelSession(initiatorUuid, null, null);
-                return;
-            }
+        Player p = Bukkit.getPlayer(initiatorUuid);
+        Player t = Bukkit.getPlayer(targetUuid);
 
-            // Проверяем условия каждую секунду
-            String failReason = checkConditions(p, t, current);
-            if (failReason != null) {
-                cancelSession(initiatorUuid, "Телепортация отменена! " + failReason, "Телепортация отменена!");
-                return;
-            }
+        // Один из игроков вышел с сервера
+        if (p == null || t == null) {
+            cancelSession(initiatorUuid, null, null);
+            return;
+        }
 
-            // Обновляем позиции для следующей проверки движения
-            current.updatePositions(p.getLocation(), t.getLocation());
+        // Проверяем условия каждую секунду
+        String failReason = checkConditions(p, t, current);
+        if (failReason != null) {
+            cancelSession(initiatorUuid, "Телепортация отменена! " + failReason, "Телепортация отменена!");
+            return;
+        }
 
-            if (secondsLeft[0] <= 0) {
-                // Время вышло — телепортируем
-                performTeleport(p, t, current, initiatorUuid);
-                return;
-            }
+        // Обновляем позиции для следующей проверки движения
+        current.updatePositions(p.getLocation(), t.getLocation());
 
-            // Отображаем таймер обоим игрокам
-            p.sendActionBar(
-                    Component.text("✦ Телепортация через ", NamedTextColor.GOLD)
-                            .append(Component.text(secondsLeft[0] + " сек", NamedTextColor.YELLOW))
-                            .append(Component.text("... Не двигайтесь!", NamedTextColor.GOLD))
-            );
-            t.sendActionBar(
-                    Component.text("✦ К вам телепортируется ", NamedTextColor.GOLD)
-                            .append(Component.text(initiatorName, NamedTextColor.YELLOW))
-                            .append(Component.text("... Не двигайтесь!", NamedTextColor.GOLD))
-            );
+        if (secondsLeft <= 0) {
+            // Время вышло — телепортируем
+            performTeleport(p, t, current, initiatorUuid);
+            return;
+        }
 
-            secondsLeft[0]--;
+        // Отображаем таймер обоим игрокам
+        p.sendActionBar(
+                Component.text("✦ Телепортация через ", NamedTextColor.GOLD)
+                        .append(Component.text(secondsLeft + " сек", NamedTextColor.YELLOW))
+                        .append(Component.text("... Не двигайтесь!", NamedTextColor.GOLD))
+        );
+        t.sendActionBar(
+                Component.text("✦ К вам телепортируется ", NamedTextColor.GOLD)
+                        .append(Component.text(initiatorName, NamedTextColor.YELLOW))
+                        .append(Component.text("... Не двигайтесь!", NamedTextColor.GOLD))
+        );
 
-        }, 1L, 20L); // Небольшая задержка 1 тик чтобы countdownTask был присвоен до первого срабатывания
-
-        session.setCountdownTask(countdownTask);
+        // Планируем следующий шаг только пока сессия жива — цепочка не может продолжиться сама по себе
+        scheduleCountdownStep(initiatorUuid, targetUuid, initiatorName, current, secondsLeft - 1);
     }
 
     private void performTeleport(Player initiator, Player target, TeleportSession session, UUID initiatorUuid) {
@@ -262,7 +292,7 @@ public class TeleportScrollManager {
         sessions.remove(initiatorUuid);
         session.cancelAllTasks();
 
-        // Телепортируем на главном потоке (мы уже на нём, т.к. runTaskTimer)
+        // Телепортируем на главном потоке (мы уже на нём, т.к. runTaskLater)
         initiator.teleport(target.getLocation());
 
         // Убираем свиток из руки
