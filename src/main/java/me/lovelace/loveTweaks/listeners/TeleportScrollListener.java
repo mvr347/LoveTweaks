@@ -128,6 +128,9 @@ public class TeleportScrollListener implements Listener {
         if (manager.hasSession(player.getUniqueId())) {
             manager.cancelSession(player.getUniqueId(), null, null);
         }
+        // Игрок мог быть целью (игрок 2) чужой сессии — отменяем и её, не дожидаясь
+        // следующей секундной проверки в отсчёте.
+        manager.cancelSessionsTargeting(player.getUniqueId());
         manager.removePlayer(player.getUniqueId());
     }
 }

@@ -12,6 +12,25 @@ hunger:
 milk:
   disable-milk: true
 
+# ─── Стартовый набор ──────────────────────────────────────────────────────────
+# Выдаётся один раз при самом первом заходе игрока на сервер.
+first-join:
+  enabled: true
+  items:
+    # teleport-scroll: true — выдаёт настоящий свиток телепортации (material/display-name/lore
+    # игнорируются, используется предмет из items.TeleportScroll)
+    - material: PAPER
+      teleport-scroll: true
+      amount: 1
+    - material: IRON_SWORD
+      amount: 1
+      display-name: '&aНачальный меч'
+      lore:
+        - '&7Ваш первый меч на сервере'
+    - material: COOKED_BEEF
+      amount: 16
+      display-name: '&6Запас еды'
+
 # ─── Scoreboard ───────────────────────────────────────────────────────────────
 scoreboard:
   # Название скорборда (§-коды или &-коды, всегда отображается как заголовок)
