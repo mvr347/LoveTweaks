@@ -1,14 +1,21 @@
 package me.lovelace.loveTweaks;
 
+import me.lovelace.loveTweaks.economy.ItemsAdderEconomyService;
+import me.lovelace.loveTweaks.herald.HeraldManager;
+import me.lovelace.loveTweaks.integration.CitizensIntegration;
 import me.lovelace.loveTweaks.items.TeleportScroll;
 import me.lovelace.loveTweaks.listeners.EnchantmentListener;
 import me.lovelace.loveTweaks.listeners.EnderChestListener;
 import me.lovelace.loveTweaks.listeners.FirstJoinItemsListener;
+import me.lovelace.loveTweaks.listeners.HeraldListener;
 import me.lovelace.loveTweaks.listeners.HungerListener;
+import me.lovelace.loveTweaks.listeners.ItemDropLossListener;
 import me.lovelace.loveTweaks.listeners.MilkListener;
+import me.lovelace.loveTweaks.listeners.PostListener;
 import me.lovelace.loveTweaks.listeners.ScoreboardListener;
 import me.lovelace.loveTweaks.listeners.TeleportScrollListener;
 import me.lovelace.loveTweaks.managers.TeleportScrollManager;
+import me.lovelace.loveTweaks.post.PostManager;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardConfig;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardDataManager;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardDisplayManager;
@@ -16,6 +23,7 @@ import org.bukkit.GameMode;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -33,6 +41,14 @@ public final class LoveTweaks extends JavaPlugin {
     private ScoreboardDataManager scoreboardDataManager;
     private ScoreboardDisplayManager scoreboardDisplayManager;
     private BukkitTask scoreboardTask;
+
+    private CitizensIntegration citizensIntegration;
+    private ItemsAdderEconomyService itemsAdderEconomyService;
+    private HeraldManager heraldManager;
+    private BukkitTask heraldBroadcastTask;
+
+    private PostManager postManager;
+    private BukkitTask postFlightTask;
 
     @Override
     public void onEnable() {
@@ -52,13 +68,27 @@ public final class LoveTweaks extends JavaPlugin {
         scoreboardDisplayManager = new ScoreboardDisplayManager(this, scoreboardDataManager, getScoreboardConfig());
         getLogger().info("Scoreboard system initialized.");
 
+        // Королевский Глашатай
+        citizensIntegration = new CitizensIntegration();
+        itemsAdderEconomyService = new ItemsAdderEconomyService();
+        heraldManager = new HeraldManager(this);
+        getLogger().info("Herald manager initialized.");
+
+        // Королевская Почта
+        postManager = new PostManager(this, itemsAdderEconomyService);
+        getLogger().info("Post manager initialized.");
+
         // Listeners
         getServer().getPluginManager().registerEvents(new EnderChestListener(this), this);
         getServer().getPluginManager().registerEvents(new EnchantmentListener(this), this);
         getServer().getPluginManager().registerEvents(new HungerListener(this), this);
         getServer().getPluginManager().registerEvents(new MilkListener(this), this);
+        getServer().getPluginManager().registerEvents(new ItemDropLossListener(this), this);
         getServer().getPluginManager().registerEvents(new TeleportScrollListener(this, teleportScrollManager), this);
         getServer().getPluginManager().registerEvents(new FirstJoinItemsListener(this), this);
+        getServer().getPluginManager().registerEvents(
+                new HeraldListener(this, heraldManager, citizensIntegration, itemsAdderEconomyService), this);
+        getServer().getPluginManager().registerEvents(new PostListener(this, postManager, citizensIntegration), this);
 
         ScoreboardListener scoreboardListener = new ScoreboardListener(this, scoreboardDataManager, scoreboardDisplayManager);
         getServer().getPluginManager().registerEvents(scoreboardListener, this);
@@ -80,6 +110,17 @@ public final class LoveTweaks extends JavaPlugin {
 
         // Scoreboard update task
         startScoreboardTask();
+
+        // Herald broadcast task
+        startHeraldBroadcastTask();
+
+        // Post pigeon flight tick task
+        postFlightTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                postManager.tickFlights();
+            }
+        }.runTaskTimer(this, 2L, 2L);
     }
 
     private void startScoreboardTask() {
@@ -91,6 +132,19 @@ public final class LoveTweaks extends JavaPlugin {
                 scoreboardDisplayManager.updateAll();
             }
         }.runTaskTimer(this, interval, interval);
+    }
+
+    private void startHeraldBroadcastTask() {
+        if (heraldBroadcastTask != null) heraldBroadcastTask.cancel();
+        long intervalTicks = loveTweaksConfig.getHeraldBroadcastIntervalHours() * 60L * 60L * 20L;
+        heraldBroadcastTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (loveTweaksConfig.isHeraldEnabled()) {
+                    heraldManager.broadcast();
+                }
+            }
+        }.runTaskTimer(this, intervalTicks, intervalTicks);
     }
 
     @Override
@@ -106,7 +160,7 @@ public final class LoveTweaks extends JavaPlugin {
         if (!command.getName().equalsIgnoreCase("lovetweaks")) return false;
 
         if (args.length == 0) {
-            sender.sendMessage("§eИспользование: §f/lovetweaks <reload|givescroll>");
+            sender.sendMessage("§eИспользование: §f/lovetweaks <reload|givescroll|herald|post>");
             return true;
         }
 
@@ -116,9 +170,12 @@ public final class LoveTweaks extends JavaPlugin {
                 scoreboardDataManager.reload();
                 scoreboardDisplayManager.refreshPAPI();
                 startScoreboardTask();
+                startHeraldBroadcastTask();
                 sender.sendMessage("§aLoveTweaks конфиг перезагружен!");
                 yield true;
             }
+            case "herald" -> handleHeraldCommand(sender, args);
+            case "post" -> handlePostCommand(sender, args);
             case "givescroll" -> {
                 if (!sender.hasPermission("lovetweaks.admin")) {
                     sender.sendMessage("§cНедостаточно прав.");
@@ -139,8 +196,97 @@ public final class LoveTweaks extends JavaPlugin {
                 yield true;
             }
             default -> {
-                sender.sendMessage("§eИспользование: §f/lovetweaks <reload|givescroll>");
+                sender.sendMessage("§eИспользование: §f/lovetweaks <reload|givescroll|herald|post>");
                 yield false;
+            }
+        };
+    }
+
+    private boolean handlePostCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("lovetweaks.admin")) {
+            sender.sendMessage("§cНедостаточно прав.");
+            return true;
+        }
+        if (args.length < 2) {
+            sender.sendMessage("§eИспользование: §f/lovetweaks post <bind|unbind>");
+            return true;
+        }
+        return switch (args[1].toLowerCase()) {
+            case "bind" -> {
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage("§cЭта команда доступна только игрокам.");
+                    yield true;
+                }
+                if (!citizensIntegration.isAvailable()) {
+                    sender.sendMessage("§cCitizens не установлен или не включён.");
+                    yield true;
+                }
+                Entity npc = citizensIntegration.lookedAtNpc(player, 6.0);
+                if (npc == null) {
+                    sender.sendMessage("§cПосмотрите на NPC Citizens и повторите команду.");
+                    yield true;
+                }
+                Integer npcId = citizensIntegration.npcId(npc);
+                String npcName = citizensIntegration.npcName(npc);
+                loveTweaksConfig.setPostNpc(npcId == null ? -1 : npcId, npcName);
+                sender.sendMessage("§aNPC Почтмейстера привязан: §e" + (npcName == null ? "?" : npcName));
+                yield true;
+            }
+            case "unbind" -> {
+                loveTweaksConfig.setPostNpc(-1, "");
+                sender.sendMessage("§aNPC Почтмейстера отвязан.");
+                yield true;
+            }
+            default -> {
+                sender.sendMessage("§eИспользование: §f/lovetweaks post <bind|unbind>");
+                yield true;
+            }
+        };
+    }
+
+    private boolean handleHeraldCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("lovetweaks.admin")) {
+            sender.sendMessage("§cНедостаточно прав.");
+            return true;
+        }
+        if (args.length < 2) {
+            sender.sendMessage("§eИспользование: §f/lovetweaks herald <bind|unbind|clear>");
+            return true;
+        }
+        return switch (args[1].toLowerCase()) {
+            case "bind" -> {
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage("§cЭта команда доступна только игрокам.");
+                    yield true;
+                }
+                if (!citizensIntegration.isAvailable()) {
+                    sender.sendMessage("§cCitizens не установлен или не включён.");
+                    yield true;
+                }
+                Entity npc = citizensIntegration.lookedAtNpc(player, 6.0);
+                if (npc == null) {
+                    sender.sendMessage("§cПосмотрите на NPC Citizens и повторите команду.");
+                    yield true;
+                }
+                Integer npcId = citizensIntegration.npcId(npc);
+                String npcName = citizensIntegration.npcName(npc);
+                loveTweaksConfig.setHeraldNpc(npcId == null ? -1 : npcId, npcName);
+                sender.sendMessage("§aNPC Глашатая привязан: §e" + (npcName == null ? "?" : npcName));
+                yield true;
+            }
+            case "unbind" -> {
+                loveTweaksConfig.setHeraldNpc(-1, "");
+                sender.sendMessage("§aNPC Глашатая отвязан.");
+                yield true;
+            }
+            case "clear" -> {
+                heraldManager.clear();
+                sender.sendMessage("§aГолос Королевства сброшен.");
+                yield true;
+            }
+            default -> {
+                sender.sendMessage("§eИспользование: §f/lovetweaks herald <bind|unbind|clear>");
+                yield true;
             }
         };
     }
@@ -152,4 +298,8 @@ public final class LoveTweaks extends JavaPlugin {
     public ScoreboardDisplayManager getScoreboardDisplayManager() { return scoreboardDisplayManager; }
     public NamespacedKey getEnderChestKey() { return enderChestKey; }
     public TeleportScrollManager getTeleportScrollManager() { return teleportScrollManager; }
+    public CitizensIntegration getCitizensIntegration() { return citizensIntegration; }
+    public ItemsAdderEconomyService getItemsAdderEconomyService() { return itemsAdderEconomyService; }
+    public HeraldManager getHeraldManager() { return heraldManager; }
+    public PostManager getPostManager() { return postManager; }
 }

@@ -2,13 +2,15 @@ name: LoveTweaks
 version: '${project.version}'
 main: me.lovelace.loveTweaks.LoveTweaks
 api-version: '1.21'
-soft-depend:
+softdepend:
   - PlaceholderAPI
+  - Citizens
+  - ItemsAdder
 
 commands:
   lovetweaks:
     description: Команды администратора LoveTweaks
-    usage: /lovetweaks <reload|givescroll>
+    usage: /lovetweaks <reload|givescroll|herald bind/unbind/clear|post bind/unbind>
     permission: lovetweaks.admin
     permission-message: У вас нет прав для этой команды.
   scoreboard:
