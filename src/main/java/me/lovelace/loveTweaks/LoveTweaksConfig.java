@@ -34,6 +34,15 @@ public class LoveTweaksConfig {
     private double itemDropLossChance;
     private double itemDropBreakChance;
 
+    // Королевский Глашатай
+    private boolean heraldEnabled;
+    private int heraldNpcId;
+    private String heraldNpcName;
+    private String heraldCurrencyItem;
+    private long heraldCost;
+    private int heraldBroadcastIntervalHours;
+    private String heraldGuiTitle;
+
     // Стартовый набор при первом заходе на сервер
     private boolean firstJoinEnabled;
     private final List<FirstJoinItem> firstJoinItems = new ArrayList<>();
@@ -61,6 +70,14 @@ public class LoveTweaksConfig {
         itemDropLossEnabled = config.getBoolean("item-drop-loss.enabled", false);
         itemDropLossChance = config.getDouble("item-drop-loss.lose-chance", 0.22);
         itemDropBreakChance = config.getDouble("item-drop-loss.break-chance", 0.33);
+
+        heraldEnabled = config.getBoolean("herald.enabled", false);
+        heraldNpcId = config.getInt("herald.npc-id", -1);
+        heraldNpcName = config.getString("herald.npc-name", "");
+        heraldCurrencyItem = config.getString("herald.currency-item", "currency:gold_coin");
+        heraldCost = config.getLong("herald.cost", 500);
+        heraldBroadcastIntervalHours = Math.max(1, config.getInt("herald.broadcast-interval-hours", 2));
+        heraldGuiTitle = config.getString("herald.gui-title", "&6Королевский Глашатай");
 
         loadFirstJoinItems(config);
 
@@ -103,6 +120,22 @@ public class LoveTweaksConfig {
     public boolean isItemDropLossEnabled() { return itemDropLossEnabled; }
     public double getItemDropLossChance() { return itemDropLossChance; }
     public double getItemDropBreakChance() { return itemDropBreakChance; }
+
+    public boolean isHeraldEnabled() { return heraldEnabled; }
+    public int getHeraldNpcId() { return heraldNpcId; }
+    public String getHeraldNpcName() { return heraldNpcName; }
+    public String getHeraldCurrencyItem() { return heraldCurrencyItem; }
+    public long getHeraldCost() { return heraldCost; }
+    public int getHeraldBroadcastIntervalHours() { return heraldBroadcastIntervalHours; }
+    public String getHeraldGuiTitle() { return heraldGuiTitle; }
+
+    public void setHeraldNpc(int npcId, String npcName) {
+        this.heraldNpcId = npcId;
+        this.heraldNpcName = npcName == null ? "" : npcName;
+        config.set("herald.npc-id", this.heraldNpcId);
+        config.set("herald.npc-name", this.heraldNpcName);
+        plugin.saveConfig();
+    }
     public boolean isFirstJoinEnabled() { return firstJoinEnabled; }
     public List<FirstJoinItem> getFirstJoinItems() { return firstJoinItems; }
     public ScoreboardConfig getScoreboardConfig() { return scoreboardConfig; }
