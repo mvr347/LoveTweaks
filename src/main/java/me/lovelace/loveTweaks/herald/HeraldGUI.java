@@ -1,48 +1,53 @@
 package me.lovelace.loveTweaks.herald;
 
-import me.lovelace.loveTweaks.LoveTweaksConfig;
+import me.lovelace.loveTweaks.LoveTweaks;
+import me.lovelace.loveTweaks.scoreboard.ScoreboardConfig;
+import me.lovelace.loveTweaks.utils.GuiItemUtil;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Standalone 27-slot menu opened by right-clicking the Herald NPC. Follows this project's
+ * shared GUI style: base64-head buttons (reusing the scoreboard GUI's already-verified
+ * on/blocked/close textures — see lovetweaks-gui-style), gray-glass filler everywhere else,
+ * and the special-button/close slots (24/26) fixed by the standard 27-slot footer layout.
+ */
 public final class HeraldGUI {
-
-    private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacySection();
 
     public static final int GUI_SIZE = 27;
     public static final int SLOT_INFO = 13;
-    public static final int SLOT_BUY = 22;
+    public static final int SLOT_BUY = 24;
+    public static final int SLOT_CLOSE = 26;
 
     private HeraldGUI() {}
 
-    public static void open(Player player, HeraldManager manager, LoveTweaksConfig config) {
+    public static void open(Player player, HeraldManager manager, LoveTweaks plugin) {
         HeraldGUIHolder holder = new HeraldGUIHolder();
-        Component title = colorize(config.getHeraldGuiTitle());
+        ScoreboardConfig sbConfig = plugin.getScoreboardConfig();
+        Component title = GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getHeraldGuiTitle());
         Inventory inv = Bukkit.createInventory(holder, GUI_SIZE, title);
         holder.setInventory(inv);
 
-        ItemStack filler = buildItem(Material.GRAY_STAINED_GLASS_PANE, " ", List.of());
+        ItemStack filler = GuiItemUtil.buildItem(sbConfig.getFillerMaterial(), sbConfig.getFillerName(), List.of());
         for (int slot = 0; slot < inv.getSize(); slot++) {
             inv.setItem(slot, filler);
         }
 
-        inv.setItem(SLOT_INFO, buildInfoItem(manager));
-        inv.setItem(SLOT_BUY, buildBuyItem(manager, config));
+        inv.setItem(SLOT_INFO, buildInfoItem(manager, sbConfig));
+        inv.setItem(SLOT_BUY, buildBuyItem(manager, plugin, sbConfig));
+        inv.setItem(SLOT_CLOSE, GuiItemUtil.buildItem(sbConfig.getCloseMaterial(), sbConfig.getCloseName(), sbConfig.getCloseLore()));
 
         player.openInventory(inv);
     }
 
-    private static ItemStack buildInfoItem(HeraldManager manager) {
+    private static ItemStack buildInfoItem(HeraldManager manager, ScoreboardConfig sbConfig) {
         List<String> lore = new ArrayList<>();
         if (manager.isActive()) {
             lore.add("&7Голос принадлежит: &f" + manager.getBuyerName());
@@ -53,43 +58,23 @@ public final class HeraldGUI {
             lore.add("");
             long remainingMinutes = Duration.ofMillis(manager.getExpiresAt() - System.currentTimeMillis()).toMinutes();
             lore.add("&7Осталось: &f" + Math.max(0, remainingMinutes) + " мин.");
-            return buildItem(Material.WRITTEN_BOOK, "&6Голос Королевства &aактивен", lore);
+            return GuiItemUtil.buildItem(sbConfig.getPlaceholderOnMaterial(), "&6Голос Королевства &aактивен", lore);
         }
         lore.add("&7Сейчас никто не выкупил голос.");
-        return buildItem(Material.BOOK, "&6Голос Королевства &7свободен", lore);
+        return GuiItemUtil.buildItem(sbConfig.getPlaceholderOffMaterial(), "&6Голос Королевства &7свободен", lore);
     }
 
-    private static ItemStack buildBuyItem(HeraldManager manager, LoveTweaksConfig config) {
+    private static ItemStack buildBuyItem(HeraldManager manager, LoveTweaks plugin, ScoreboardConfig sbConfig) {
         if (manager.isActive()) {
-            List<String> lore = List.of("&7Голос уже выкуплен на сутки.", "&7Попробуйте позже.");
-            return buildItem(Material.GRAY_DYE, "&7Недоступно", lore);
+            List<String> lore = List.of("", "&cНедоступно", "&7Голос уже выкуплен на сутки.");
+            return GuiItemUtil.buildItem(sbConfig.getPlaceholderBlockedMaterial(), "&8Купить голос Королевства", lore);
         }
         List<String> lore = List.of(
-                "&7Стоимость: &f" + config.getHeraldCost() + " монет",
+                "",
+                "&7Стоимость: &f" + plugin.getLoveTweaksConfig().getHeraldCost() + " монет",
                 "",
                 "&aЛКМ &7— выкупить голос на 24 часа"
         );
-        return buildItem(Material.EMERALD, "&aКупить голос Королевства", lore);
-    }
-
-    private static ItemStack buildItem(Material material, String displayName, List<String> lore) {
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) return item;
-
-        meta.displayName(colorize(displayName));
-
-        List<Component> loreComponents = new ArrayList<>();
-        for (String line : lore) {
-            loreComponents.add(colorize(line));
-        }
-        meta.lore(loreComponents);
-        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_ENCHANTS, ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    private static Component colorize(String text) {
-        return LEGACY.deserialize(text.replace('&', '§'));
+        return GuiItemUtil.buildItem(sbConfig.getPlaceholderOnMaterial(), "&aКупить голос Королевства", lore);
     }
 }

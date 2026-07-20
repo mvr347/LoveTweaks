@@ -46,7 +46,7 @@ public class HeraldListener implements Listener {
             return;
         }
         event.setCancelled(true);
-        HeraldGUI.open(event.getPlayer(), manager, plugin.getLoveTweaksConfig());
+        HeraldGUI.open(event.getPlayer(), manager, plugin);
     }
 
     /** Гвардируем NPC от урона, чтобы его нельзя было случайно атаковать вместо открытия меню. */
@@ -78,7 +78,12 @@ public class HeraldListener implements Listener {
         if (event.getClickedInventory() == null || !event.getClickedInventory().equals(event.getInventory())) {
             return;
         }
-        if (event.getRawSlot() != HeraldGUI.SLOT_BUY) {
+        int slot = event.getRawSlot();
+        if (slot == HeraldGUI.SLOT_CLOSE) {
+            player.closeInventory();
+            return;
+        }
+        if (slot != HeraldGUI.SLOT_BUY) {
             return;
         }
         if (manager.isActive()) {

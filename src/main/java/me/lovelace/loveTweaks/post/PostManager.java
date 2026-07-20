@@ -57,7 +57,7 @@ public class PostManager {
     public void openCompose(Player player) {
         PostGUIHolder holder = new PostGUIHolder(player.getUniqueId());
         openSessions.put(player.getUniqueId(), holder);
-        PostGUI.open(player, holder, plugin.getLoveTweaksConfig());
+        PostGUI.open(player, holder, plugin);
     }
 
     public PostGUIHolder getSession(UUID playerUuid) {
@@ -88,7 +88,7 @@ public class PostManager {
         }
         holder.setRecipientName(target.getName());
         holder.setAwaitingRecipientInput(false);
-        PostGUI.refreshControls(holder, plugin.getLoveTweaksConfig());
+        PostGUI.refreshControls(holder, plugin);
         player.sendMessage("§aПолучатель установлен: §e" + target.getName());
     }
 
