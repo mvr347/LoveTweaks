@@ -29,6 +29,11 @@ public class LoveTweaksConfig {
     // Milk
     private boolean disableMilk;
 
+    // Потеря/поломка предметов при выбрасывании
+    private boolean itemDropLossEnabled;
+    private double itemDropLossChance;
+    private double itemDropBreakChance;
+
     // Стартовый набор при первом заходе на сервер
     private boolean firstJoinEnabled;
     private final List<FirstJoinItem> firstJoinItems = new ArrayList<>();
@@ -52,6 +57,10 @@ public class LoveTweaksConfig {
         extraExhaustionPerSecond = (float) config.getDouble("hunger.extra-exhaustion-per-second", 0.25);
         saturationMultiplier = (float) config.getDouble("hunger.saturation-multiplier", 0.5);
         disableMilk = config.getBoolean("milk.disable-milk", true);
+
+        itemDropLossEnabled = config.getBoolean("item-drop-loss.enabled", false);
+        itemDropLossChance = config.getDouble("item-drop-loss.lose-chance", 0.22);
+        itemDropBreakChance = config.getDouble("item-drop-loss.break-chance", 0.33);
 
         loadFirstJoinItems(config);
 
@@ -91,6 +100,9 @@ public class LoveTweaksConfig {
     public float getExtraExhaustionPerSecond() { return extraExhaustionPerSecond; }
     public float getSaturationMultiplier() { return saturationMultiplier; }
     public boolean isDisableMilk() { return disableMilk; }
+    public boolean isItemDropLossEnabled() { return itemDropLossEnabled; }
+    public double getItemDropLossChance() { return itemDropLossChance; }
+    public double getItemDropBreakChance() { return itemDropBreakChance; }
     public boolean isFirstJoinEnabled() { return firstJoinEnabled; }
     public List<FirstJoinItem> getFirstJoinItems() { return firstJoinItems; }
     public ScoreboardConfig getScoreboardConfig() { return scoreboardConfig; }
