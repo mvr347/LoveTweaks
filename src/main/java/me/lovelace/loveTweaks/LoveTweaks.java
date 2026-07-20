@@ -11,9 +11,11 @@ import me.lovelace.loveTweaks.listeners.HeraldListener;
 import me.lovelace.loveTweaks.listeners.HungerListener;
 import me.lovelace.loveTweaks.listeners.ItemDropLossListener;
 import me.lovelace.loveTweaks.listeners.MilkListener;
+import me.lovelace.loveTweaks.listeners.PostListener;
 import me.lovelace.loveTweaks.listeners.ScoreboardListener;
 import me.lovelace.loveTweaks.listeners.TeleportScrollListener;
 import me.lovelace.loveTweaks.managers.TeleportScrollManager;
+import me.lovelace.loveTweaks.post.PostManager;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardConfig;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardDataManager;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardDisplayManager;
@@ -45,6 +47,9 @@ public final class LoveTweaks extends JavaPlugin {
     private HeraldManager heraldManager;
     private BukkitTask heraldBroadcastTask;
 
+    private PostManager postManager;
+    private BukkitTask postFlightTask;
+
     @Override
     public void onEnable() {
         instance = this;
@@ -69,6 +74,10 @@ public final class LoveTweaks extends JavaPlugin {
         heraldManager = new HeraldManager(this);
         getLogger().info("Herald manager initialized.");
 
+        // Королевская Почта
+        postManager = new PostManager(this, itemsAdderEconomyService);
+        getLogger().info("Post manager initialized.");
+
         // Listeners
         getServer().getPluginManager().registerEvents(new EnderChestListener(this), this);
         getServer().getPluginManager().registerEvents(new EnchantmentListener(this), this);
@@ -79,6 +88,7 @@ public final class LoveTweaks extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new FirstJoinItemsListener(this), this);
         getServer().getPluginManager().registerEvents(
                 new HeraldListener(this, heraldManager, citizensIntegration, itemsAdderEconomyService), this);
+        getServer().getPluginManager().registerEvents(new PostListener(this, postManager, citizensIntegration), this);
 
         ScoreboardListener scoreboardListener = new ScoreboardListener(this, scoreboardDataManager, scoreboardDisplayManager);
         getServer().getPluginManager().registerEvents(scoreboardListener, this);
@@ -103,6 +113,14 @@ public final class LoveTweaks extends JavaPlugin {
 
         // Herald broadcast task
         startHeraldBroadcastTask();
+
+        // Post pigeon flight tick task
+        postFlightTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                postManager.tickFlights();
+            }
+        }.runTaskTimer(this, 2L, 2L);
     }
 
     private void startScoreboardTask() {
@@ -142,7 +160,7 @@ public final class LoveTweaks extends JavaPlugin {
         if (!command.getName().equalsIgnoreCase("lovetweaks")) return false;
 
         if (args.length == 0) {
-            sender.sendMessage("§eИспользование: §f/lovetweaks <reload|givescroll|herald>");
+            sender.sendMessage("§eИспользование: §f/lovetweaks <reload|givescroll|herald|post>");
             return true;
         }
 
@@ -157,6 +175,7 @@ public final class LoveTweaks extends JavaPlugin {
                 yield true;
             }
             case "herald" -> handleHeraldCommand(sender, args);
+            case "post" -> handlePostCommand(sender, args);
             case "givescroll" -> {
                 if (!sender.hasPermission("lovetweaks.admin")) {
                     sender.sendMessage("§cНедостаточно прав.");
@@ -177,8 +196,50 @@ public final class LoveTweaks extends JavaPlugin {
                 yield true;
             }
             default -> {
-                sender.sendMessage("§eИспользование: §f/lovetweaks <reload|givescroll|herald>");
+                sender.sendMessage("§eИспользование: §f/lovetweaks <reload|givescroll|herald|post>");
                 yield false;
+            }
+        };
+    }
+
+    private boolean handlePostCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("lovetweaks.admin")) {
+            sender.sendMessage("§cНедостаточно прав.");
+            return true;
+        }
+        if (args.length < 2) {
+            sender.sendMessage("§eИспользование: §f/lovetweaks post <bind|unbind>");
+            return true;
+        }
+        return switch (args[1].toLowerCase()) {
+            case "bind" -> {
+                if (!(sender instanceof Player player)) {
+                    sender.sendMessage("§cЭта команда доступна только игрокам.");
+                    yield true;
+                }
+                if (!citizensIntegration.isAvailable()) {
+                    sender.sendMessage("§cCitizens не установлен или не включён.");
+                    yield true;
+                }
+                Entity npc = citizensIntegration.lookedAtNpc(player, 6.0);
+                if (npc == null) {
+                    sender.sendMessage("§cПосмотрите на NPC Citizens и повторите команду.");
+                    yield true;
+                }
+                Integer npcId = citizensIntegration.npcId(npc);
+                String npcName = citizensIntegration.npcName(npc);
+                loveTweaksConfig.setPostNpc(npcId == null ? -1 : npcId, npcName);
+                sender.sendMessage("§aNPC Почтмейстера привязан: §e" + (npcName == null ? "?" : npcName));
+                yield true;
+            }
+            case "unbind" -> {
+                loveTweaksConfig.setPostNpc(-1, "");
+                sender.sendMessage("§aNPC Почтмейстера отвязан.");
+                yield true;
+            }
+            default -> {
+                sender.sendMessage("§eИспользование: §f/lovetweaks post <bind|unbind>");
+                yield true;
             }
         };
     }
@@ -240,4 +301,5 @@ public final class LoveTweaks extends JavaPlugin {
     public CitizensIntegration getCitizensIntegration() { return citizensIntegration; }
     public ItemsAdderEconomyService getItemsAdderEconomyService() { return itemsAdderEconomyService; }
     public HeraldManager getHeraldManager() { return heraldManager; }
+    public PostManager getPostManager() { return postManager; }
 }

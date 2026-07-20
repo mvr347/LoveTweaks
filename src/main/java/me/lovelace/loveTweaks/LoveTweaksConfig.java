@@ -43,6 +43,15 @@ public class LoveTweaksConfig {
     private int heraldBroadcastIntervalHours;
     private String heraldGuiTitle;
 
+    // Королевская Почта
+    private boolean postEnabled;
+    private int postNpcId;
+    private String postNpcName;
+    private String postCurrencyItem;
+    private long postCost;
+    private int postFlightSeconds;
+    private String postGuiTitle;
+
     // Стартовый набор при первом заходе на сервер
     private boolean firstJoinEnabled;
     private final List<FirstJoinItem> firstJoinItems = new ArrayList<>();
@@ -78,6 +87,14 @@ public class LoveTweaksConfig {
         heraldCost = config.getLong("herald.cost", 500);
         heraldBroadcastIntervalHours = Math.max(1, config.getInt("herald.broadcast-interval-hours", 2));
         heraldGuiTitle = config.getString("herald.gui-title", "&6Королевский Глашатай");
+
+        postEnabled = config.getBoolean("post.enabled", false);
+        postNpcId = config.getInt("post.npc-id", -1);
+        postNpcName = config.getString("post.npc-name", "");
+        postCurrencyItem = config.getString("post.currency-item", "currency:gold_coin");
+        postCost = config.getLong("post.cost", 200);
+        postFlightSeconds = Math.max(1, config.getInt("post.flight-seconds", 20));
+        postGuiTitle = config.getString("post.gui-title", "&6Королевская Почта");
 
         loadFirstJoinItems(config);
 
@@ -136,6 +153,23 @@ public class LoveTweaksConfig {
         config.set("herald.npc-name", this.heraldNpcName);
         plugin.saveConfig();
     }
+
+    public boolean isPostEnabled() { return postEnabled; }
+    public int getPostNpcId() { return postNpcId; }
+    public String getPostNpcName() { return postNpcName; }
+    public String getPostCurrencyItem() { return postCurrencyItem; }
+    public long getPostCost() { return postCost; }
+    public int getPostFlightSeconds() { return postFlightSeconds; }
+    public String getPostGuiTitle() { return postGuiTitle; }
+
+    public void setPostNpc(int npcId, String npcName) {
+        this.postNpcId = npcId;
+        this.postNpcName = npcName == null ? "" : npcName;
+        config.set("post.npc-id", this.postNpcId);
+        config.set("post.npc-name", this.postNpcName);
+        plugin.saveConfig();
+    }
+
     public boolean isFirstJoinEnabled() { return firstJoinEnabled; }
     public List<FirstJoinItem> getFirstJoinItems() { return firstJoinItems; }
     public ScoreboardConfig getScoreboardConfig() { return scoreboardConfig; }
