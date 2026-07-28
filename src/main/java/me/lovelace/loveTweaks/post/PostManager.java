@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Handles the whole Royal Post lifecycle: recipient chat-input sessions on the compose GUI,
@@ -40,10 +41,10 @@ public class PostManager {
     private final ItemsAdderEconomyService economy;
     private final File dataFile;
 
-    private final Map<UUID, PostGUIHolder> openSessions = new HashMap<>();
-    private final Map<UUID, PostFlight> activeFlights = new HashMap<>();
-    private final Map<UUID, Location> lastKnownLocation = new HashMap<>();
-    private final Map<UUID, List<String>> pendingMailbox = new HashMap<>();
+    private final Map<UUID, PostGUIHolder> openSessions = new ConcurrentHashMap<>();
+    private final Map<UUID, PostFlight> activeFlights = new ConcurrentHashMap<>();
+    private final Map<UUID, Location> lastKnownLocation = new ConcurrentHashMap<>();
+    private final Map<UUID, List<String>> pendingMailbox = new ConcurrentHashMap<>();
 
     public PostManager(LoveTweaks plugin, ItemsAdderEconomyService economy) {
         this.plugin = plugin;
