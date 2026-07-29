@@ -6,6 +6,7 @@ softdepend:
   - PlaceholderAPI
   - Citizens
   - ItemsAdder
+  - LoveCore
 
 commands:
   lovetweaks:
