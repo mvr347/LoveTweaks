@@ -1,6 +1,5 @@
 package me.lovelace.loveTweaks;
 
-import me.lovelace.loveTweaks.economy.ItemsAdderEconomyService;
 import me.lovelace.loveTweaks.herald.HeraldManager;
 import me.lovelace.loveTweaks.integration.CitizensIntegration;
 import me.lovelace.loveTweaks.items.TeleportScroll;
@@ -43,7 +42,6 @@ public final class LoveTweaks extends JavaPlugin {
     private BukkitTask scoreboardTask;
 
     private CitizensIntegration citizensIntegration;
-    private ItemsAdderEconomyService itemsAdderEconomyService;
     private HeraldManager heraldManager;
     private BukkitTask heraldBroadcastTask;
 
@@ -70,12 +68,11 @@ public final class LoveTweaks extends JavaPlugin {
 
         // Королевский Глашатай
         citizensIntegration = new CitizensIntegration();
-        itemsAdderEconomyService = new ItemsAdderEconomyService();
         heraldManager = new HeraldManager(this);
         getLogger().info("Herald manager initialized.");
 
         // Королевская Почта
-        postManager = new PostManager(this, itemsAdderEconomyService);
+        postManager = new PostManager(this);
         getLogger().info("Post manager initialized.");
 
         // Listeners
@@ -87,7 +84,7 @@ public final class LoveTweaks extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new TeleportScrollListener(this, teleportScrollManager), this);
         getServer().getPluginManager().registerEvents(new FirstJoinItemsListener(this), this);
         getServer().getPluginManager().registerEvents(
-                new HeraldListener(this, heraldManager, citizensIntegration, itemsAdderEconomyService), this);
+                new HeraldListener(this, heraldManager, citizensIntegration), this);
         getServer().getPluginManager().registerEvents(new PostListener(this, postManager, citizensIntegration), this);
 
         ScoreboardListener scoreboardListener = new ScoreboardListener(this, scoreboardDataManager, scoreboardDisplayManager);
@@ -299,7 +296,6 @@ public final class LoveTweaks extends JavaPlugin {
     public NamespacedKey getEnderChestKey() { return enderChestKey; }
     public TeleportScrollManager getTeleportScrollManager() { return teleportScrollManager; }
     public CitizensIntegration getCitizensIntegration() { return citizensIntegration; }
-    public ItemsAdderEconomyService getItemsAdderEconomyService() { return itemsAdderEconomyService; }
     public HeraldManager getHeraldManager() { return heraldManager; }
     public PostManager getPostManager() { return postManager; }
 }

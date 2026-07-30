@@ -52,10 +52,6 @@
 
     <repositories>
         <repository>
-            <id>devs-beer</id>
-            <url>https://repo.devs.beer/releases</url>
-        </repository>
-        <repository>
             <id>papermc-repo</id>
             <url>https://repo.papermc.io/repository/maven-public/</url>
         </repository>
@@ -79,7 +75,7 @@
         <dependency>
             <groupId>com.github.mvr347.LoveCore</groupId>
             <artifactId>lovecore-api</artifactId>
-            <version>fe15e0144e</version>
+            <version>caf7e453ff</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -92,13 +88,6 @@
             <groupId>org.xerial</groupId>
             <artifactId>sqlite-jdbc</artifactId>
             <version>3.46.1.3</version>
-        </dependency>
-        <!-- ItemsAdder API - soft dependency, used as the in-game currency for Herald/Post purchases -->
-        <dependency>
-            <groupId>beer.devs</groupId>
-            <artifactId>itemsadder-api</artifactId>
-            <version>4.0.18-beta-10</version>
-            <scope>provided</scope>
         </dependency>
     </dependencies>
 </project>
