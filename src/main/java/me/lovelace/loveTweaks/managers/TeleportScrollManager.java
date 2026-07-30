@@ -326,8 +326,6 @@ public class TeleportScrollManager {
             return "(" + target.getName() + " в невидимости)";
         }
 
-        // Мягкая интеграция с DeluxeCombat через Bukkit Metadata
-        // DeluxeCombat помечает игроков в PVP через MetadataValue с ключом "in_combat"
         if (isInCombat(initiator)) {
             return "(вы в PvP)";
         }
@@ -339,11 +337,28 @@ public class TeleportScrollManager {
     }
 
     /**
-     * Проверяет, находится ли игрок в PvP-бою.
-     * Работает через Bukkit Metadata — DeluxeCombat и большинство combat-плагинов
-     * помечают игроков ключом "in_combat" при входе в схватку.
+     * Находится ли игрок в бою. Если LoveCore установлен, спрашиваем его {@code CombatState} —
+     * он знает и про метку стороннего боевого плагина, и про войну/осаду, чего одна метка не
+     * знает. Ядра нет или служба ещё не поднялась — падаем на прежнюю проверку метки
+     * {@code in_combat}, которой DeluxeCombat и большинство combat-плагинов помечают игроков.
      */
     private boolean isInCombat(Player player) {
+        if (Bukkit.getPluginManager().getPlugin("LoveCore") != null) {
+            try {
+                java.util.Optional<Boolean> fromCore = dev.lovelace.lovecore.api.LoveCore
+                        .service(dev.lovelace.lovecore.api.combat.CombatState.class)
+                        .map(state -> state.inCombat(player.getUniqueId()));
+                if (fromCore.isPresent()) {
+                    return fromCore.get();
+                }
+            } catch (Throwable ignored) {
+                // Ядро есть, но служба ещё не поднялась или контракт изменился — падаем на метку.
+            }
+        }
+        return hasCombatMetadata(player);
+    }
+
+    private boolean hasCombatMetadata(Player player) {
         List<MetadataValue> values = player.getMetadata("in_combat");
         for (MetadataValue value : values) {
             if (value.asBoolean()) {

@@ -26,14 +26,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Handles the whole Royal Post lifecycle: recipient chat-input sessions on the compose GUI,
  * spawning/moving carrier-pigeon entities, delivering (or looting, if shot down) their payload,
  * and a lightweight last-known-location tracker used to aim pigeons at offline recipients.
  *
- * <p>There is no LoveClaims integration here — a pigeon flies toward the recipient's last-seen
- * location on this server (updated on join/quit), not their actual claim/priv.
+ * <p>The pigeon flies toward the recipient's last-seen location on this server (updated on
+ * join/quit), not their actual claim/priv — there is no LoveClaims integration for aiming.
+ * There is, however, a LoveCore integration for risk: flying over territory hostile to the
+ * recipient ({@link dev.lovelace.lovecore.api.territory.TerritoryOracle#hostileFor}) makes the
+ * pigeon vulnerable to being shot down on its own, same outcome as an arrow from a player —
+ * cargo drops where it falls, sender gets notified. See {@link #tickFlights()}.
  */
 public class PostManager {
 
@@ -225,8 +230,58 @@ public class PostManager {
             if (start.getWorld() != null) {
                 start.getWorld().spawnParticle(Particle.CLOUD, current, 1, 0, 0, 0, 0);
             }
+            if (rollHostileTerritoryShootdown(flight, current)) {
+                entity.remove();
+                arrived.add(flight.entityUuid());
+            }
         }
         arrived.forEach(activeFlights::remove);
+    }
+
+    /**
+     * Над территорией, враждебной получателю, голубь рискует быть сбит без стрелка — тем же
+     * исходом, что и от игрока: груз падает там, где голубь был, отправитель узнаёт причину.
+     * Шанс за тик подобран так, чтобы полностью враждебный маршрут (все ~200 тиков 20-секундного
+     * полёта) сбивал голубя примерно в половине случаев — риск заметный, но не гарантированный.
+     *
+     * @return true, если голубь сбит этим тиком (вызывающий должен убрать сущность)
+     */
+    private boolean rollHostileTerritoryShootdown(PostFlight flight, Location current) {
+        if (!isHostileTerritory(flight.recipientUuid(), current)) {
+            return false;
+        }
+        double chancePerTick = plugin.getConfig().getDouble("post.hostile-territory-shootdown-chance-per-tick", 0.0035);
+        if (ThreadLocalRandom.current().nextDouble() >= chancePerTick) {
+            return false;
+        }
+        handleShotDownByTerritory(flight, current);
+        return true;
+    }
+
+    private boolean isHostileTerritory(UUID recipientId, Location location) {
+        if (Bukkit.getPluginManager().getPlugin("LoveCore") == null) {
+            return false;
+        }
+        try {
+            return dev.lovelace.lovecore.api.LoveCore
+                    .service(dev.lovelace.lovecore.api.territory.TerritoryOracle.class)
+                    .map(oracle -> oracle.hostileFor(recipientId, location))
+                    .orElse(false);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private void handleShotDownByTerritory(PostFlight flight, Location location) {
+        activeFlights.remove(flight.entityUuid());
+        for (ItemStack item : flight.items()) {
+            location.getWorld().dropItemNaturally(location, item);
+        }
+        Player sender = Bukkit.getPlayerExact(flight.senderName());
+        if (sender != null && sender.isOnline()) {
+            sender.sendMessage("§cВаш почтовый голубь к §e" + flight.recipientName()
+                    + " §cбыл сбит над вражеской территорией! Посылка выпала на землю.");
+        }
     }
 
     private void deliver(PostFlight flight) {
