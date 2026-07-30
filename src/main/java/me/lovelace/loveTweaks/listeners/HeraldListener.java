@@ -1,8 +1,9 @@
 package me.lovelace.loveTweaks.listeners;
 
+import dev.lovelace.lovecore.api.LoveCore;
+import dev.lovelace.lovecore.api.economy.LoveEconomy;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import me.lovelace.loveTweaks.LoveTweaks;
-import me.lovelace.loveTweaks.economy.ItemsAdderEconomyService;
 import me.lovelace.loveTweaks.herald.HeraldGUI;
 import me.lovelace.loveTweaks.herald.HeraldGUIHolder;
 import me.lovelace.loveTweaks.herald.HeraldManager;
@@ -17,19 +18,18 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
+import java.util.Optional;
+
 public class HeraldListener implements Listener {
 
     private final LoveTweaks plugin;
     private final HeraldManager manager;
     private final CitizensIntegration citizens;
-    private final ItemsAdderEconomyService economy;
 
-    public HeraldListener(LoveTweaks plugin, HeraldManager manager, CitizensIntegration citizens,
-                           ItemsAdderEconomyService economy) {
+    public HeraldListener(LoveTweaks plugin, HeraldManager manager, CitizensIntegration citizens) {
         this.plugin = plugin;
         this.manager = manager;
         this.citizens = citizens;
-        this.economy = economy;
     }
 
     @EventHandler
@@ -90,15 +90,15 @@ public class HeraldListener implements Listener {
             return;
         }
 
-        String currencyItem = plugin.getLoveTweaksConfig().getHeraldCurrencyItem();
         long cost = plugin.getLoveTweaksConfig().getHeraldCost();
+        Optional<LoveEconomy> economy = LoveCore.service(LoveEconomy.class);
 
-        if (!economy.hasItem(player, currencyItem, cost)) {
+        if (economy.isEmpty() || !economy.get().has(player, cost)) {
             player.sendMessage("§cУ вас недостаточно монет для покупки голоса Королевства.");
             return;
         }
 
-        economy.withdraw(player, currencyItem, cost);
+        economy.get().charge(player, cost);
         player.closeInventory();
         manager.startAnnouncementInput(player);
     }

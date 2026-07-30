@@ -1,7 +1,6 @@
 package me.lovelace.loveTweaks.post;
 
 import me.lovelace.loveTweaks.LoveTweaks;
-import me.lovelace.loveTweaks.economy.ItemsAdderEconomyService;
 import me.lovelace.loveTweaks.utils.InventorySerializationUtil;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -43,7 +42,6 @@ import java.util.concurrent.ThreadLocalRandom;
 public class PostManager {
 
     private final LoveTweaks plugin;
-    private final ItemsAdderEconomyService economy;
     private final File dataFile;
 
     private final Map<UUID, PostGUIHolder> openSessions = new ConcurrentHashMap<>();
@@ -51,9 +49,8 @@ public class PostManager {
     private final Map<UUID, Location> lastKnownLocation = new ConcurrentHashMap<>();
     private final Map<UUID, List<String>> pendingMailbox = new ConcurrentHashMap<>();
 
-    public PostManager(LoveTweaks plugin, ItemsAdderEconomyService economy) {
+    public PostManager(LoveTweaks plugin) {
         this.plugin = plugin;
-        this.economy = economy;
         this.dataFile = new File(plugin.getDataFolder(), "post-data.yml");
         load();
     }
@@ -146,13 +143,14 @@ public class PostManager {
             return;
         }
 
-        String currencyItem = plugin.getLoveTweaksConfig().getPostCurrencyItem();
         long cost = plugin.getLoveTweaksConfig().getPostCost();
-        if (!economy.hasItem(player, currencyItem, cost)) {
+        var economy = dev.lovelace.lovecore.api.LoveCore
+                .service(dev.lovelace.lovecore.api.economy.LoveEconomy.class);
+        if (economy.isEmpty() || !economy.get().has(player, cost)) {
             player.sendMessage("§cУ вас недостаточно монет для отправки голубя.");
             return;
         }
-        economy.withdraw(player, currencyItem, cost);
+        economy.get().charge(player, cost);
 
         for (int slot = PostGUI.DEPOSIT_START; slot <= PostGUI.DEPOSIT_END; slot++) {
             inv.setItem(slot, null);

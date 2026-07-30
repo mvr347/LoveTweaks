@@ -38,7 +38,6 @@ public class LoveTweaksConfig {
     private boolean heraldEnabled;
     private int heraldNpcId;
     private String heraldNpcName;
-    private String heraldCurrencyItem;
     private long heraldCost;
     private int heraldBroadcastIntervalHours;
     private String heraldGuiTitle;
@@ -47,7 +46,6 @@ public class LoveTweaksConfig {
     private boolean postEnabled;
     private int postNpcId;
     private String postNpcName;
-    private String postCurrencyItem;
     private long postCost;
     private int postFlightSeconds;
     private String postGuiTitle;
@@ -83,7 +81,6 @@ public class LoveTweaksConfig {
         heraldEnabled = config.getBoolean("herald.enabled", false);
         heraldNpcId = config.getInt("herald.npc-id", -1);
         heraldNpcName = config.getString("herald.npc-name", "");
-        heraldCurrencyItem = config.getString("herald.currency-item", "currency:gold_coin");
         heraldCost = config.getLong("herald.cost", 500);
         heraldBroadcastIntervalHours = Math.max(1, config.getInt("herald.broadcast-interval-hours", 2));
         heraldGuiTitle = config.getString("herald.gui-title", "&6Королевский Глашатай");
@@ -91,7 +88,6 @@ public class LoveTweaksConfig {
         postEnabled = config.getBoolean("post.enabled", false);
         postNpcId = config.getInt("post.npc-id", -1);
         postNpcName = config.getString("post.npc-name", "");
-        postCurrencyItem = config.getString("post.currency-item", "currency:gold_coin");
         postCost = config.getLong("post.cost", 200);
         postFlightSeconds = Math.max(1, config.getInt("post.flight-seconds", 20));
         postGuiTitle = config.getString("post.gui-title", "&6Королевская Почта");
@@ -141,7 +137,6 @@ public class LoveTweaksConfig {
     public boolean isHeraldEnabled() { return heraldEnabled; }
     public int getHeraldNpcId() { return heraldNpcId; }
     public String getHeraldNpcName() { return heraldNpcName; }
-    public String getHeraldCurrencyItem() { return heraldCurrencyItem; }
     public long getHeraldCost() { return heraldCost; }
     public int getHeraldBroadcastIntervalHours() { return heraldBroadcastIntervalHours; }
     public String getHeraldGuiTitle() { return heraldGuiTitle; }
@@ -157,7 +152,6 @@ public class LoveTweaksConfig {
     public boolean isPostEnabled() { return postEnabled; }
     public int getPostNpcId() { return postNpcId; }
     public String getPostNpcName() { return postNpcName; }
-    public String getPostCurrencyItem() { return postCurrencyItem; }
     public long getPostCost() { return postCost; }
     public int getPostFlightSeconds() { return postFlightSeconds; }
     public String getPostGuiTitle() { return postGuiTitle; }

@@ -21,8 +21,7 @@ herald:
   # ID NPC Citizens, привязывается командой /lovetweaks herald bind (нужно смотреть на NPC)
   npc-id: -1
   npc-name: ''
-  # Namespaced ID предмета ItemsAdder, используемого как валюта
-  currency-item: 'currency:gold_coin'
+  # Стоимость в единой валюте экосистемы (монеты LoveCore, см. его config.yml)
   cost: 500
   broadcast-interval-hours: 2
   gui-title: '&6⚡ Королевский Глашатай'
@@ -36,8 +35,7 @@ post:
   # ID NPC Citizens, привязывается командой /lovetweaks post bind (нужно смотреть на NPC)
   npc-id: -1
   npc-name: ''
-  # Namespaced ID предмета ItemsAdder, используемого как валюта
-  currency-item: 'currency:gold_coin'
+  # Стоимость в единой валюте экосистемы (монеты LoveCore, см. его config.yml)
   cost: 200
   # Сколько секунд голубь летит от отправителя до получателя
   flight-seconds: 20
