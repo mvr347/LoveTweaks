@@ -2,6 +2,7 @@ package me.lovelace.loveTweaks;
 
 import me.lovelace.loveTweaks.herald.HeraldManager;
 import me.lovelace.loveTweaks.integration.CitizensIntegration;
+import me.lovelace.loveTweaks.placeholder.PlaytimeExpansion;
 import me.lovelace.loveTweaks.items.TeleportScroll;
 import me.lovelace.loveTweaks.listeners.EnchantmentListener;
 import me.lovelace.loveTweaks.listeners.EnderChestListener;
@@ -64,6 +65,14 @@ public final class LoveTweaks extends JavaPlugin {
         scoreboardDataManager = new ScoreboardDataManager(this);
         scoreboardDisplayManager = new ScoreboardDisplayManager(this, scoreboardDataManager, getScoreboardConfig());
         getLogger().info("Scoreboard system initialized.");
+
+        // Плейсхолдеры времени игры (%playtime_since_join% и др.) — их использует скорборд.
+        if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+            new PlaytimeExpansion(this).register();
+            getLogger().info("Playtime placeholders registered.");
+        } else {
+            getLogger().warning("PlaceholderAPI не найден — плейсхолдеры %playtime_*% работать не будут.");
+        }
 
         // Королевский Глашатай
         citizensIntegration = new CitizensIntegration();
