@@ -1,6 +1,7 @@
 package me.lovelace.loveTweaks.integration;
 
 import org.bukkit.Bukkit;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
@@ -43,6 +44,50 @@ public final class CitizensIntegration {
         }
         Object name = invoke(npc, "getName");
         return name == null ? null : name.toString();
+    }
+
+    /** Идентификация NPC для привязки — id и имя уже извлечены из хэндла Citizens. */
+    public record NpcRef(int id, String name) {}
+
+    /**
+     * NPC для админской привязки. Сначала берём выделенный NPC: Citizens выделяет его сам
+     * после /npc create и /npc select, и все его собственные команды работают именно так.
+     * Если выделения нет — падаем на луч взгляда.
+     * <p>
+     * Одного луча не хватало: сразу после /npc create NPC стоит внутри игрока, и луч из
+     * глаз вперёд по нему не попадает, поэтому привязка сразу после создания не работала.
+     */
+    public NpcRef bindTarget(Player player, double distance) {
+        if (!isAvailable() || player == null) {
+            return null;
+        }
+        Object npc = selectedNpc(player);
+        if (npc == null) {
+            Entity looked = lookedAtNpc(player, distance);
+            npc = looked == null ? null : npcOf(looked);
+        }
+        if (npc == null) {
+            return null;
+        }
+        Object id = invoke(npc, "getId");
+        if (!(id instanceof Integer idValue)) {
+            return null;
+        }
+        Object name = invoke(npc, "getName");
+        return new NpcRef(idValue, name == null ? "" : name.toString());
+    }
+
+    private Object selectedNpc(Player player) {
+        try {
+            Class<?> apiClass = Class.forName("net.citizensnpcs.api.CitizensAPI");
+            Object selector = apiClass.getMethod("getDefaultNPCSelector").invoke(null);
+            if (selector == null) {
+                return null;
+            }
+            return selector.getClass().getMethod("getSelected", CommandSender.class).invoke(selector, player);
+        } catch (ReflectiveOperationException | LinkageError exception) {
+            return null;
+        }
     }
 
     /**
