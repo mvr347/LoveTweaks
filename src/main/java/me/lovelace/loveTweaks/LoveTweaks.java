@@ -22,7 +22,6 @@ import org.bukkit.GameMode;
 import org.bukkit.NamespacedKey;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -218,15 +217,13 @@ public final class LoveTweaks extends JavaPlugin {
                     sender.sendMessage("§cCitizens не установлен или не включён.");
                     yield true;
                 }
-                Entity npc = citizensIntegration.lookedAtNpc(player, 6.0);
+                CitizensIntegration.NpcRef npc = citizensIntegration.bindTarget(player, 6.0);
                 if (npc == null) {
-                    sender.sendMessage("§cПосмотрите на NPC Citizens и повторите команду.");
+                    sender.sendMessage("§cВыберите NPC (§e/npc select§c) или посмотрите на него и повторите команду.");
                     yield true;
                 }
-                Integer npcId = citizensIntegration.npcId(npc);
-                String npcName = citizensIntegration.npcName(npc);
-                loveTweaksConfig.setPostNpc(npcId == null ? -1 : npcId, npcName);
-                sender.sendMessage("§aNPC Почтмейстера привязан: §e" + (npcName == null ? "?" : npcName));
+                loveTweaksConfig.setPostNpc(npc.id(), npc.name());
+                sender.sendMessage("§aNPC Почтмейстера привязан: §e" + npc.name());
                 yield true;
             }
             case "unbind" -> {
@@ -260,15 +257,13 @@ public final class LoveTweaks extends JavaPlugin {
                     sender.sendMessage("§cCitizens не установлен или не включён.");
                     yield true;
                 }
-                Entity npc = citizensIntegration.lookedAtNpc(player, 6.0);
+                CitizensIntegration.NpcRef npc = citizensIntegration.bindTarget(player, 6.0);
                 if (npc == null) {
-                    sender.sendMessage("§cПосмотрите на NPC Citizens и повторите команду.");
+                    sender.sendMessage("§cВыберите NPC (§e/npc select§c) или посмотрите на него и повторите команду.");
                     yield true;
                 }
-                Integer npcId = citizensIntegration.npcId(npc);
-                String npcName = citizensIntegration.npcName(npc);
-                loveTweaksConfig.setHeraldNpc(npcId == null ? -1 : npcId, npcName);
-                sender.sendMessage("§aNPC Глашатая привязан: §e" + (npcName == null ? "?" : npcName));
+                loveTweaksConfig.setHeraldNpc(npc.id(), npc.name());
+                sender.sendMessage("§aNPC Глашатая привязан: §e" + npc.name());
                 yield true;
             }
             case "unbind" -> {
