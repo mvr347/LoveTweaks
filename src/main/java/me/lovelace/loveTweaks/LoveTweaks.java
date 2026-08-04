@@ -150,7 +150,7 @@ public final class LoveTweaks extends JavaPlugin {
         if (!command.getName().equalsIgnoreCase("lovetweaks")) return false;
 
         if (args.length == 0) {
-            sender.sendMessage("§eИспользование: §f/lovetweaks <reload|givescroll|herald>");
+            sender.sendMessage(msg("usage-main"));
             return true;
         }
 
@@ -162,31 +162,31 @@ public final class LoveTweaks extends JavaPlugin {
                 heraldManager.resize(loveTweaksConfig.getHeraldSlots());
                 startScoreboardTask();
                 startHeraldBroadcastTask();
-                sender.sendMessage("§aLoveTweaks конфиг перезагружен!");
+                sender.sendMessage(msg("reload-done"));
                 yield true;
             }
             case "herald" -> handleHeraldCommand(sender, args);
             case "givescroll" -> {
                 if (!sender.hasPermission("lovetweaks.admin")) {
-                    sender.sendMessage("§cНедостаточно прав.");
+                    sender.sendMessage(msg("no-permission"));
                     yield true;
                 }
                 if (args.length < 2) {
-                    sender.sendMessage("§eИспользование: §f/lovetweaks givescroll <игрок>");
+                    sender.sendMessage(msg("usage-givescroll"));
                     yield true;
                 }
                 Player target = getServer().getPlayerExact(args[1]);
                 if (target == null) {
-                    sender.sendMessage("§cИгрок §e" + args[1] + "§c не найден или не в сети.");
+                    sender.sendMessage(msg("player-not-found", "<player>", args[1]));
                     yield true;
                 }
                 target.getInventory().addItem(TeleportScroll.create());
-                sender.sendMessage("§aСвиток телепортации выдан игроку §e" + target.getName() + "§a.");
-                target.sendMessage("§6Вы получили §eСвиток телепортации§6!");
+                sender.sendMessage(msg("scroll-given-sender", "<player>", target.getName()));
+                target.sendMessage(msg("scroll-given-target"));
                 yield true;
             }
             default -> {
-                sender.sendMessage("§eИспользование: §f/lovetweaks <reload|givescroll|herald>");
+                sender.sendMessage(msg("usage-main"));
                 yield false;
             }
         };
@@ -194,47 +194,55 @@ public final class LoveTweaks extends JavaPlugin {
 
     private boolean handleHeraldCommand(CommandSender sender, String[] args) {
         if (!sender.hasPermission("lovetweaks.admin")) {
-            sender.sendMessage("§cНедостаточно прав.");
+            sender.sendMessage(msg("no-permission"));
             return true;
         }
         if (args.length < 2) {
-            sender.sendMessage("§eИспользование: §f/lovetweaks herald <bind|unbind|clear>");
+            sender.sendMessage(msg("usage-herald"));
             return true;
         }
         return switch (args[1].toLowerCase()) {
             case "bind" -> {
                 if (!(sender instanceof Player player)) {
-                    sender.sendMessage("§cЭта команда доступна только игрокам.");
+                    sender.sendMessage(msg("players-only"));
                     yield true;
                 }
                 if (!citizensIntegration.isAvailable()) {
-                    sender.sendMessage("§cCitizens не установлен или не включён.");
+                    sender.sendMessage(msg("citizens-missing"));
                     yield true;
                 }
                 CitizensIntegration.NpcRef npc = citizensIntegration.bindTarget(player, 6.0);
                 if (npc == null) {
-                    sender.sendMessage("§cВыберите NPC (§e/npc select§c) или посмотрите на него и повторите команду.");
+                    sender.sendMessage(msg("npc-not-selected"));
                     yield true;
                 }
                 loveTweaksConfig.setHeraldNpc(npc.id(), npc.name());
-                sender.sendMessage("§aNPC Глашатая привязан: §e" + npc.name());
+                sender.sendMessage(msg("herald-npc-bound", "<npc>", npc.name()));
                 yield true;
             }
             case "unbind" -> {
                 loveTweaksConfig.setHeraldNpc(-1, "");
-                sender.sendMessage("§aNPC Глашатая отвязан.");
+                sender.sendMessage(msg("herald-npc-unbound"));
                 yield true;
             }
             case "clear" -> {
                 heraldManager.clear();
-                sender.sendMessage("§aГолос Королевства сброшен.");
+                sender.sendMessage(msg("herald-cleared"));
                 yield true;
             }
             default -> {
-                sender.sendMessage("§eИспользование: §f/lovetweaks herald <bind|unbind|clear>");
+                sender.sendMessage(msg("usage-herald"));
                 yield true;
             }
         };
+    }
+
+    private String msg(String key) {
+        return loveTweaksConfig.message(key).replace('&', '§');
+    }
+
+    private String msg(String key, String placeholder, String value) {
+        return loveTweaksConfig.message(key).replace(placeholder, value).replace('&', '§');
     }
 
     public static LoveTweaks getInstance() { return instance; }

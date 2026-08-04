@@ -1,8 +1,8 @@
 package me.lovelace.loveTweaks.managers;
 
 import me.lovelace.loveTweaks.LoveTweaks;
+import me.lovelace.loveTweaks.utils.GuiItemUtil;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -59,6 +59,14 @@ public class TeleportScrollManager {
         lastMoveTime.remove(uuid);
     }
 
+    private Component msg(String key) {
+        return GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getTeleportScrollConfig().message(key));
+    }
+
+    private Component msg(String key, String placeholder, String value) {
+        return GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getTeleportScrollConfig().message(key).replace(placeholder, value));
+    }
+
     private boolean isAfk(Player player) {
         Long last = lastMoveTime.get(player.getUniqueId());
         if (last == null) return false;
@@ -80,10 +88,7 @@ public class TeleportScrollManager {
         TeleportSession session = new TeleportSession(initiator.getUniqueId());
         sessions.put(initiator.getUniqueId(), session);
 
-        initiator.sendActionBar(
-                Component.text("✦ Введите ник игрока в чат ", NamedTextColor.GOLD)
-                        .append(Component.text("(10 секунд)", NamedTextColor.YELLOW))
-        );
+        initiator.sendActionBar(msg("prompt"));
 
         // Таймер отмены если игрок не ввёл ник
         BukkitTask timeoutTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -93,7 +98,7 @@ public class TeleportScrollManager {
                 sessions.remove(initiator.getUniqueId());
                 Player p = Bukkit.getPlayer(initiator.getUniqueId());
                 if (p != null) {
-                    p.sendActionBar(Component.text("✗ Время вышло!", NamedTextColor.RED));
+                    p.sendActionBar(msg("timeout"));
                 }
             }
         }, CHAT_TIMEOUT_TICKS);
@@ -118,27 +123,19 @@ public class TeleportScrollManager {
 
         if (target == null || !target.isOnline()) {
             sessions.remove(initiator.getUniqueId());
-            initiator.sendActionBar(
-                    Component.text("✗ Игрок ", NamedTextColor.RED)
-                            .append(Component.text(input.trim(), NamedTextColor.YELLOW))
-                            .append(Component.text(" не найден или не в сети!", NamedTextColor.RED))
-            );
+            initiator.sendActionBar(msg("player-not-found", "<player>", input.trim()));
             return true;
         }
 
         if (target.getUniqueId().equals(initiator.getUniqueId())) {
             sessions.remove(initiator.getUniqueId());
-            initiator.sendActionBar(Component.text("✗ Нельзя телепортироваться к себе!", NamedTextColor.RED));
+            initiator.sendActionBar(msg("cannot-target-self"));
             return true;
         }
 
         if (isAfk(target)) {
             sessions.remove(initiator.getUniqueId());
-            initiator.sendActionBar(
-                    Component.text("✗ Игрок ", NamedTextColor.RED)
-                            .append(Component.text(target.getName(), NamedTextColor.YELLOW))
-                            .append(Component.text(" АФК!", NamedTextColor.RED))
-            );
+            initiator.sendActionBar(msg("target-afk", "<player>", target.getName()));
             return true;
         }
 
@@ -172,14 +169,14 @@ public class TeleportScrollManager {
         if (reasonForInitiator != null) {
             Player initiator = Bukkit.getPlayer(initiatorUuid);
             if (initiator != null) {
-                initiator.sendActionBar(Component.text("✗ " + reasonForInitiator, NamedTextColor.RED));
+                initiator.sendActionBar(GuiItemUtil.colorize(reasonForInitiator));
             }
         }
 
         if (reasonForTarget != null && session.getTargetUuid() != null) {
             Player target = Bukkit.getPlayer(session.getTargetUuid());
             if (target != null) {
-                target.sendActionBar(Component.text("✗ Телепортация отменена!", NamedTextColor.RED));
+                target.sendActionBar(GuiItemUtil.colorize(reasonForTarget));
             }
         }
     }
@@ -200,7 +197,7 @@ public class TeleportScrollManager {
     public void cancelSessionsTargeting(UUID targetUuid) {
         for (Map.Entry<UUID, TeleportSession> entry : sessions.entrySet()) {
             if (targetUuid.equals(entry.getValue().getTargetUuid())) {
-                cancelSession(entry.getKey(), "Телепортация отменена!", null);
+                cancelSession(entry.getKey(), plugin.getLoveTweaksConfig().getTeleportScrollConfig().message("cancelled-target"), null);
             }
         }
     }
@@ -252,7 +249,10 @@ public class TeleportScrollManager {
         // Проверяем условия каждую секунду
         String failReason = checkConditions(p, t, current);
         if (failReason != null) {
-            cancelSession(initiatorUuid, "Телепортация отменена! " + failReason, "Телепортация отменена!");
+            var tsConfig = plugin.getLoveTweaksConfig().getTeleportScrollConfig();
+            cancelSession(initiatorUuid,
+                    tsConfig.message("cancelled-initiator").replace("<reason>", failReason),
+                    tsConfig.message("cancelled-target"));
             return;
         }
 
@@ -266,16 +266,8 @@ public class TeleportScrollManager {
         }
 
         // Отображаем таймер обоим игрокам
-        p.sendActionBar(
-                Component.text("✦ Телепортация через ", NamedTextColor.GOLD)
-                        .append(Component.text(secondsLeft + " сек", NamedTextColor.YELLOW))
-                        .append(Component.text("... Не двигайтесь!", NamedTextColor.GOLD))
-        );
-        t.sendActionBar(
-                Component.text("✦ К вам телепортируется ", NamedTextColor.GOLD)
-                        .append(Component.text(initiatorName, NamedTextColor.YELLOW))
-                        .append(Component.text("... Не двигайтесь!", NamedTextColor.GOLD))
-        );
+        p.sendActionBar(msg("countdown-initiator", "<seconds>", String.valueOf(secondsLeft)));
+        t.sendActionBar(msg("countdown-target", "<player>", initiatorName));
 
         // Планируем следующий шаг только пока сессия жива — цепочка не может продолжиться сама по себе
         scheduleCountdownStep(initiatorUuid, targetUuid, initiatorName, current, secondsLeft - 1);
@@ -285,7 +277,10 @@ public class TeleportScrollManager {
         // Финальная проверка условий перед телепортацией
         String failReason = checkConditions(initiator, target, session);
         if (failReason != null) {
-            cancelSession(initiatorUuid, "Телепортация отменена! " + failReason, "Телепортация отменена!");
+            var tsConfig = plugin.getLoveTweaksConfig().getTeleportScrollConfig();
+            cancelSession(initiatorUuid,
+                    tsConfig.message("cancelled-initiator").replace("<reason>", failReason),
+                    tsConfig.message("cancelled-target"));
             return;
         }
 
@@ -298,11 +293,8 @@ public class TeleportScrollManager {
         // Убираем свиток из руки
         removeScrollFromHand(initiator);
 
-        initiator.sendActionBar(Component.text("✦ Телепортация выполнена!", NamedTextColor.GREEN));
-        target.sendActionBar(
-                Component.text(initiator.getName() + " ", NamedTextColor.YELLOW)
-                        .append(Component.text("телепортировался к вам!", NamedTextColor.GREEN))
-        );
+        initiator.sendActionBar(msg("success-initiator"));
+        target.sendActionBar(msg("success-target", "<player>", initiator.getName()));
     }
 
     /**
@@ -310,27 +302,29 @@ public class TeleportScrollManager {
      * @return строка с причиной отказа или null если всё ок
      */
     private String checkConditions(Player initiator, Player target, TeleportSession session) {
+        var tsConfig = plugin.getLoveTweaksConfig().getTeleportScrollConfig();
+
         // Проверка движения — сравниваем с позицией прошлой секунды
         if (hasMoved(initiator.getLocation(), session.getLastInitiatorLocation())) {
-            return "(вы двигались)";
+            return tsConfig.message("reason-moved-self");
         }
         if (hasMoved(target.getLocation(), session.getLastTargetLocation())) {
-            return "(" + target.getName() + " двигался)";
+            return tsConfig.message("reason-moved-target").replace("<player>", target.getName());
         }
 
         // Проверка невидимости
         if (initiator.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
-            return "(вы в невидимости)";
+            return tsConfig.message("reason-invisible-self");
         }
         if (target.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
-            return "(" + target.getName() + " в невидимости)";
+            return tsConfig.message("reason-invisible-target").replace("<player>", target.getName());
         }
 
         if (isInCombat(initiator)) {
-            return "(вы в PvP)";
+            return tsConfig.message("reason-pvp-self");
         }
         if (isInCombat(target)) {
-            return "(" + target.getName() + " в PvP)";
+            return tsConfig.message("reason-pvp-target").replace("<player>", target.getName());
         }
 
         return null;

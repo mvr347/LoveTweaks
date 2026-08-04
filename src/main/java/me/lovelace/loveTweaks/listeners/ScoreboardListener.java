@@ -40,7 +40,7 @@ public class ScoreboardListener implements Listener, CommandExecutor {
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
                              @NotNull String label, @NotNull String[] args) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage("§cЭта команда доступна только игрокам.");
+            sender.sendMessage(plugin.getLoveTweaksConfig().message("players-only").replace('&', '§'));
             return true;
         }
         PlayerScoreboardState state = dataManager.getState(player.getUniqueId());

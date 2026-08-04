@@ -2,12 +2,15 @@ package me.lovelace.loveTweaks;
 
 import me.lovelace.loveTweaks.herald.HeraldGuiConfig;
 import me.lovelace.loveTweaks.items.FirstJoinItem;
+import me.lovelace.loveTweaks.managers.TeleportScrollConfig;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardConfig;
 import org.bukkit.Material;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -15,6 +18,9 @@ public class LoveTweaksConfig {
 
     private final JavaPlugin plugin;
     private FileConfiguration config;
+
+    // Общие тексты команд, не привязанные к конкретной функции
+    private final Map<String, String> messages = new HashMap<>();
 
     // Ender Chests
     private boolean enderChestsAsNormalChests;
@@ -29,11 +35,19 @@ public class LoveTweaksConfig {
 
     // Milk
     private boolean disableMilk;
+    private String purificationPotionName;
+    private List<String> purificationPotionLore = List.of();
+    private String purificationMessage;
 
     // Потеря/поломка предметов при выбрасывании
     private boolean itemDropLossEnabled;
     private double itemDropLossChance;
     private double itemDropBreakChance;
+    private String itemDropBreakMessage;
+    private String itemDropLoseMessage;
+
+    // Свиток телепортации
+    private final TeleportScrollConfig teleportScrollConfig = new TeleportScrollConfig();
 
     // Королевский Глашатай
     private boolean heraldEnabled;
@@ -65,16 +79,25 @@ public class LoveTweaksConfig {
         plugin.reloadConfig();
         config = plugin.getConfig();
 
+        loadMessages(config);
+
         enderChestsAsNormalChests = config.getBoolean("ender-chests.as-normal-chests", false);
         disableMending = config.getBoolean("enchantments.disable-mending", false);
         disableAllEnchantments = config.getBoolean("enchantments.disable-all-enchantments", false);
         extraExhaustionPerSecond = (float) config.getDouble("hunger.extra-exhaustion-per-second", 0.25);
         saturationMultiplier = (float) config.getDouble("hunger.saturation-multiplier", 0.5);
         disableMilk = config.getBoolean("milk.disable-milk", true);
+        purificationPotionName = config.getString("milk.purification-potion.name", "&bЗелье очищения");
+        purificationPotionLore = config.getStringList("milk.purification-potion.lore");
+        purificationMessage = config.getString("milk.purification-message", "&bВы ощущаете очищение...");
 
         itemDropLossEnabled = config.getBoolean("item-drop-loss.enabled", false);
         itemDropLossChance = config.getDouble("item-drop-loss.lose-chance", 0.22);
         itemDropBreakChance = config.getDouble("item-drop-loss.break-chance", 0.33);
+        itemDropBreakMessage = config.getString("item-drop-loss.break-message", "&cВаш предмет сломался при падении!");
+        itemDropLoseMessage = config.getString("item-drop-loss.lose-message", "&7Ваш предмет потерялся при падении!");
+
+        teleportScrollConfig.load(config.getConfigurationSection("teleport-scroll"));
 
         heraldEnabled = config.getBoolean("herald.enabled", false);
         heraldNpcId = config.getInt("herald.npc-id", -1);
@@ -91,6 +114,15 @@ public class LoveTweaksConfig {
         loadFirstJoinItems(config);
 
         scoreboardConfig.load(config);
+    }
+
+    private void loadMessages(FileConfiguration config) {
+        messages.clear();
+        ConfigurationSection section = config.getConfigurationSection("messages");
+        if (section == null) return;
+        for (String key : section.getKeys(false)) {
+            messages.put(key, section.getString(key, ""));
+        }
     }
 
     private void loadFirstJoinItems(FileConfiguration config) {
@@ -120,15 +152,26 @@ public class LoveTweaksConfig {
         }
     }
 
+    /** Raw message template for {@code key} (with its own {@code <placeholder>} tags), or the key itself if unset. */
+    public String message(String key) {
+        return messages.getOrDefault(key, key);
+    }
+
     public boolean isEnderChestsAsNormalChests() { return enderChestsAsNormalChests; }
     public boolean isDisableMending() { return disableMending; }
     public boolean isDisableAllEnchantments() { return disableAllEnchantments; }
     public float getExtraExhaustionPerSecond() { return extraExhaustionPerSecond; }
     public float getSaturationMultiplier() { return saturationMultiplier; }
     public boolean isDisableMilk() { return disableMilk; }
+    public String getPurificationPotionName() { return purificationPotionName; }
+    public List<String> getPurificationPotionLore() { return purificationPotionLore; }
+    public String getPurificationMessage() { return purificationMessage; }
     public boolean isItemDropLossEnabled() { return itemDropLossEnabled; }
     public double getItemDropLossChance() { return itemDropLossChance; }
     public double getItemDropBreakChance() { return itemDropBreakChance; }
+    public String getItemDropBreakMessage() { return itemDropBreakMessage; }
+    public String getItemDropLoseMessage() { return itemDropLoseMessage; }
+    public TeleportScrollConfig getTeleportScrollConfig() { return teleportScrollConfig; }
 
     public boolean isHeraldEnabled() { return heraldEnabled; }
     public int getHeraldNpcId() { return heraldNpcId; }

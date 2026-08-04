@@ -1,3 +1,21 @@
+# ─── Общие сообщения ──────────────────────────────────────────────────────────
+# Тексты команд /lovetweaks и /scoreboard, не привязанные к конкретной функции.
+messages:
+  no-permission: '&cНедостаточно прав.'
+  players-only: '&cЭта команда доступна только игрокам.'
+  usage-main: '&eИспользование: &f/lovetweaks <reload|givescroll|herald>'
+  usage-givescroll: '&eИспользование: &f/lovetweaks givescroll <игрок>'
+  usage-herald: '&eИспользование: &f/lovetweaks herald <bind|unbind|clear>'
+  reload-done: '&aLoveTweaks конфиг перезагружен!'
+  player-not-found: '&cИгрок &e<player>&c не найден или не в сети.'
+  scroll-given-sender: '&aСвиток телепортации выдан игроку &e<player>&a.'
+  scroll-given-target: '&6Вы получили &eСвиток телепортации&6!'
+  citizens-missing: '&cCitizens не установлен или не включён.'
+  npc-not-selected: '&cВыберите NPC (&e/npc select&c) или посмотрите на него и повторите команду.'
+  herald-npc-bound: '&aNPC Глашатая привязан: &e<npc>'
+  herald-npc-unbound: '&aNPC Глашатая отвязан.'
+  herald-cleared: '&aГолос Королевства сброшен.'
+
 ender-chests:
   as-normal-chests: true
 
@@ -11,6 +29,14 @@ hunger:
 
 milk:
   disable-milk: true
+  # Зелье очищения — крафтится из GHAST_TEAR + FERMENTED_SPIDER_EYE + NETHER_WART,
+  # снимает все активные эффекты при употреблении.
+  purification-potion:
+    name: '&bЗелье очищения'
+    lore:
+      - '&7Снимает все активные эффекты'
+      - '&8Сварено с кровью Нижнего мира'
+  purification-message: '&bВы ощущаете очищение...'
 
 # ─── Королевский Глашатай ─────────────────────────────────────────────────────
 # NPC (Citizens), у которого любой игрок может купить слот объявления. До
@@ -126,6 +152,37 @@ item-drop-loss:
   enabled: true
   lose-chance: 0.22
   break-chance: 0.33
+  break-message: '&cВаш предмет сломался при падении!'
+  lose-message: '&7Ваш предмет потерялся при падении!'
+
+# ─── Свиток телепортации ──────────────────────────────────────────────────────
+# ПКМ → игрок вводит ник цели в чат → 5-секундный отсчёт (отменяется движением,
+# невидимостью или PvP-меткой любой из сторон) → телепортация к цели.
+teleport-scroll:
+  item:
+    name: '&6✦ Свиток телепортации ✦'
+    lore:
+      - '&7Позволяет телепортироваться к игроку'
+      - ''
+      - '&eПКМ&7 — использовать свиток'
+  messages:
+    prompt: '&6✦ Введите ник игрока в чат &e(10 секунд)'
+    timeout: '&c✗ Время вышло!'
+    player-not-found: '&c✗ Игрок &e<player>&c не найден или не в сети!'
+    cannot-target-self: '&c✗ Нельзя телепортироваться к себе!'
+    target-afk: '&c✗ Игрок &e<player>&c АФК!'
+    countdown-initiator: '&6✦ Телепортация через &e<seconds> сек&6... Не двигайтесь!'
+    countdown-target: '&6✦ К вам телепортируется &e<player>&6... Не двигайтесь!'
+    cancelled-initiator: '&c✗ Телепортация отменена! <reason>'
+    cancelled-target: '&c✗ Телепортация отменена!'
+    success-initiator: '&a✦ Телепортация выполнена!'
+    success-target: '&e<player> &aтелепортировался к вам!'
+    reason-moved-self: '(вы двигались)'
+    reason-moved-target: '(<player> двигался)'
+    reason-invisible-self: '(вы в невидимости)'
+    reason-invisible-target: '(<player> в невидимости)'
+    reason-pvp-self: '(вы в PvP)'
+    reason-pvp-target: '(<player> в PvP)'
 
 # ─── Стартовый набор ──────────────────────────────────────────────────────────
 # Выдаётся один раз при самом первом заходе игрока на сервер.

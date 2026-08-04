@@ -1,8 +1,8 @@
 package me.lovelace.loveTweaks.items;
 
 import me.lovelace.loveTweaks.LoveTweaks;
+import me.lovelace.loveTweaks.utils.GuiItemUtil;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -11,6 +11,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -19,11 +20,13 @@ import java.util.List;
  */
 public class TeleportScroll {
 
-    // Ключ хранится как static final, создаётся один раз при инициализации менеджера
+    // Ключ и плагин хранятся как static, создаются один раз при инициализации менеджера
     private static NamespacedKey scrollKey;
+    private static LoveTweaks plugin;
 
-    public static void init(LoveTweaks plugin) {
-        scrollKey = new NamespacedKey(plugin, "teleport_scroll");
+    public static void init(LoveTweaks pluginInstance) {
+        plugin = pluginInstance;
+        scrollKey = new NamespacedKey(pluginInstance, "teleport_scroll");
     }
 
     public static NamespacedKey getScrollKey() {
@@ -39,22 +42,17 @@ public class TeleportScroll {
         ItemMeta meta = scroll.getItemMeta();
 
         if (meta != null) {
-            // Название с золотым цветом, без курсива (Adventure по умолчанию добавляет курсив к custom именам)
-            meta.displayName(
-                    Component.text("✦ Свиток телепортации ✦", NamedTextColor.GOLD)
-                            .decoration(TextDecoration.ITALIC, false)
-                            .decoration(TextDecoration.BOLD, false)
-            );
+            var config = plugin.getLoveTweaksConfig().getTeleportScrollConfig();
 
-            meta.lore(List.of(
-                    Component.text("Позволяет телепортироваться к игроку", NamedTextColor.GRAY)
-                            .decoration(TextDecoration.ITALIC, false),
-                    Component.empty(),
-                    Component.text("ПКМ", NamedTextColor.YELLOW)
-                            .decoration(TextDecoration.ITALIC, false)
-                            .append(Component.text(" — использовать свиток", NamedTextColor.GRAY)
-                                    .decoration(TextDecoration.ITALIC, false))
-            ));
+            // Без курсива — Adventure по умолчанию добавляет курсив к custom именам
+            meta.displayName(GuiItemUtil.colorize(config.itemName())
+                    .decoration(TextDecoration.ITALIC, false));
+
+            List<Component> lore = new ArrayList<>();
+            for (String line : config.itemLore()) {
+                lore.add(GuiItemUtil.colorize(line).decoration(TextDecoration.ITALIC, false));
+            }
+            meta.lore(lore);
 
             // Запрещаем стакаться — максимальный размер стака = 1
             meta.setMaxStackSize(1);
