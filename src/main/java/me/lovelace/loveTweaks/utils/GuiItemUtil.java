@@ -17,8 +17,8 @@ import java.util.UUID;
 
 /**
  * Shared base64-skull/legacy-color item builder for the project's Java-rendered GUIs
- * (mirrors the private helpers in {@code ScoreboardGUI} so every menu — scoreboard, Herald,
- * Royal Post — builds buttons the same way instead of each duplicating its own copy).
+ * (mirrors the private helpers in {@code ScoreboardGUI} so every menu — scoreboard, Herald —
+ * builds buttons the same way instead of each duplicating its own copy).
  */
 public final class GuiItemUtil {
 

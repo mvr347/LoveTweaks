@@ -7,11 +7,12 @@ softdepend:
   - Citizens
   - ItemsAdder
   - LoveCore
+  - LoveChatFilter
 
 commands:
   lovetweaks:
     description: Команды администратора LoveTweaks
-    usage: /lovetweaks <reload|givescroll|herald bind/unbind/clear|post bind/unbind>
+    usage: /lovetweaks <reload|givescroll|herald bind/unbind/clear>
     permission: lovetweaks.admin
     permission-message: У вас нет прав для этой команды.
   scoreboard:

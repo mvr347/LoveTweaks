@@ -48,14 +48,6 @@ public class LoveTweaksConfig {
     private long heraldMaxCost;
     private final HeraldGuiConfig heraldGuiConfig = new HeraldGuiConfig();
 
-    // Королевская Почта
-    private boolean postEnabled;
-    private int postNpcId;
-    private String postNpcName;
-    private long postCost;
-    private int postFlightSeconds;
-    private String postGuiTitle;
-
     // Стартовый набор при первом заходе на сервер
     private boolean firstJoinEnabled;
     private final List<FirstJoinItem> firstJoinItems = new ArrayList<>();
@@ -95,13 +87,6 @@ public class LoveTweaksConfig {
         heraldMinCost = config.getLong("herald.min-cost", 50);
         heraldMaxCost = Math.max(heraldMinCost, config.getLong("herald.max-cost", 300));
         heraldGuiConfig.load(config.getConfigurationSection("herald.gui"));
-
-        postEnabled = config.getBoolean("post.enabled", false);
-        postNpcId = config.getInt("post.npc-id", -1);
-        postNpcName = config.getString("post.npc-name", "");
-        postCost = config.getLong("post.cost", 200);
-        postFlightSeconds = Math.max(1, config.getInt("post.flight-seconds", 20));
-        postGuiTitle = config.getString("post.gui-title", "&6Королевская Почта");
 
         loadFirstJoinItems(config);
 
@@ -162,21 +147,6 @@ public class LoveTweaksConfig {
         this.heraldNpcName = npcName == null ? "" : npcName;
         config.set("herald.npc-id", this.heraldNpcId);
         config.set("herald.npc-name", this.heraldNpcName);
-        plugin.saveConfig();
-    }
-
-    public boolean isPostEnabled() { return postEnabled; }
-    public int getPostNpcId() { return postNpcId; }
-    public String getPostNpcName() { return postNpcName; }
-    public long getPostCost() { return postCost; }
-    public int getPostFlightSeconds() { return postFlightSeconds; }
-    public String getPostGuiTitle() { return postGuiTitle; }
-
-    public void setPostNpc(int npcId, String npcName) {
-        this.postNpcId = npcId;
-        this.postNpcName = npcName == null ? "" : npcName;
-        config.set("post.npc-id", this.postNpcId);
-        config.set("post.npc-name", this.postNpcName);
         plugin.saveConfig();
     }
 
