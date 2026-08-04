@@ -1,6 +1,7 @@
 package me.lovelace.loveTweaks;
 
 import me.lovelace.loveTweaks.herald.HeraldManager;
+import me.lovelace.loveTweaks.integration.ChatFilterIntegration;
 import me.lovelace.loveTweaks.integration.CitizensIntegration;
 import me.lovelace.loveTweaks.placeholder.PlaytimeExpansion;
 import me.lovelace.loveTweaks.items.TeleportScroll;
@@ -42,6 +43,7 @@ public final class LoveTweaks extends JavaPlugin {
     private BukkitTask scoreboardTask;
 
     private CitizensIntegration citizensIntegration;
+    private ChatFilterIntegration chatFilterIntegration;
     private HeraldManager heraldManager;
     private BukkitTask heraldBroadcastTask;
 
@@ -76,7 +78,8 @@ public final class LoveTweaks extends JavaPlugin {
 
         // Королевский Глашатай
         citizensIntegration = new CitizensIntegration();
-        heraldManager = new HeraldManager(this);
+        chatFilterIntegration = new ChatFilterIntegration();
+        heraldManager = new HeraldManager(this, chatFilterIntegration);
         getLogger().info("Herald manager initialized.");
 
         // Королевская Почта
@@ -141,12 +144,12 @@ public final class LoveTweaks extends JavaPlugin {
 
     private void startHeraldBroadcastTask() {
         if (heraldBroadcastTask != null) heraldBroadcastTask.cancel();
-        long intervalTicks = loveTweaksConfig.getHeraldBroadcastIntervalHours() * 60L * 60L * 20L;
+        long intervalTicks = 20L * 60L;
         heraldBroadcastTask = new BukkitRunnable() {
             @Override
             public void run() {
                 if (loveTweaksConfig.isHeraldEnabled()) {
-                    heraldManager.broadcast();
+                    heraldManager.tickBroadcast();
                 }
             }
         }.runTaskTimer(this, intervalTicks, intervalTicks);
@@ -174,6 +177,7 @@ public final class LoveTweaks extends JavaPlugin {
                 loveTweaksConfig.loadConfig();
                 scoreboardDataManager.reload();
                 scoreboardDisplayManager.refreshPAPI();
+                heraldManager.resize(loveTweaksConfig.getHeraldSlots());
                 startScoreboardTask();
                 startHeraldBroadcastTask();
                 sender.sendMessage("§aLoveTweaks конфиг перезагружен!");

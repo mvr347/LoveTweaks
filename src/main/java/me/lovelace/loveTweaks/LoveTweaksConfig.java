@@ -1,5 +1,6 @@
 package me.lovelace.loveTweaks;
 
+import me.lovelace.loveTweaks.herald.HeraldGuiConfig;
 import me.lovelace.loveTweaks.items.FirstJoinItem;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardConfig;
 import org.bukkit.Material;
@@ -38,9 +39,14 @@ public class LoveTweaksConfig {
     private boolean heraldEnabled;
     private int heraldNpcId;
     private String heraldNpcName;
-    private long heraldCost;
-    private int heraldBroadcastIntervalHours;
-    private String heraldGuiTitle;
+    private int heraldSlots;
+    private int heraldMinDurationMinutes;
+    private int heraldMaxDurationMinutes;
+    private int heraldDurationStepMinutes;
+    private int heraldMaxMessageLength;
+    private long heraldMinCost;
+    private long heraldMaxCost;
+    private final HeraldGuiConfig heraldGuiConfig = new HeraldGuiConfig();
 
     // Королевская Почта
     private boolean postEnabled;
@@ -81,9 +87,14 @@ public class LoveTweaksConfig {
         heraldEnabled = config.getBoolean("herald.enabled", false);
         heraldNpcId = config.getInt("herald.npc-id", -1);
         heraldNpcName = config.getString("herald.npc-name", "");
-        heraldCost = config.getLong("herald.cost", 500);
-        heraldBroadcastIntervalHours = Math.max(1, config.getInt("herald.broadcast-interval-hours", 2));
-        heraldGuiTitle = config.getString("herald.gui-title", "&6Королевский Глашатай");
+        heraldSlots = Math.max(1, config.getInt("herald.slots", 3));
+        heraldMinDurationMinutes = Math.max(1, config.getInt("herald.min-duration-minutes", 10));
+        heraldMaxDurationMinutes = Math.max(heraldMinDurationMinutes, config.getInt("herald.max-duration-minutes", 60));
+        heraldDurationStepMinutes = Math.max(1, config.getInt("herald.duration-step-minutes", 10));
+        heraldMaxMessageLength = Math.max(1, config.getInt("herald.max-message-length", 50));
+        heraldMinCost = config.getLong("herald.min-cost", 50);
+        heraldMaxCost = Math.max(heraldMinCost, config.getLong("herald.max-cost", 300));
+        heraldGuiConfig.load(config.getConfigurationSection("herald.gui"));
 
         postEnabled = config.getBoolean("post.enabled", false);
         postNpcId = config.getInt("post.npc-id", -1);
@@ -137,9 +148,14 @@ public class LoveTweaksConfig {
     public boolean isHeraldEnabled() { return heraldEnabled; }
     public int getHeraldNpcId() { return heraldNpcId; }
     public String getHeraldNpcName() { return heraldNpcName; }
-    public long getHeraldCost() { return heraldCost; }
-    public int getHeraldBroadcastIntervalHours() { return heraldBroadcastIntervalHours; }
-    public String getHeraldGuiTitle() { return heraldGuiTitle; }
+    public int getHeraldSlots() { return heraldSlots; }
+    public int getHeraldMinDurationMinutes() { return heraldMinDurationMinutes; }
+    public int getHeraldMaxDurationMinutes() { return heraldMaxDurationMinutes; }
+    public int getHeraldDurationStepMinutes() { return heraldDurationStepMinutes; }
+    public int getHeraldMaxMessageLength() { return heraldMaxMessageLength; }
+    public long getHeraldMinCost() { return heraldMinCost; }
+    public long getHeraldMaxCost() { return heraldMaxCost; }
+    public HeraldGuiConfig getHeraldGuiConfig() { return heraldGuiConfig; }
 
     public void setHeraldNpc(int npcId, String npcName) {
         this.heraldNpcId = npcId;
