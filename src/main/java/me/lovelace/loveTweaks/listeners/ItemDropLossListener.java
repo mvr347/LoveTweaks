@@ -1,8 +1,7 @@
 package me.lovelace.loveTweaks.listeners;
 
 import me.lovelace.loveTweaks.LoveTweaks;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import me.lovelace.loveTweaks.utils.GuiItemUtil;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -64,7 +63,7 @@ public class ItemDropLossListener implements Listener {
         location.getWorld().playSound(location, Sound.ENTITY_ITEM_BREAK, 1f, 1f);
         location.getWorld().spawnParticle(Particle.CLOUD, location, 12, 0.2, 0.2, 0.2, 0);
 
-        player.sendMessage(Component.text("Ваш предмет сломался при падении!", NamedTextColor.RED));
+        player.sendMessage(GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getItemDropBreakMessage()));
     }
 
     private void loseItem(Player player, Item itemEntity) {
@@ -74,6 +73,6 @@ public class ItemDropLossListener implements Listener {
         location.getWorld().playSound(location, Sound.ENTITY_ITEM_PICKUP, 1f, 0.5f);
         location.getWorld().spawnParticle(Particle.SMOKE, location, 10, 0.2, 0.2, 0.2, 0.02);
 
-        player.sendMessage(Component.text("Ваш предмет потерялся при падении!", NamedTextColor.GRAY));
+        player.sendMessage(GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getItemDropLoseMessage()));
     }
 }

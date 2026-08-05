@@ -1,8 +1,9 @@
 package me.lovelace.loveTweaks.listeners;
 
 import me.lovelace.loveTweaks.LoveTweaks;
+import me.lovelace.loveTweaks.utils.GuiItemUtil;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 
 import org.bukkit.NamespacedKey;
@@ -52,11 +53,15 @@ public class MilkListener implements Listener {
         ItemStack potion = new ItemStack(Material.POTION);
         ItemMeta meta = potion.getItemMeta();
         if (meta != null) {
-            meta.displayName(Component.text("Зелье очищения", NamedTextColor.AQUA));
-            meta.lore(List.of(
-                    Component.text("Снимает все активные эффекты", NamedTextColor.GRAY),
-                    Component.text("Сварено с кровью Нижнего мира", NamedTextColor.DARK_GRAY)
-            ));
+            var config = plugin.getLoveTweaksConfig();
+            meta.displayName(GuiItemUtil.colorize(config.getPurificationPotionName())
+                    .decoration(TextDecoration.ITALIC, false));
+
+            List<Component> lore = new ArrayList<>();
+            for (String line : config.getPurificationPotionLore()) {
+                lore.add(GuiItemUtil.colorize(line).decoration(TextDecoration.ITALIC, false));
+            }
+            meta.lore(lore);
 
             PersistentDataContainer container = meta.getPersistentDataContainer();
             container.set(purificationKey, PersistentDataType.BYTE, (byte) 1);
@@ -87,7 +92,7 @@ public class MilkListener implements Listener {
             giveEmptyBottle(player);
             clearAllEffects(player);
 
-            player.sendMessage(Component.text("Вы ощущаете очищение...", NamedTextColor.AQUA));
+            player.sendMessage(GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getPurificationMessage()));
         }
     }
 

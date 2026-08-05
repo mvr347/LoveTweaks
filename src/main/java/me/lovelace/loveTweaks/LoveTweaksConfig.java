@@ -1,12 +1,16 @@
 package me.lovelace.loveTweaks;
 
+import me.lovelace.loveTweaks.herald.HeraldGuiConfig;
 import me.lovelace.loveTweaks.items.FirstJoinItem;
+import me.lovelace.loveTweaks.managers.TeleportScrollConfig;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardConfig;
 import org.bukkit.Material;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -14,6 +18,9 @@ public class LoveTweaksConfig {
 
     private final JavaPlugin plugin;
     private FileConfiguration config;
+
+    // Общие тексты команд, не привязанные к конкретной функции
+    private final Map<String, String> messages = new HashMap<>();
 
     // Ender Chests
     private boolean enderChestsAsNormalChests;
@@ -28,27 +35,32 @@ public class LoveTweaksConfig {
 
     // Milk
     private boolean disableMilk;
+    private String purificationPotionName;
+    private List<String> purificationPotionLore = List.of();
+    private String purificationMessage;
 
     // Потеря/поломка предметов при выбрасывании
     private boolean itemDropLossEnabled;
     private double itemDropLossChance;
     private double itemDropBreakChance;
+    private String itemDropBreakMessage;
+    private String itemDropLoseMessage;
+
+    // Свиток телепортации
+    private final TeleportScrollConfig teleportScrollConfig = new TeleportScrollConfig();
 
     // Королевский Глашатай
     private boolean heraldEnabled;
     private int heraldNpcId;
     private String heraldNpcName;
-    private long heraldCost;
-    private int heraldBroadcastIntervalHours;
-    private String heraldGuiTitle;
-
-    // Королевская Почта
-    private boolean postEnabled;
-    private int postNpcId;
-    private String postNpcName;
-    private long postCost;
-    private int postFlightSeconds;
-    private String postGuiTitle;
+    private int heraldSlots;
+    private int heraldMinDurationMinutes;
+    private int heraldMaxDurationMinutes;
+    private int heraldDurationStepMinutes;
+    private int heraldMaxMessageLength;
+    private long heraldMinCost;
+    private long heraldMaxCost;
+    private final HeraldGuiConfig heraldGuiConfig = new HeraldGuiConfig();
 
     // Стартовый набор при первом заходе на сервер
     private boolean firstJoinEnabled;
@@ -67,34 +79,50 @@ public class LoveTweaksConfig {
         plugin.reloadConfig();
         config = plugin.getConfig();
 
+        loadMessages(config);
+
         enderChestsAsNormalChests = config.getBoolean("ender-chests.as-normal-chests", false);
         disableMending = config.getBoolean("enchantments.disable-mending", false);
         disableAllEnchantments = config.getBoolean("enchantments.disable-all-enchantments", false);
         extraExhaustionPerSecond = (float) config.getDouble("hunger.extra-exhaustion-per-second", 0.25);
         saturationMultiplier = (float) config.getDouble("hunger.saturation-multiplier", 0.5);
         disableMilk = config.getBoolean("milk.disable-milk", true);
+        purificationPotionName = config.getString("milk.purification-potion.name", "&bЗелье очищения");
+        purificationPotionLore = config.getStringList("milk.purification-potion.lore");
+        purificationMessage = config.getString("milk.purification-message", "&bВы ощущаете очищение...");
 
         itemDropLossEnabled = config.getBoolean("item-drop-loss.enabled", false);
         itemDropLossChance = config.getDouble("item-drop-loss.lose-chance", 0.22);
         itemDropBreakChance = config.getDouble("item-drop-loss.break-chance", 0.33);
+        itemDropBreakMessage = config.getString("item-drop-loss.break-message", "&cВаш предмет сломался при падении!");
+        itemDropLoseMessage = config.getString("item-drop-loss.lose-message", "&7Ваш предмет потерялся при падении!");
+
+        teleportScrollConfig.load(config.getConfigurationSection("teleport-scroll"));
 
         heraldEnabled = config.getBoolean("herald.enabled", false);
         heraldNpcId = config.getInt("herald.npc-id", -1);
         heraldNpcName = config.getString("herald.npc-name", "");
-        heraldCost = config.getLong("herald.cost", 500);
-        heraldBroadcastIntervalHours = Math.max(1, config.getInt("herald.broadcast-interval-hours", 2));
-        heraldGuiTitle = config.getString("herald.gui-title", "&6Королевский Глашатай");
-
-        postEnabled = config.getBoolean("post.enabled", false);
-        postNpcId = config.getInt("post.npc-id", -1);
-        postNpcName = config.getString("post.npc-name", "");
-        postCost = config.getLong("post.cost", 200);
-        postFlightSeconds = Math.max(1, config.getInt("post.flight-seconds", 20));
-        postGuiTitle = config.getString("post.gui-title", "&6Королевская Почта");
+        heraldSlots = Math.max(1, config.getInt("herald.slots", 3));
+        heraldMinDurationMinutes = Math.max(1, config.getInt("herald.min-duration-minutes", 10));
+        heraldMaxDurationMinutes = Math.max(heraldMinDurationMinutes, config.getInt("herald.max-duration-minutes", 60));
+        heraldDurationStepMinutes = Math.max(1, config.getInt("herald.duration-step-minutes", 10));
+        heraldMaxMessageLength = Math.max(1, config.getInt("herald.max-message-length", 50));
+        heraldMinCost = config.getLong("herald.min-cost", 50);
+        heraldMaxCost = Math.max(heraldMinCost, config.getLong("herald.max-cost", 300));
+        heraldGuiConfig.load(config.getConfigurationSection("herald.gui"));
 
         loadFirstJoinItems(config);
 
         scoreboardConfig.load(config);
+    }
+
+    private void loadMessages(FileConfiguration config) {
+        messages.clear();
+        ConfigurationSection section = config.getConfigurationSection("messages");
+        if (section == null) return;
+        for (String key : section.getKeys(false)) {
+            messages.put(key, section.getString(key, ""));
+        }
     }
 
     private void loadFirstJoinItems(FileConfiguration config) {
@@ -124,43 +152,44 @@ public class LoveTweaksConfig {
         }
     }
 
+    /** Raw message template for {@code key} (with its own {@code <placeholder>} tags), or the key itself if unset. */
+    public String message(String key) {
+        return messages.getOrDefault(key, key);
+    }
+
     public boolean isEnderChestsAsNormalChests() { return enderChestsAsNormalChests; }
     public boolean isDisableMending() { return disableMending; }
     public boolean isDisableAllEnchantments() { return disableAllEnchantments; }
     public float getExtraExhaustionPerSecond() { return extraExhaustionPerSecond; }
     public float getSaturationMultiplier() { return saturationMultiplier; }
     public boolean isDisableMilk() { return disableMilk; }
+    public String getPurificationPotionName() { return purificationPotionName; }
+    public List<String> getPurificationPotionLore() { return purificationPotionLore; }
+    public String getPurificationMessage() { return purificationMessage; }
     public boolean isItemDropLossEnabled() { return itemDropLossEnabled; }
     public double getItemDropLossChance() { return itemDropLossChance; }
     public double getItemDropBreakChance() { return itemDropBreakChance; }
+    public String getItemDropBreakMessage() { return itemDropBreakMessage; }
+    public String getItemDropLoseMessage() { return itemDropLoseMessage; }
+    public TeleportScrollConfig getTeleportScrollConfig() { return teleportScrollConfig; }
 
     public boolean isHeraldEnabled() { return heraldEnabled; }
     public int getHeraldNpcId() { return heraldNpcId; }
     public String getHeraldNpcName() { return heraldNpcName; }
-    public long getHeraldCost() { return heraldCost; }
-    public int getHeraldBroadcastIntervalHours() { return heraldBroadcastIntervalHours; }
-    public String getHeraldGuiTitle() { return heraldGuiTitle; }
+    public int getHeraldSlots() { return heraldSlots; }
+    public int getHeraldMinDurationMinutes() { return heraldMinDurationMinutes; }
+    public int getHeraldMaxDurationMinutes() { return heraldMaxDurationMinutes; }
+    public int getHeraldDurationStepMinutes() { return heraldDurationStepMinutes; }
+    public int getHeraldMaxMessageLength() { return heraldMaxMessageLength; }
+    public long getHeraldMinCost() { return heraldMinCost; }
+    public long getHeraldMaxCost() { return heraldMaxCost; }
+    public HeraldGuiConfig getHeraldGuiConfig() { return heraldGuiConfig; }
 
     public void setHeraldNpc(int npcId, String npcName) {
         this.heraldNpcId = npcId;
         this.heraldNpcName = npcName == null ? "" : npcName;
         config.set("herald.npc-id", this.heraldNpcId);
         config.set("herald.npc-name", this.heraldNpcName);
-        plugin.saveConfig();
-    }
-
-    public boolean isPostEnabled() { return postEnabled; }
-    public int getPostNpcId() { return postNpcId; }
-    public String getPostNpcName() { return postNpcName; }
-    public long getPostCost() { return postCost; }
-    public int getPostFlightSeconds() { return postFlightSeconds; }
-    public String getPostGuiTitle() { return postGuiTitle; }
-
-    public void setPostNpc(int npcId, String npcName) {
-        this.postNpcId = npcId;
-        this.postNpcName = npcName == null ? "" : npcName;
-        config.set("post.npc-id", this.postNpcId);
-        config.set("post.npc-name", this.postNpcName);
         plugin.saveConfig();
     }
 
