@@ -12,7 +12,7 @@ softdepend:
 commands:
   lovetweaks:
     description: Команды администратора LoveTweaks
-    usage: /lovetweaks <reload|givescroll|herald bind/unbind/clear>
+    usage: /lovetweaks <reload|givescroll|givecoordscroll|herald bind/unbind/clear>
     permission: lovetweaks.admin
     permission-message: У вас нет прав для этой команды.
   scoreboard:
