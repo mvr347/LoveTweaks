@@ -1,5 +1,6 @@
 package me.lovelace.loveTweaks.scoreboard;
 
+import me.lovelace.loveTweaks.textures.HeadTextures;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 
@@ -113,43 +114,43 @@ public class ScoreboardConfig {
         fillerName = get(filler, "display-name", " ");
 
         ConfigurationSection profile = gui.getConfigurationSection("profile-button");
-        profileMaterial = get(profile, "material", "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvY2MyNDJiZTA5MjI2YTNhZjlkYTM0YzZkMzA1YTEyMzA2M2FhZjQyMWFlZTAzZDk4M2MxYmY1MjE1YzQyMWU4In19fQ==");
+        profileMaterial = get(profile, "material", basehead(HeadTextures.SCOREBOARD_PROFILE));
         profileName = get(profile, "display-name", "&bПрофиль");
         profileLore = getLore(profile, List.of("", "&aЛКМ &7— открыть профиль"));
         profileCommand = profile != null ? profile.getString("command", "") : "";
 
         ConfigurationSection back = gui.getConfigurationSection("back-button");
-        backMaterial = get(back, "material", "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYmQ2OWUwNmU1ZGFkZmQ4NGU1ZjNkMWMyMTA2M2YyNTUzYjJmYTk0NWVlMWQ0ZDcxNTJmZGM1NDI1YmMxMmE5In19fQ==");
+        backMaterial = get(back, "material", basehead(HeadTextures.SCOREBOARD_BACK));
         backName = get(back, "display-name", "&7« Назад");
         backLore = getLore(back, List.of("", "&aЛКМ &7— вернуться в настройки"));
         backCommand = back != null ? back.getString("command", "") : "";
 
         ConfigurationSection close = gui.getConfigurationSection("close-button");
-        closeMaterial = get(close, "material", "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvM2VkMWFiYTczZjYzOWY0YmM0MmJkNDgxOTZjNzE1MTk3YmUyNzEyYzNiOTYyYzk3ZWJmOWU5ZWQ4ZWZhMDI1In19fQ==");
+        closeMaterial = get(close, "material", basehead(HeadTextures.SCOREBOARD_CLOSE));
         closeName = get(close, "display-name", "&cЗакрыть");
         closeLore = getLore(close, List.of("", "&aЛКМ &7— закрыть меню"));
 
         ConfigurationSection phOn = gui.getConfigurationSection("placeholder-on");
-        placeholderOnMaterial = get(phOn, "material", "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODg5MDgyNTQ1MWMwMWJkMDNiMDMwNzkwNjIxYWI3NTM0NDgzMTlmODQ3NDliYjAyYzkwZjNhMjg0ODliZDcyIn19fQ==");
+        placeholderOnMaterial = get(phOn, "material", basehead(HeadTextures.SCOREBOARD_PLACEHOLDER_ON));
 
         ConfigurationSection phOff = gui.getConfigurationSection("placeholder-off");
-        placeholderOffMaterial = get(phOff, "material", "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYTRmZWY3NTNkNWI0ZmYyYTljYWU3NWJjMmVkZWIzMTUzMDI1YWJjNWNjMjc0NDI4NWYzMTk2NGY5NDA4YTFmIn19fQ==");
+        placeholderOffMaterial = get(phOff, "material", basehead(HeadTextures.SCOREBOARD_PLACEHOLDER_OFF));
 
         ConfigurationSection phBlocked = gui.getConfigurationSection("placeholder-blocked");
-        placeholderBlockedMaterial = get(phBlocked, "material", "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvM2VkMWFiYTczZjYzOWY0YmM0MmJkNDgxOTZjNzE1MTk3YmUyNzEyYzNiOTYyYzk3ZWJmOWU5ZWQ4ZWZhMDI1In19fQ==");
+        placeholderBlockedMaterial = get(phBlocked, "material", basehead(HeadTextures.SCOREBOARD_PLACEHOLDER_BLOCKED));
 
         ConfigurationSection togOn = gui.getConfigurationSection("toggle-on");
-        toggleOnMaterial = get(togOn, "material", "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvN2FmNmMzY2FjOTRjODk0NGQwNDQxNTBjMWRkNWU0ZTZhYjUzYTAxMzgyZGFlNDYzOTE0ZmIzYmU1YTI3MzE5ZCJ9fX0=");
+        toggleOnMaterial = get(togOn, "material", basehead(HeadTextures.SCOREBOARD_TOGGLE_ON));
         toggleOnName = get(togOn, "display-name", "&aСкорборд включён");
         toggleOnLore = getLore(togOn, List.of("", "&7Скорборд отображается на экране.", "&cЛКМ &7— выключить"));
 
         ConfigurationSection togOff = gui.getConfigurationSection("toggle-off");
-        toggleOffMaterial = get(togOff, "material", "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZmM1MzQ1MjkwZDdlNDRkZWEzYTg5MGQ0ZDAxNDBmYzEwYTUyYTkwOTc2NzQzOGYwZjViNWQyODc3Y2JhNDg0YyJ9fX0=");
+        toggleOffMaterial = get(togOff, "material", basehead(HeadTextures.SCOREBOARD_TOGGLE_OFF));
         toggleOffName = get(togOff, "display-name", "&7Скорборд выключен");
         toggleOffLore = getLore(togOff, List.of("", "&7Скорборд скрыт с экрана.", "&aЛКМ &7— включить"));
 
         ConfigurationSection togEmpty = gui.getConfigurationSection("toggle-empty");
-        toggleEmptyMaterial = get(togEmpty, "material", "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjNjMDA1NmI3YjI4MWZlMmQ0ZmRkNjc1NzdiMDI2ZWE3NDIyNmYzNjQ5YTFkNTBkYjI3NDI1YmNmYjRiMGE5YyJ9fX0=");
+        toggleEmptyMaterial = get(togEmpty, "material", basehead(HeadTextures.SCOREBOARD_TOGGLE_EMPTY));
         toggleEmptyName = get(togEmpty, "display-name", "&7Скорборд");
         toggleEmptyLore = getLore(togEmpty, List.of("", "&7Нет ни одного включённого плейсхолдера.", "&7Выберите плейсхолдеры ниже &8(СКМ)"));
     }
@@ -173,29 +174,34 @@ public class ScoreboardConfig {
         guiTitle = "&8⚙ &lСкорборд";
         fillerMaterial = "GRAY_STAINED_GLASS_PANE";
         fillerName = " ";
-        profileMaterial = "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvY2MyNDJiZTA5MjI2YTNhZjlkYTM0YzZkMzA1YTEyMzA2M2FhZjQyMWFlZTAzZDk4M2MxYmY1MjE1YzQyMWU4In19fQ==";
+        profileMaterial = basehead(HeadTextures.SCOREBOARD_PROFILE);
         profileName = "&bПрофиль";
         profileLore = List.of("", "&aЛКМ &7— открыть профиль");
         profileCommand = "";
-        backMaterial = "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYmQ2OWUwNmU1ZGFkZmQ4NGU1ZjNkMWMyMTA2M2YyNTUzYjJmYTk0NWVlMWQ0ZDcxNTJmZGM1NDI1YmMxMmE5In19fQ==";
+        backMaterial = basehead(HeadTextures.SCOREBOARD_BACK);
         backName = "&7« Назад";
         backLore = List.of("", "&aЛКМ &7— вернуться в настройки");
         backCommand = "";
-        closeMaterial = "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvM2VkMWFiYTczZjYzOWY0YmM0MmJkNDgxOTZjNzE1MTk3YmUyNzEyYzNiOTYyYzk3ZWJmOWU5ZWQ4ZWZhMDI1In19fQ==";
+        closeMaterial = basehead(HeadTextures.SCOREBOARD_CLOSE);
         closeName = "&cЗакрыть";
         closeLore = List.of("", "&aЛКМ &7— закрыть меню");
-        placeholderOnMaterial = "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODg5MDgyNTQ1MWMwMWJkMDNiMDMwNzkwNjIxYWI3NTM0NDgzMTlmODQ3NDliYjAyYzkwZjNhMjg0ODliZDcyIn19fQ==";
-        placeholderOffMaterial = "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYTRmZWY3NTNkNWI0ZmYyYTljYWU3NWJjMmVkZWIzMTUzMDI1YWJjNWNjMjc0NDI4NWYzMTk2NGY5NDA4YTFmIn19fQ==";
-        placeholderBlockedMaterial = "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvM2VkMWFiYTczZjYzOWY0YmM0MmJkNDgxOTZjNzE1MTk3YmUyNzEyYzNiOTYyYzk3ZWJmOWU5ZWQ4ZWZhMDI1In19fQ==";
-        toggleOnMaterial = "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvN2FmNmMzY2FjOTRjODk0NGQwNDQxNTBjMWRkNWU0ZTZhYjUzYTAxMzgyZGFlNDYzOTE0ZmIzYmU1YTI3MzE5ZCJ9fX0=";
+        placeholderOnMaterial = basehead(HeadTextures.SCOREBOARD_PLACEHOLDER_ON);
+        placeholderOffMaterial = basehead(HeadTextures.SCOREBOARD_PLACEHOLDER_OFF);
+        placeholderBlockedMaterial = basehead(HeadTextures.SCOREBOARD_PLACEHOLDER_BLOCKED);
+        toggleOnMaterial = basehead(HeadTextures.SCOREBOARD_TOGGLE_ON);
         toggleOnName = "&aСкорборд включён";
         toggleOnLore = List.of("", "&7Скорборд отображается на экране.", "&cЛКМ &7— выключить");
-        toggleOffMaterial = "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZmM1MzQ1MjkwZDdlNDRkZWEzYTg5MGQ0ZDAxNDBmYzEwYTUyYTkwOTc2NzQzOGYwZjViNWQyODc3Y2JhNDg0YyJ9fX0=";
+        toggleOffMaterial = basehead(HeadTextures.SCOREBOARD_TOGGLE_OFF);
         toggleOffName = "&7Скорборд выключен";
         toggleOffLore = List.of("", "&7Скорборд скрыт с экрана.", "&aЛКМ &7— включить");
-        toggleEmptyMaterial = "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjNjMDA1NmI3YjI4MWZlMmQ0ZmRkNjc1NzdiMDI2ZWE3NDIyNmYzNjQ5YTFkNTBkYjI3NDI1YmNmYjRiMGE5YyJ9fX0=";
+        toggleEmptyMaterial = basehead(HeadTextures.SCOREBOARD_TOGGLE_EMPTY);
         toggleEmptyName = "&7Скорборд";
         toggleEmptyLore = List.of("", "&7Нет ни одного включённого плейсхолдера.", "&7Выберите плейсхолдеры ниже &8(СКМ)");
+    }
+
+    /** {@code basehead-<base64>} — формат, который {@code GuiItemUtil}/{@code ScoreboardGUI} распознают как голову с кастомной текстурой. */
+    private static String basehead(String base64Texture) {
+        return "basehead-" + base64Texture;
     }
 
     private static String get(ConfigurationSection s, String key, String def) {
