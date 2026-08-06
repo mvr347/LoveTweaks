@@ -1,5 +1,6 @@
 package me.lovelace.loveTweaks;
 
+import me.lovelace.loveTweaks.commands.LoveTweaksAdminCommand;
 import me.lovelace.loveTweaks.herald.HeraldManager;
 import me.lovelace.loveTweaks.integration.ChatFilterIntegration;
 import me.lovelace.loveTweaks.integration.CitizensIntegration;
@@ -23,13 +24,10 @@ import me.lovelace.loveTweaks.scoreboard.ScoreboardDataManager;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardDisplayManager;
 import org.bukkit.GameMode;
 import org.bukkit.NamespacedKey;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 
@@ -104,6 +102,11 @@ public final class LoveTweaks extends JavaPlugin {
         ScoreboardListener scoreboardListener = new ScoreboardListener(this, scoreboardDataManager, scoreboardDisplayManager);
         getServer().getPluginManager().registerEvents(scoreboardListener, this);
         getCommand("scoreboard").setExecutor(scoreboardListener);
+
+        // Единая административная команда: /lovetweaksadmin (алиас /lovetweaks — см. plugin.yml)
+        LoveTweaksAdminCommand adminCommand = new LoveTweaksAdminCommand(this);
+        getCommand("lovetweaksadmin").setExecutor(adminCommand);
+        getCommand("lovetweaksadmin").setTabCompleter(adminCommand);
 
         // Hunger exhaustion task
         if (loveTweaksConfig.getExtraExhaustionPerSecond() > 0) {
@@ -180,130 +183,18 @@ public final class LoveTweaks extends JavaPlugin {
         getLogger().info("LoveTweaks disabled.");
     }
 
-    @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
-                             @NotNull String label, @NotNull String[] args) {
-        if (!command.getName().equalsIgnoreCase("lovetweaks")) return false;
-
-        if (args.length == 0) {
-            sender.sendMessage(msg("usage-main"));
-            return true;
-        }
-
-        return switch (args[0].toLowerCase()) {
-            case "reload" -> {
-                loveTweaksConfig.loadConfig();
-                scoreboardDataManager.reload();
-                scoreboardDisplayManager.refreshPAPI();
-                heraldManager.resize(loveTweaksConfig.getHeraldSlots());
-                startScoreboardTask();
-                startHeraldBroadcastTask();
-                sender.sendMessage(msg("reload-done"));
-                yield true;
-            }
-            case "herald" -> handleHeraldCommand(sender, args);
-            case "givescroll" -> {
-                if (!sender.hasPermission("lovetweaks.admin")) {
-                    sender.sendMessage(msg("no-permission"));
-                    yield true;
-                }
-                if (args.length < 2) {
-                    sender.sendMessage(msg("usage-givescroll"));
-                    yield true;
-                }
-                Player target = getServer().getPlayerExact(args[1]);
-                if (target == null) {
-                    sender.sendMessage(msg("player-not-found", "<player>", args[1]));
-                    yield true;
-                }
-                target.getInventory().addItem(TeleportScroll.create());
-                sender.sendMessage(msg("scroll-given-sender", "<player>", target.getName()));
-                target.sendMessage(msg("scroll-given-target"));
-                yield true;
-            }
-            case "givecoordscroll" -> {
-                if (!sender.hasPermission("lovetweaks.admin")) {
-                    sender.sendMessage(msg("no-permission"));
-                    yield true;
-                }
-                if (args.length < 3) {
-                    sender.sendMessage(msg("usage-givecoordscroll"));
-                    yield true;
-                }
-                Player target = getServer().getPlayerExact(args[1]);
-                if (target == null) {
-                    sender.sendMessage(msg("player-not-found", "<player>", args[1]));
-                    yield true;
-                }
-                String scrollId = args[2];
-                var item = CoordinateTeleportScroll.create(scrollId);
-                if (item == null) {
-                    sender.sendMessage(msg("coord-scroll-not-found", "<id>", scrollId));
-                    yield true;
-                }
-                target.getInventory().addItem(item);
-                sender.sendMessage(msg("scroll-given-sender", "<player>", target.getName()));
-                target.sendMessage(msg("scroll-given-target"));
-                yield true;
-            }
-            default -> {
-                sender.sendMessage(msg("usage-main"));
-                yield false;
-            }
-        };
-    }
-
-    private boolean handleHeraldCommand(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("lovetweaks.admin")) {
-            sender.sendMessage(msg("no-permission"));
-            return true;
-        }
-        if (args.length < 2) {
-            sender.sendMessage(msg("usage-herald"));
-            return true;
-        }
-        return switch (args[1].toLowerCase()) {
-            case "bind" -> {
-                if (!(sender instanceof Player player)) {
-                    sender.sendMessage(msg("players-only"));
-                    yield true;
-                }
-                if (!citizensIntegration.isAvailable()) {
-                    sender.sendMessage(msg("citizens-missing"));
-                    yield true;
-                }
-                CitizensIntegration.NpcRef npc = citizensIntegration.bindTarget(player, 6.0);
-                if (npc == null) {
-                    sender.sendMessage(msg("npc-not-selected"));
-                    yield true;
-                }
-                loveTweaksConfig.setHeraldNpc(npc.id(), npc.name());
-                sender.sendMessage(msg("herald-npc-bound", "<npc>", npc.name()));
-                yield true;
-            }
-            case "unbind" -> {
-                loveTweaksConfig.setHeraldNpc(-1, "");
-                sender.sendMessage(msg("herald-npc-unbound"));
-                yield true;
-            }
-            case "clear" -> {
-                heraldManager.clear();
-                sender.sendMessage(msg("herald-cleared"));
-                yield true;
-            }
-            default -> {
-                sender.sendMessage(msg("usage-herald"));
-                yield true;
-            }
-        };
-    }
-
-    private String msg(String key) {
-        return loveTweaksConfig.message(key).replace('&', '§');
-    }
-
-    private String msg(String key, String placeholder, String value) {
-        return loveTweaksConfig.message(key).replace(placeholder, value).replace('&', '§');
+    /**
+     * Полная перезагрузка плагина: конфиг, состояние скорборда, PAPI-плейсхолдеры скорборда,
+     * число слотов Глашатая и оба повторяющихся таска. Используется командой
+     * {@code /lovetweaksadmin reload} — см. {@link me.lovelace.loveTweaks.commands.LoveTweaksAdminCommand}.
+     */
+    public void reloadAll() {
+        loveTweaksConfig.loadConfig();
+        scoreboardDataManager.reload();
+        scoreboardDisplayManager.refreshPAPI();
+        heraldManager.resize(loveTweaksConfig.getHeraldSlots());
+        startScoreboardTask();
+        startHeraldBroadcastTask();
     }
 
     public static LoveTweaks getInstance() { return instance; }

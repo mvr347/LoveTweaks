@@ -10,11 +10,13 @@ softdepend:
   - LoveChatFilter
 
 commands:
-  lovetweaks:
+  lovetweaksadmin:
     description: Команды администратора LoveTweaks
-    usage: /lovetweaks <reload|givescroll|givecoordscroll|herald bind/unbind/clear>
+    aliases: [lovetweaks]
+    usage: /lovetweaksadmin <reload|givescroll|givecoordscroll|herald bind/unbind/clear>
     permission: lovetweaks.admin
     permission-message: У вас нет прав для этой команды.
   scoreboard:
     description: Открыть настройки скорборда
+    aliases: [sb, скорборд]
     usage: /scoreboard

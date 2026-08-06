@@ -31,7 +31,7 @@ public final class CoordinateTeleportScrollConfig {
     private List<String> allowedWorlds = List.of();
 
     private final Map<String, String> messages = new HashMap<>();
-    // LinkedHashMap — сохраняем порядок объявления из config.yml (пригодится для /lovetweaks givecoordscroll без аргумента и т.п.)
+    // LinkedHashMap — сохраняем порядок объявления из config.yml (пригодится для /lovetweaksadmin givecoordscroll без аргумента и т.п.)
     private final Map<String, CoordinateScrollDefinition> scrolls = new LinkedHashMap<>();
 
     public void load(ConfigurationSection section, Logger logger) {

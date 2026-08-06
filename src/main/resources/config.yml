@@ -1,12 +1,17 @@
 # ─── Общие сообщения ──────────────────────────────────────────────────────────
-# Тексты команд /lovetweaks и /scoreboard, не привязанные к конкретной функции.
+# Тексты команд /lovetweaksadmin (алиас /lovetweaks) и /scoreboard, не привязанные к конкретной функции.
 messages:
   no-permission: '&cНедостаточно прав.'
   players-only: '&cЭта команда доступна только игрокам.'
-  usage-main: '&eИспользование: &f/lovetweaks <reload|givescroll|givecoordscroll|herald>'
-  usage-givescroll: '&eИспользование: &f/lovetweaks givescroll <игрок>'
-  usage-givecoordscroll: '&eИспользование: &f/lovetweaks givecoordscroll <игрок> <id свитка>'
-  usage-herald: '&eИспользование: &f/lovetweaks herald <bind|unbind|clear>'
+  help-header: '&8========== &bLoveTweaks Admin &8=========='
+  help-reload: '&b/lovetweaksadmin reload &7— Перезагрузить конфигурацию'
+  help-givescroll: '&b/lovetweaksadmin givescroll <игрок> &7— Выдать свиток телепортации к игроку'
+  help-givecoordscroll: '&b/lovetweaksadmin givecoordscroll <игрок> <id> &7— Выдать свиток телепортации к точке'
+  help-herald: '&b/lovetweaksadmin herald <bind|unbind|clear> &7— Управление Королевским Глашатаем'
+  help-footer: '&8========================================='
+  usage-givescroll: '&eИспользование: &f/lovetweaksadmin givescroll <игрок>'
+  usage-givecoordscroll: '&eИспользование: &f/lovetweaksadmin givecoordscroll <игрок> <id свитка>'
+  usage-herald: '&eИспользование: &f/lovetweaksadmin herald <bind|unbind|clear>'
   reload-done: '&aLoveTweaks конфиг перезагружен!'
   player-not-found: '&cИгрок &e<player>&c не найден или не в сети.'
   scroll-given-sender: '&aСвиток телепортации выдан игроку &e<player>&a.'
@@ -51,7 +56,7 @@ milk:
 # объявление не публикуется, а деньги не возвращаются.
 herald:
   enabled: true
-  # ID NPC Citizens, привязывается командой /lovetweaks herald bind (нужно смотреть на NPC)
+  # ID NPC Citizens, привязывается командой /lovetweaksadmin herald bind (нужно смотреть на NPC)
   npc-id: -1
   npc-name: ''
   # Сколько объявлений может быть активно одновременно.
@@ -190,7 +195,7 @@ teleport-scroll:
 # В отличие от обычного свитка выше (телепорт к игроку), этот ведёт к заранее заданной
 # в конфиге точке. ПКМ → отсчёт cast-time-seconds (отменяется движением/невидимостью/PvP,
 # как и у обычного свитка) → телепортация. Выдаётся командой:
-#   /lovetweaks givecoordscroll <игрок> <id>   (id — ключ из scrolls ниже)
+#   /lovetweaksadmin givecoordscroll <игрок> <id>   (id — ключ из scrolls ниже)
 #
 # Лимиты безопасности ниже — общие для ВСЕХ точек ниже в scrolls и защищают от
 # телепортации в шахту/пещеру, в небо или за пределы обжитой части карты, даже если
