@@ -28,6 +28,8 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
+
 public final class LoveTweaks extends JavaPlugin {
 
     private static LoveTweaks instance;
@@ -53,6 +55,8 @@ public final class LoveTweaks extends JavaPlugin {
         getLogger().info("LoveTweaks config loaded.");
 
         enderChestKey = new NamespacedKey(this, "ender_chest_inventory");
+
+        warnAboutLegacyTeleportScrollFolder();
 
         TeleportScroll.init(this);
         teleportScrollManager = new TeleportScrollManager(this);
@@ -111,6 +115,29 @@ public final class LoveTweaks extends JavaPlugin {
 
         // Herald broadcast task
         startHeraldBroadcastTask();
+    }
+
+    /**
+     * Все данные и конфиг свитков телепортации всегда жили и живут внутри
+     * {@code plugins/LoveTweaks/} — в {@code config.yml}, секции {@code teleport-scroll}.
+     * Отдельная папка {@code plugins/LoveTeleportScroll/} никогда не создавалась кодом этого
+     * плагина. Если она всё же существует на диске — это след старой отдельной установки,
+     * предшествовавшей переносу фичи в LoveTweaks; сам плагин её не трогает (ничего не удаляет
+     * и не читает оттуда), только предупреждает в консоли, чтобы админ мог убрать её вручную и
+     * не путаться, откуда берётся конфиг.
+     */
+    private void warnAboutLegacyTeleportScrollFolder() {
+        File pluginsFolder = getDataFolder().getParentFile();
+        if (pluginsFolder == null) {
+            return;
+        }
+        File legacyFolder = new File(pluginsFolder, "LoveTeleportScroll");
+        if (legacyFolder.isDirectory()) {
+            getLogger().warning("Найдена папка " + legacyFolder.getPath() + " — она не используется LoveTweaks. "
+                    + "Весь конфиг свитков телепортации хранится в " + getDataFolder().getPath()
+                    + "/config.yml (секция teleport-scroll). "
+                    + "Эту папку можно безопасно удалить после сверки её содержимого.");
+        }
     }
 
     private void startScoreboardTask() {
