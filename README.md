@@ -18,7 +18,8 @@ LoveTweaks предоставляет набор специализирован�
 |---|---|---|
 | `/lovetweaks` | Администраторские команды | `lovetweaks.admin` |
 | `/lovetweaks reload` | Перезагрузить конфигурацию | `lovetweaks.admin` |
-| `/lovetweaks givescroll` | Выдать телепортационный свиток | `lovetweaks.admin` |
+| `/lovetweaks givescroll` | Выдать телепортационный свиток (к игроку) | `lovetweaks.admin` |
+| `/lovetweaks givecoordscroll <игрок> <id>` | Выдать свиток телепортации к координатам (id из `coord-teleport-scroll.scrolls`) | `lovetweaks.admin` |
 | `/lovetweaks herald bind` | Привязать NPC Глашатая (смотреть на NPC) | `lovetweaks.admin` |
 | `/lovetweaks herald unbind` | Отвязать NPC Глашатая | `lovetweaks.admin` |
 | `/lovetweaks herald clear` | Очистить все объявления | `lovetweaks.admin` |
@@ -70,6 +71,36 @@ item-drop-loss:
   lose-chance: 0.22      # вероятность потери обычного предмета
   break-chance: 0.33     # вероятность поломки предмета с durability
 ```
+
+### Свиток телепортации к координатам
+
+Отдельно от обычного свитка (телепорт к игроку) — свиток на заранее заданную в конфиге точку.
+ПКМ запускает отсчёт (отменяется движением/невидимостью/PvP), затем телепортирует. Каждая
+точка настраивается под своим `id` в `coord-teleport-scroll.scrolls`, выдаётся через
+`/lovetweaks givecoordscroll <игрок> <id>`.
+
+```yaml
+coord-teleport-scroll:
+  enabled: true
+  cast-time-seconds: 5      # отсчёт перед телепортацией
+  cooldown-seconds: 30      # кулдаун повторного использования одного id
+  limits:
+    min-y: -32                    # ниже — телепортация запрещена (шахты/пещеры)
+    max-y: 320                    # выше — телепортация запрещена
+    respect-world-border: true    # точка обязана быть внутри world border
+    max-distance-from-spawn: 0    # 0 = не ограничивать; иначе макс. блоков от спавна мира
+    allowed-worlds: []            # пусто = все миры разрешены
+  scrolls:
+    spawn:
+      permission: ''       # пусто = доступно всем
+      world: world
+      x: 0.5
+      y: 100.0
+      z: 0.5
+```
+
+Лимиты `limits` общие для всех точек в `scrolls` и проверяются дважды: перед стартом
+отсчёта и ещё раз прямо перед телепортацией (на случай live-reload конфига).
 
 ### Королевский Глашатай
 

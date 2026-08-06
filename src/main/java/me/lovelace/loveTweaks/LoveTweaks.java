@@ -4,7 +4,9 @@ import me.lovelace.loveTweaks.herald.HeraldManager;
 import me.lovelace.loveTweaks.integration.ChatFilterIntegration;
 import me.lovelace.loveTweaks.integration.CitizensIntegration;
 import me.lovelace.loveTweaks.placeholder.PlaytimeExpansion;
+import me.lovelace.loveTweaks.items.CoordinateTeleportScroll;
 import me.lovelace.loveTweaks.items.TeleportScroll;
+import me.lovelace.loveTweaks.listeners.CoordinateTeleportScrollListener;
 import me.lovelace.loveTweaks.listeners.EnchantmentListener;
 import me.lovelace.loveTweaks.listeners.EnderChestListener;
 import me.lovelace.loveTweaks.listeners.FirstJoinItemsListener;
@@ -14,6 +16,7 @@ import me.lovelace.loveTweaks.listeners.ItemDropLossListener;
 import me.lovelace.loveTweaks.listeners.MilkListener;
 import me.lovelace.loveTweaks.listeners.ScoreboardListener;
 import me.lovelace.loveTweaks.listeners.TeleportScrollListener;
+import me.lovelace.loveTweaks.managers.CoordinateTeleportScrollManager;
 import me.lovelace.loveTweaks.managers.TeleportScrollManager;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardConfig;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardDataManager;
@@ -37,6 +40,7 @@ public final class LoveTweaks extends JavaPlugin {
     private LoveTweaksConfig loveTweaksConfig;
     private NamespacedKey enderChestKey;
     private TeleportScrollManager teleportScrollManager;
+    private CoordinateTeleportScrollManager coordTeleportScrollManager;
 
     private ScoreboardDataManager scoreboardDataManager;
     private ScoreboardDisplayManager scoreboardDisplayManager;
@@ -61,6 +65,10 @@ public final class LoveTweaks extends JavaPlugin {
         TeleportScroll.init(this);
         teleportScrollManager = new TeleportScrollManager(this);
         getLogger().info("TeleportScroll manager initialized.");
+
+        CoordinateTeleportScroll.init(this);
+        coordTeleportScrollManager = new CoordinateTeleportScrollManager(this);
+        getLogger().info("CoordinateTeleportScroll manager initialized.");
 
         // Scoreboard
         scoreboardDataManager = new ScoreboardDataManager(this);
@@ -88,6 +96,7 @@ public final class LoveTweaks extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new MilkListener(this), this);
         getServer().getPluginManager().registerEvents(new ItemDropLossListener(this), this);
         getServer().getPluginManager().registerEvents(new TeleportScrollListener(this, teleportScrollManager), this);
+        getServer().getPluginManager().registerEvents(new CoordinateTeleportScrollListener(this, coordTeleportScrollManager), this);
         getServer().getPluginManager().registerEvents(new FirstJoinItemsListener(this), this);
         getServer().getPluginManager().registerEvents(
                 new HeraldListener(this, heraldManager, citizensIntegration), this);
@@ -118,13 +127,13 @@ public final class LoveTweaks extends JavaPlugin {
     }
 
     /**
-     * Все данные и конфиг свитков телепортации всегда жили и живут внутри
-     * {@code plugins/LoveTweaks/} — в {@code config.yml}, секции {@code teleport-scroll}.
-     * Отдельная папка {@code plugins/LoveTeleportScroll/} никогда не создавалась кодом этого
-     * плагина. Если она всё же существует на диске — это след старой отдельной установки,
-     * предшествовавшей переносу фичи в LoveTweaks; сам плагин её не трогает (ничего не удаляет
-     * и не читает оттуда), только предупреждает в консоли, чтобы админ мог убрать её вручную и
-     * не путаться, откуда берётся конфиг.
+     * Все данные и конфиг свитков телепортации (обычного и координатного) всегда жили и живут
+     * внутри {@code plugins/LoveTweaks/} — в {@code config.yml}, секции {@code teleport-scroll}
+     * и {@code coord-teleport-scroll}. Отдельная папка {@code plugins/LoveTeleportScroll/}
+     * никогда не создавалась кодом этого плагина. Если она всё же существует на диске — это
+     * след старой отдельной установки, предшествовавшей переносу фичи в LoveTweaks; сам плагин
+     * её не трогает (ничего не удаляет и не читает оттуда), только предупреждает в консоли,
+     * чтобы админ мог убрать её вручную и не путаться, откуда берётся конфиг.
      */
     private void warnAboutLegacyTeleportScrollFolder() {
         File pluginsFolder = getDataFolder().getParentFile();
@@ -135,7 +144,7 @@ public final class LoveTweaks extends JavaPlugin {
         if (legacyFolder.isDirectory()) {
             getLogger().warning("Найдена папка " + legacyFolder.getPath() + " — она не используется LoveTweaks. "
                     + "Весь конфиг свитков телепортации хранится в " + getDataFolder().getPath()
-                    + "/config.yml (секция teleport-scroll). "
+                    + "/config.yml (секции teleport-scroll / coord-teleport-scroll). "
                     + "Эту папку можно безопасно удалить после сверки её содержимого.");
         }
     }
@@ -208,6 +217,31 @@ public final class LoveTweaks extends JavaPlugin {
                     yield true;
                 }
                 target.getInventory().addItem(TeleportScroll.create());
+                sender.sendMessage(msg("scroll-given-sender", "<player>", target.getName()));
+                target.sendMessage(msg("scroll-given-target"));
+                yield true;
+            }
+            case "givecoordscroll" -> {
+                if (!sender.hasPermission("lovetweaks.admin")) {
+                    sender.sendMessage(msg("no-permission"));
+                    yield true;
+                }
+                if (args.length < 3) {
+                    sender.sendMessage(msg("usage-givecoordscroll"));
+                    yield true;
+                }
+                Player target = getServer().getPlayerExact(args[1]);
+                if (target == null) {
+                    sender.sendMessage(msg("player-not-found", "<player>", args[1]));
+                    yield true;
+                }
+                String scrollId = args[2];
+                var item = CoordinateTeleportScroll.create(scrollId);
+                if (item == null) {
+                    sender.sendMessage(msg("coord-scroll-not-found", "<id>", scrollId));
+                    yield true;
+                }
+                target.getInventory().addItem(item);
                 sender.sendMessage(msg("scroll-given-sender", "<player>", target.getName()));
                 target.sendMessage(msg("scroll-given-target"));
                 yield true;

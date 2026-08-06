@@ -1,16 +1,15 @@
 package me.lovelace.loveTweaks.managers;
 
 import me.lovelace.loveTweaks.LoveTweaks;
+import me.lovelace.loveTweaks.utils.CombatUtil;
 import me.lovelace.loveTweaks.utils.GuiItemUtil;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
-import org.bukkit.metadata.MetadataValue;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -330,36 +329,9 @@ public class TeleportScrollManager {
         return null;
     }
 
-    /**
-     * Находится ли игрок в бою. Если LoveCore установлен, спрашиваем его {@code CombatState} —
-     * он знает и про метку стороннего боевого плагина, и про войну/осаду, чего одна метка не
-     * знает. Ядра нет или служба ещё не поднялась — падаем на прежнюю проверку метки
-     * {@code in_combat}, которой DeluxeCombat и большинство combat-плагинов помечают игроков.
-     */
+    /** Находится ли игрок в бою — общая проверка, см. {@link CombatUtil#isInCombat(Player)}. */
     private boolean isInCombat(Player player) {
-        if (Bukkit.getPluginManager().getPlugin("LoveCore") != null) {
-            try {
-                java.util.Optional<Boolean> fromCore = dev.lovelace.lovecore.api.LoveCore
-                        .service(dev.lovelace.lovecore.api.combat.CombatState.class)
-                        .map(state -> state.inCombat(player.getUniqueId()));
-                if (fromCore.isPresent()) {
-                    return fromCore.get();
-                }
-            } catch (Throwable ignored) {
-                // Ядро есть, но служба ещё не поднялась или контракт изменился — падаем на метку.
-            }
-        }
-        return hasCombatMetadata(player);
-    }
-
-    private boolean hasCombatMetadata(Player player) {
-        List<MetadataValue> values = player.getMetadata("in_combat");
-        for (MetadataValue value : values) {
-            if (value.asBoolean()) {
-                return true;
-            }
-        }
-        return false;
+        return CombatUtil.isInCombat(player);
     }
 
     /**

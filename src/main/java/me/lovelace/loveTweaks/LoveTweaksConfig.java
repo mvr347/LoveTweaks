@@ -2,6 +2,7 @@ package me.lovelace.loveTweaks;
 
 import me.lovelace.loveTweaks.herald.HeraldGuiConfig;
 import me.lovelace.loveTweaks.items.FirstJoinItem;
+import me.lovelace.loveTweaks.managers.CoordinateTeleportScrollConfig;
 import me.lovelace.loveTweaks.managers.TeleportScrollConfig;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardConfig;
 import org.bukkit.Material;
@@ -46,8 +47,11 @@ public class LoveTweaksConfig {
     private String itemDropBreakMessage;
     private String itemDropLoseMessage;
 
-    // Свиток телепортации
+    // Свиток телепортации (к игроку)
     private final TeleportScrollConfig teleportScrollConfig = new TeleportScrollConfig();
+
+    // Свиток телепортации к координатам
+    private final CoordinateTeleportScrollConfig coordTeleportScrollConfig = new CoordinateTeleportScrollConfig();
 
     // Королевский Глашатай
     private boolean heraldEnabled;
@@ -98,6 +102,7 @@ public class LoveTweaksConfig {
         itemDropLoseMessage = config.getString("item-drop-loss.lose-message", "&7Ваш предмет потерялся при падении!");
 
         teleportScrollConfig.load(config.getConfigurationSection("teleport-scroll"));
+        coordTeleportScrollConfig.load(config.getConfigurationSection("coord-teleport-scroll"), plugin.getLogger());
 
         heraldEnabled = config.getBoolean("herald.enabled", false);
         heraldNpcId = config.getInt("herald.npc-id", -1);
@@ -172,6 +177,7 @@ public class LoveTweaksConfig {
     public String getItemDropBreakMessage() { return itemDropBreakMessage; }
     public String getItemDropLoseMessage() { return itemDropLoseMessage; }
     public TeleportScrollConfig getTeleportScrollConfig() { return teleportScrollConfig; }
+    public CoordinateTeleportScrollConfig getCoordTeleportScrollConfig() { return coordTeleportScrollConfig; }
 
     public boolean isHeraldEnabled() { return heraldEnabled; }
     public int getHeraldNpcId() { return heraldNpcId; }
