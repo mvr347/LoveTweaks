@@ -25,6 +25,7 @@ import me.lovelace.loveTweaks.scoreboard.ScoreboardDisplayManager;
 import org.bukkit.GameMode;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
+import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
@@ -178,6 +179,7 @@ public final class LoveTweaks extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        HandlerList.unregisterAll(this);
         if (scoreboardDisplayManager != null) scoreboardDisplayManager.removeAll();
         if (scoreboardDataManager != null) scoreboardDataManager.close();
         getLogger().info("LoveTweaks disabled.");
