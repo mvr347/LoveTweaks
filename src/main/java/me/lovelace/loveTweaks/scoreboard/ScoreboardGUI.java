@@ -30,6 +30,9 @@ public final class ScoreboardGUI {
     public static final int SLOT_CLOSE = 53;
     public static final int GUI_SIZE = 54;
 
+    /** Side-wall slots of the 3 work-zone rows (gui-gen-5 RULE 6) — left empty, never filler. */
+    private static final int[] WORK_ZONE_WALLS = {18, 26, 27, 35, 36, 44};
+
     private ScoreboardGUI() {}
 
     public static void open(Player player, PlayerScoreboardState state, ScoreboardConfig config) {
@@ -64,9 +67,13 @@ public final class ScoreboardGUI {
         reserved.add(SLOT_BACK);
         reserved.add(SLOT_CLOSE);
 
+        Set<Integer> emptyWalls = new HashSet<>();
+        for (int slot : WORK_ZONE_WALLS) emptyWalls.add(slot);
+
         ItemStack filler = buildItem(config.getFillerMaterial(), config.getFillerName(), List.of());
         for (int slot = 0; slot < inv.getSize(); slot++) {
-            if (!reserved.contains(slot)) inv.setItem(slot, filler);
+            if (reserved.contains(slot)) continue;
+            inv.setItem(slot, emptyWalls.contains(slot) ? null : filler);
         }
 
         boolean maxed = state.getActivePlaceholders().size() >= config.getMaxPlaceholders();

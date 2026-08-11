@@ -8,8 +8,12 @@ import java.util.*;
 
 public class ScoreboardConfig {
 
-    /** First usable (non-border) column slot of each placeholder row in the /scoreboard GUI. */
-    private static final int[] PLACEHOLDER_ROW_START = {10, 19, 28, 37};
+    /**
+     * First usable (non-border) column slot of each placeholder row in the /scoreboard GUI.
+     * Slots 9-17 are the gui-gen-5 Row1 separator (always glass, part of the Header) and are
+     * never used for content — the work zone starts at row 18-26.
+     */
+    private static final int[] PLACEHOLDER_ROW_START = {19, 28, 37};
     private static final int PLACEHOLDER_ROW_WIDTH = 7;
     public static final int MAX_PLACEHOLDER_SLOTS = PLACEHOLDER_ROW_START.length * PLACEHOLDER_ROW_WIDTH;
 
