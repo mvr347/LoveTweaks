@@ -8,8 +8,13 @@ import me.lovelace.loveTweaks.scoreboard.ScoreboardConfig;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -83,6 +88,8 @@ public class LoveTweaksConfig {
         plugin.reloadConfig();
         config = plugin.getConfig();
 
+        migrateCoordTeleportScrollSection();
+
         loadMessages(config);
 
         enderChestsAsNormalChests = config.getBoolean("ender-chests.as-normal-chests", false);
@@ -119,6 +126,39 @@ public class LoveTweaksConfig {
         loadFirstJoinItems(config);
 
         scoreboardConfig.load(config);
+    }
+
+    /**
+     * {@code saveDefaultConfig()} only writes {@code config.yml} when the file doesn't exist yet.
+     * On a server where LoveTweaks was already installed before the coordinate-teleport-scroll
+     * feature was added, the live config.yml on disk simply has no {@code coord-teleport-scroll}
+     * section (or no {@code .scrolls} sub-key) — so {@link CoordinateTeleportScrollConfig#getScroll}
+     * always returns {@code null} and {@code /lovetweaksadmin givecoordscroll} fails as
+     * "not found" for every id, even valid ones. Merge just this section's bundled defaults
+     * into the live config once, without touching anything else the admin has customized.
+     */
+    private void migrateCoordTeleportScrollSection() {
+        boolean hasSection = config.isConfigurationSection("coord-teleport-scroll");
+        boolean hasScrolls = hasSection && config.isConfigurationSection("coord-teleport-scroll.scrolls");
+        if (hasScrolls) return;
+
+        try (InputStream in = plugin.getResource("config.yml")) {
+            if (in == null) return;
+            YamlConfiguration defaults = YamlConfiguration.loadConfiguration(new InputStreamReader(in, StandardCharsets.UTF_8));
+            ConfigurationSection defaultSection = defaults.getConfigurationSection("coord-teleport-scroll");
+            if (defaultSection == null) return;
+
+            if (!hasSection) {
+                config.set("coord-teleport-scroll", defaultSection);
+            } else {
+                config.set("coord-teleport-scroll.scrolls", defaultSection.getConfigurationSection("scrolls"));
+            }
+            plugin.saveConfig();
+            plugin.getLogger().warning("[coord-teleport-scroll] Секция отсутствовала в config.yml (плагин обновлён со старой версии) "
+                    + "— добавлены значения по умолчанию, включая точку 'spawn'. Проверьте/настройте её под свой сервер.");
+        } catch (IOException e) {
+            plugin.getLogger().warning("Не удалось смигрировать секцию coord-teleport-scroll: " + e.getMessage());
+        }
     }
 
     private void loadMessages(FileConfiguration config) {
