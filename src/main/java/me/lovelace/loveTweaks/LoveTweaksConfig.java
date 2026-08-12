@@ -49,6 +49,7 @@ public class LoveTweaksConfig {
     private boolean itemDropLossEnabled;
     private double itemDropLossChance;
     private double itemDropBreakChance;
+    private double itemDropTerriblePolitenessMultiplier;
     private String itemDropBreakMessage;
     private String itemDropLoseMessage;
 
@@ -107,6 +108,7 @@ public class LoveTweaksConfig {
         itemDropBreakChance = config.getDouble("item-drop-loss.break-chance", 0.33);
         itemDropBreakMessage = config.getString("item-drop-loss.break-message", "&cВаш предмет сломался при падении!");
         itemDropLoseMessage = config.getString("item-drop-loss.lose-message", "&7Ваш предмет потерялся при падении!");
+        itemDropTerriblePolitenessMultiplier = config.getDouble("item-drop-loss.terrible-politeness-multiplier", 1.6);
 
         teleportScrollConfig.load(config.getConfigurationSection("teleport-scroll"));
         coordTeleportScrollConfig.load(config.getConfigurationSection("coord-teleport-scroll"), plugin.getLogger());
@@ -214,6 +216,7 @@ public class LoveTweaksConfig {
     public boolean isItemDropLossEnabled() { return itemDropLossEnabled; }
     public double getItemDropLossChance() { return itemDropLossChance; }
     public double getItemDropBreakChance() { return itemDropBreakChance; }
+    public double getItemDropTerriblePolitenessMultiplier() { return itemDropTerriblePolitenessMultiplier; }
     public String getItemDropBreakMessage() { return itemDropBreakMessage; }
     public String getItemDropLoseMessage() { return itemDropLoseMessage; }
     public TeleportScrollConfig getTeleportScrollConfig() { return teleportScrollConfig; }
