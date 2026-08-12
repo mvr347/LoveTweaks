@@ -30,7 +30,6 @@ public class TeleportScrollManager {
     private static final long AFK_THRESHOLD_MS = 15_000L;
 
     private final LoveTweaks plugin;
-    private final me.lovelace.loveTweaks.integration.LoveNotifyBridge loveNotifyBridge;
 
     // Активные сессии: UUID инициатора → сессия.
     // ConcurrentHashMap обязателен: onPlayerChat читает isWaitingForInput() из асинхронного
@@ -43,7 +42,6 @@ public class TeleportScrollManager {
 
     public TeleportScrollManager(LoveTweaks plugin) {
         this.plugin = plugin;
-        this.loveNotifyBridge = new me.lovelace.loveTweaks.integration.LoveNotifyBridge(plugin);
     }
 
     /** Обновляет время последнего движения. Вызывается из listener'а при PlayerMoveEvent. */
@@ -68,9 +66,16 @@ public class TeleportScrollManager {
         return GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getTeleportScrollConfig().message(key).replace(placeholder, value));
     }
 
-    /** Заменяет прямые вызовы player.sendActionBar(...) — уважает переключатель LoveNotify. */
+    /**
+     * Заменяет прямые вызовы player.sendActionBar(...) — уважает переключатель LoveNotify.
+     * Не кэшируем Optional<LoveNotify> — сосед может зарегистрировать реализацию позже,
+     * см. LoveCore.service(...) javadoc в LoveCore.
+     */
     private void sendActionBar(Player player, Component component) {
-        if (loveNotifyBridge.isChannelEnabled(player.getUniqueId(), "ACTION_BAR")) {
+        boolean allowed = dev.lovelace.lovecore.api.LoveCore.service(dev.lovelace.lovecore.api.notify.LoveNotify.class)
+                .map(n -> n.isChannelEnabled(player.getUniqueId(), dev.lovelace.lovecore.api.notify.LoveNotify.Channel.ACTION_BAR))
+                .orElse(true);
+        if (allowed) {
             player.sendActionBar(component);
         }
     }
