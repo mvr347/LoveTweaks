@@ -36,13 +36,14 @@ public class ItemDropLossListener implements Listener {
         Item itemEntity = event.getItemDrop();
         ItemStack stack = itemEntity.getItemStack();
         Player player = event.getPlayer();
+        double multiplier = terriblePolitenessMultiplier(player);
 
         if (hasDurability(stack)) {
-            if (roll(plugin.getLoveTweaksConfig().getItemDropBreakChance())) {
+            if (roll(plugin.getLoveTweaksConfig().getItemDropBreakChance() * multiplier)) {
                 breakItem(player, itemEntity);
             }
         } else {
-            if (roll(plugin.getLoveTweaksConfig().getItemDropLossChance())) {
+            if (roll(plugin.getLoveTweaksConfig().getItemDropLossChance() * multiplier)) {
                 loseItem(player, itemEntity);
             }
         }
@@ -54,6 +55,17 @@ public class ItemDropLossListener implements Listener {
 
     private boolean roll(double chance) {
         return ThreadLocalRandom.current().nextDouble() < chance;
+    }
+
+    /**
+     * Множитель шанса потери/поломки для ступени вежливости "Ужасно" (0 из 0-6 у LoveBehavior).
+     * 1.0 (без изменений), если LoveBehavior не установлен или игрок не на этой ступени.
+     */
+    private double terriblePolitenessMultiplier(Player player) {
+        return dev.lovelace.lovecore.api.LoveCore.service(dev.lovelace.lovecore.api.social.BehaviorLevels.class)
+                .filter(levels -> levels.politenessLevel(player.getUniqueId()) == 0)
+                .map(levels -> plugin.getLoveTweaksConfig().getItemDropTerriblePolitenessMultiplier())
+                .orElse(1.0);
     }
 
     private void breakItem(Player player, Item itemEntity) {
