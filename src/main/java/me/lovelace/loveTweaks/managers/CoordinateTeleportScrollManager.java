@@ -31,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class CoordinateTeleportScrollManager {
 
     private final LoveTweaks plugin;
+    private final me.lovelace.loveTweaks.integration.LoveNotifyBridge loveNotifyBridge;
 
     // Активные отсчёты: UUID игрока → сессия.
     private final Map<UUID, CastSession> sessions = new ConcurrentHashMap<>();
@@ -39,6 +40,7 @@ public class CoordinateTeleportScrollManager {
 
     public CoordinateTeleportScrollManager(LoveTweaks plugin) {
         this.plugin = plugin;
+        this.loveNotifyBridge = new me.lovelace.loveTweaks.integration.LoveNotifyBridge(plugin);
     }
 
     private CoordinateTeleportScrollConfig cfg() {
@@ -51,6 +53,13 @@ public class CoordinateTeleportScrollManager {
 
     private Component msg(String key, String placeholder, String value) {
         return GuiItemUtil.colorize(cfg().message(key).replace(placeholder, value));
+    }
+
+    /** Заменяет прямые вызовы player.sendActionBar(...) — уважает переключатель LoveNotify. */
+    private void sendActionBar(Player player, Component component) {
+        if (loveNotifyBridge.isChannelEnabled(player.getUniqueId(), "ACTION_BAR")) {
+            player.sendActionBar(component);
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -75,24 +84,24 @@ public class CoordinateTeleportScrollManager {
         CoordinateScrollDefinition def = config.getScroll(scrollId);
         if (def == null) {
             // Свиток был выдан со старой версией конфига и его id больше не существует.
-            player.sendActionBar(msg("scroll-unknown"));
+            sendActionBar(player, msg("scroll-unknown"));
             return;
         }
 
         if (def.hasPermissionNode() && !player.hasPermission(def.permission())) {
-            player.sendActionBar(msg("no-permission"));
+            sendActionBar(player, msg("no-permission"));
             return;
         }
 
         long remainingCooldown = remainingCooldownSeconds(player.getUniqueId(), scrollId, config.getCooldownSeconds());
         if (remainingCooldown > 0) {
-            player.sendActionBar(msg("on-cooldown", "<seconds>", String.valueOf(remainingCooldown)));
+            sendActionBar(player, msg("on-cooldown", "<seconds>", String.valueOf(remainingCooldown)));
             return;
         }
 
         String failReason = validateDestination(def, config);
         if (failReason != null) {
-            player.sendActionBar(msg("destination-blocked"));
+            sendActionBar(player, msg("destination-blocked"));
             plugin.getLogger().warning("[coord-teleport-scroll] Точка '" + scrollId + "' не прошла проверку лимитов ("
                     + failReason + ") — телепортация для " + player.getName() + " отклонена.");
             return;
@@ -127,7 +136,7 @@ public class CoordinateTeleportScrollManager {
         if (reasonKey != null) {
             Player player = Bukkit.getPlayer(uuid);
             if (player != null) {
-                player.sendActionBar(GuiItemUtil.colorize(cfg().message("cancelled").replace("<reason>", cfg().message(reasonKey))));
+                sendActionBar(player, GuiItemUtil.colorize(cfg().message("cancelled").replace("<reason>", cfg().message(reasonKey))));
             }
         }
     }
@@ -167,7 +176,7 @@ public class CoordinateTeleportScrollManager {
             return;
         }
 
-        player.sendActionBar(msg("countdown", "<seconds>", String.valueOf(secondsLeft)));
+        sendActionBar(player, msg("countdown", "<seconds>", String.valueOf(secondsLeft)));
         scheduleCountdownStep(uuid, session, secondsLeft - 1);
     }
 
@@ -178,7 +187,7 @@ public class CoordinateTeleportScrollManager {
         CoordinateScrollDefinition def = config.getScroll(session.scrollId());
         if (def == null) {
             cancelSession(uuid, null);
-            player.sendActionBar(msg("scroll-unknown"));
+            sendActionBar(player, msg("scroll-unknown"));
             return;
         }
 
@@ -192,14 +201,14 @@ public class CoordinateTeleportScrollManager {
         String limitReason = validateDestination(def, config);
         if (limitReason != null) {
             cancelSession(uuid, null);
-            player.sendActionBar(msg("destination-blocked"));
+            sendActionBar(player, msg("destination-blocked"));
             return;
         }
 
         Location destination = toLocation(def);
         if (destination == null) {
             cancelSession(uuid, null);
-            player.sendActionBar(msg("destination-blocked"));
+            sendActionBar(player, msg("destination-blocked"));
             return;
         }
 
@@ -210,7 +219,7 @@ public class CoordinateTeleportScrollManager {
         removeScrollFromHand(player);
         markUsed(uuid, def.id());
 
-        player.sendActionBar(msg("success"));
+        sendActionBar(player, msg("success"));
     }
 
     /** Проверки, идентичные обычному свитку: движение / невидимость / бой — прерывают отсчёт. */
