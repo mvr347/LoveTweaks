@@ -31,7 +31,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class CoordinateTeleportScrollManager {
 
     private final LoveTweaks plugin;
-    private final me.lovelace.loveTweaks.integration.LoveNotifyBridge loveNotifyBridge;
 
     // Активные отсчёты: UUID игрока → сессия.
     private final Map<UUID, CastSession> sessions = new ConcurrentHashMap<>();
@@ -40,7 +39,6 @@ public class CoordinateTeleportScrollManager {
 
     public CoordinateTeleportScrollManager(LoveTweaks plugin) {
         this.plugin = plugin;
-        this.loveNotifyBridge = new me.lovelace.loveTweaks.integration.LoveNotifyBridge(plugin);
     }
 
     private CoordinateTeleportScrollConfig cfg() {
@@ -55,9 +53,16 @@ public class CoordinateTeleportScrollManager {
         return GuiItemUtil.colorize(cfg().message(key).replace(placeholder, value));
     }
 
-    /** Заменяет прямые вызовы player.sendActionBar(...) — уважает переключатель LoveNotify. */
+    /**
+     * Заменяет прямые вызовы player.sendActionBar(...) — уважает переключатель LoveNotify.
+     * Не кэшируем Optional<LoveNotify> — сосед может зарегистрировать реализацию позже,
+     * см. LoveCore.service(...) javadoc в LoveCore.
+     */
     private void sendActionBar(Player player, Component component) {
-        if (loveNotifyBridge.isChannelEnabled(player.getUniqueId(), "ACTION_BAR")) {
+        boolean allowed = dev.lovelace.lovecore.api.LoveCore.service(dev.lovelace.lovecore.api.notify.LoveNotify.class)
+                .map(n -> n.isChannelEnabled(player.getUniqueId(), dev.lovelace.lovecore.api.notify.LoveNotify.Channel.ACTION_BAR))
+                .orElse(true);
+        if (allowed) {
             player.sendActionBar(component);
         }
     }
