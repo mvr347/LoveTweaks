@@ -51,9 +51,26 @@ public class ScoreboardListener implements Listener, CommandExecutor {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+        if (!isAuthenticated(player)) return; // dodges LoveAuth's limbo - onAuthenticated shows it instead
         // Small delay to ensure world is loaded
         plugin.getServer().getScheduler().runTaskLater(plugin,
             () -> displayManager.updateScoreboard(player), 5L);
+    }
+
+    @EventHandler
+    public void onAuthenticated(dev.lovelace.lovecore.api.auth.PlayerAuthenticatedEvent event) {
+        displayManager.updateScoreboard(event.player());
+    }
+
+    /**
+     * Не кэшируем Optional<AuthOracle> — сосед может зарегистрировать реализацию позже,
+     * см. LoveCore.service(...) javadoc в LoveCore. Если LoveAuth не установлен, скорборд
+     * показывается сразу на join, как и раньше.
+     */
+    private boolean isAuthenticated(Player player) {
+        return dev.lovelace.lovecore.api.LoveCore.service(dev.lovelace.lovecore.api.auth.AuthOracle.class)
+                .map(oracle -> oracle.isAuthenticated(player.getUniqueId()))
+                .orElse(true);
     }
 
     @EventHandler

@@ -32,8 +32,17 @@ public class FirstJoinItemsListener implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        Player player = event.getPlayer();
+        if (isAuthenticated(event.getPlayer())) {
+            giveFirstJoinItemsIfEligible(event.getPlayer());
+        }
+    }
 
+    @EventHandler
+    public void onAuthenticated(dev.lovelace.lovecore.api.auth.PlayerAuthenticatedEvent event) {
+        giveFirstJoinItemsIfEligible(event.player());
+    }
+
+    private void giveFirstJoinItemsIfEligible(Player player) {
         // hasPlayedBefore() надёжно определяет самый первый вход — в отличие от собственного
         // флага, его не нужно отдельно хранить и он не может рассинхронизироваться.
         if (player.hasPlayedBefore()) {
@@ -46,6 +55,17 @@ public class FirstJoinItemsListener implements Listener {
         for (FirstJoinItem item : plugin.getLoveTweaksConfig().getFirstJoinItems()) {
             giveItem(player, item);
         }
+    }
+
+    /**
+     * Не кэшируем Optional<AuthOracle> — сосед может зарегистрировать реализацию позже,
+     * см. LoveCore.service(...) javadoc в LoveCore. Если LoveAuth не установлен, набор
+     * выдаётся сразу на join, как и раньше.
+     */
+    private boolean isAuthenticated(Player player) {
+        return dev.lovelace.lovecore.api.LoveCore.service(dev.lovelace.lovecore.api.auth.AuthOracle.class)
+                .map(oracle -> oracle.isAuthenticated(player.getUniqueId()))
+                .orElse(true);
     }
 
     private void giveItem(Player player, FirstJoinItem item) {
