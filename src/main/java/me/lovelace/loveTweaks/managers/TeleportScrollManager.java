@@ -30,6 +30,7 @@ public class TeleportScrollManager {
     private static final long AFK_THRESHOLD_MS = 15_000L;
 
     private final LoveTweaks plugin;
+    private final me.lovelace.loveTweaks.integration.LoveNotifyBridge loveNotifyBridge;
 
     // Активные сессии: UUID инициатора → сессия.
     // ConcurrentHashMap обязателен: onPlayerChat читает isWaitingForInput() из асинхронного
@@ -42,6 +43,7 @@ public class TeleportScrollManager {
 
     public TeleportScrollManager(LoveTweaks plugin) {
         this.plugin = plugin;
+        this.loveNotifyBridge = new me.lovelace.loveTweaks.integration.LoveNotifyBridge(plugin);
     }
 
     /** Обновляет время последнего движения. Вызывается из listener'а при PlayerMoveEvent. */
@@ -66,6 +68,13 @@ public class TeleportScrollManager {
         return GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getTeleportScrollConfig().message(key).replace(placeholder, value));
     }
 
+    /** Заменяет прямые вызовы player.sendActionBar(...) — уважает переключатель LoveNotify. */
+    private void sendActionBar(Player player, Component component) {
+        if (loveNotifyBridge.isChannelEnabled(player.getUniqueId(), "ACTION_BAR")) {
+            player.sendActionBar(component);
+        }
+    }
+
     private boolean isAfk(Player player) {
         Long last = lastMoveTime.get(player.getUniqueId());
         if (last == null) return false;
@@ -87,7 +96,7 @@ public class TeleportScrollManager {
         TeleportSession session = new TeleportSession(initiator.getUniqueId());
         sessions.put(initiator.getUniqueId(), session);
 
-        initiator.sendActionBar(msg("prompt"));
+        sendActionBar(initiator, msg("prompt"));
 
         // Таймер отмены если игрок не ввёл ник
         BukkitTask timeoutTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -97,7 +106,7 @@ public class TeleportScrollManager {
                 sessions.remove(initiator.getUniqueId());
                 Player p = Bukkit.getPlayer(initiator.getUniqueId());
                 if (p != null) {
-                    p.sendActionBar(msg("timeout"));
+                    sendActionBar(p, msg("timeout"));
                 }
             }
         }, CHAT_TIMEOUT_TICKS);
@@ -122,19 +131,19 @@ public class TeleportScrollManager {
 
         if (target == null || !target.isOnline()) {
             sessions.remove(initiator.getUniqueId());
-            initiator.sendActionBar(msg("player-not-found", "<player>", input.trim()));
+            sendActionBar(initiator, msg("player-not-found", "<player>", input.trim()));
             return true;
         }
 
         if (target.getUniqueId().equals(initiator.getUniqueId())) {
             sessions.remove(initiator.getUniqueId());
-            initiator.sendActionBar(msg("cannot-target-self"));
+            sendActionBar(initiator, msg("cannot-target-self"));
             return true;
         }
 
         if (isAfk(target)) {
             sessions.remove(initiator.getUniqueId());
-            initiator.sendActionBar(msg("target-afk", "<player>", target.getName()));
+            sendActionBar(initiator, msg("target-afk", "<player>", target.getName()));
             return true;
         }
 
@@ -168,14 +177,14 @@ public class TeleportScrollManager {
         if (reasonForInitiator != null) {
             Player initiator = Bukkit.getPlayer(initiatorUuid);
             if (initiator != null) {
-                initiator.sendActionBar(GuiItemUtil.colorize(reasonForInitiator));
+                sendActionBar(initiator, GuiItemUtil.colorize(reasonForInitiator));
             }
         }
 
         if (reasonForTarget != null && session.getTargetUuid() != null) {
             Player target = Bukkit.getPlayer(session.getTargetUuid());
             if (target != null) {
-                target.sendActionBar(GuiItemUtil.colorize(reasonForTarget));
+                sendActionBar(target, GuiItemUtil.colorize(reasonForTarget));
             }
         }
     }
@@ -265,8 +274,8 @@ public class TeleportScrollManager {
         }
 
         // Отображаем таймер обоим игрокам
-        p.sendActionBar(msg("countdown-initiator", "<seconds>", String.valueOf(secondsLeft)));
-        t.sendActionBar(msg("countdown-target", "<player>", initiatorName));
+        sendActionBar(p, msg("countdown-initiator", "<seconds>", String.valueOf(secondsLeft)));
+        sendActionBar(t, msg("countdown-target", "<player>", initiatorName));
 
         // Планируем следующий шаг только пока сессия жива — цепочка не может продолжиться сама по себе
         scheduleCountdownStep(initiatorUuid, targetUuid, initiatorName, current, secondsLeft - 1);
@@ -292,8 +301,8 @@ public class TeleportScrollManager {
         // Убираем свиток из руки
         removeScrollFromHand(initiator);
 
-        initiator.sendActionBar(msg("success-initiator"));
-        target.sendActionBar(msg("success-target", "<player>", initiator.getName()));
+        sendActionBar(initiator, msg("success-initiator"));
+        sendActionBar(target, msg("success-target", "<player>", initiator.getName()));
     }
 
     /**
