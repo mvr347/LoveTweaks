@@ -26,9 +26,9 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class HeraldListener implements Listener {
 
@@ -38,7 +38,11 @@ public class HeraldListener implements Listener {
     private final LoveTweaks plugin;
     private final HeraldManager manager;
     private final CitizensIntegration citizens;
-    private final Map<UUID, ChatSession> pendingChatInput = new HashMap<>();
+    // ConcurrentHashMap обязателен: onPlayerChat читает этот map из асинхронного потока чата
+    // (AsyncChatEvent), пока главный поток параллельно пишет в него (put при открытии чат-ввода,
+    // remove при обработке ответа/выходе игрока) — обычный HashMap в таких условиях даёт
+    // неопределённое поведение, ровно как описано в TeleportScrollManager.sessions.
+    private final Map<UUID, ChatSession> pendingChatInput = new ConcurrentHashMap<>();
 
     public HeraldListener(LoveTweaks plugin, HeraldManager manager, CitizensIntegration citizens) {
         this.plugin = plugin;

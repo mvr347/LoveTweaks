@@ -178,6 +178,13 @@ public final class LoveTweaks extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        // Bukkit cancels all of the plugin's scheduler tasks automatically right after onDisable()
+        // returns, but that only helps on a real plugin disable. Cancelling explicitly here means
+        // these two repeating tasks are guaranteed dead the moment onDisable() runs (and not left
+        // relying on implicit cleanup), matching the defensive pattern already used before
+        // starting a fresh one in startScoreboardTask()/startHeraldBroadcastTask().
+        if (scoreboardTask != null) scoreboardTask.cancel();
+        if (heraldBroadcastTask != null) heraldBroadcastTask.cancel();
         if (scoreboardDisplayManager != null) scoreboardDisplayManager.removeAll();
         if (scoreboardDataManager != null) scoreboardDataManager.close();
         getLogger().info("LoveTweaks disabled.");
