@@ -88,7 +88,10 @@ public class HeraldManager {
      * profanity check, and is never refunded if the check rejects the message — the slot simply
      * never activates, matching the "money already paid is confiscated" spec.
      */
-    public PurchaseResult purchase(Player player, int slotIndex, int durationMinutes, String rawMessage) {
+    public synchronized PurchaseResult purchase(Player player, int slotIndex, int durationMinutes, String rawMessage) {
+        if (slotIndex < 0 || slotIndex >= slots.size()) {
+            return PurchaseResult.SLOT_TAKEN;
+        }
         HeraldSlot slot = slots.get(slotIndex);
         if (slot.isActive()) {
             return PurchaseResult.SLOT_TAKEN;
@@ -120,13 +123,13 @@ public class HeraldManager {
         return PurchaseResult.SUCCESS;
     }
 
-    public void clear() {
+    public synchronized void clear() {
         for (HeraldSlot slot : slots) slot.clear();
         save();
     }
 
     /** Advances the rotation by exactly one slot and broadcasts it if it's active. Called once a minute. */
-    public void tickBroadcast() {
+    public synchronized void tickBroadcast() {
         if (slots.isEmpty()) return;
 
         HeraldSlot slot = slots.get(rotatorIndex);
@@ -152,7 +155,7 @@ public class HeraldManager {
         return LEGACY.deserialize(text.replace('&', '§'));
     }
 
-    private void load() {
+    private synchronized void load() {
         if (!dataFile.exists()) {
             return;
         }
@@ -189,7 +192,7 @@ public class HeraldManager {
         }
     }
 
-    private void save() {
+    private synchronized void save() {
         YamlConfiguration yaml = new YamlConfiguration();
         for (int i = 0; i < slots.size(); i++) {
             HeraldSlot slot = slots.get(i);
@@ -201,6 +204,9 @@ public class HeraldManager {
             yaml.set(path + ".expires-at", slot.expiresAt());
         }
         try {
+            if (dataFile.getParentFile() != null) {
+                dataFile.getParentFile().mkdirs();
+            }
             yaml.save(dataFile);
         } catch (IOException exception) {
             plugin.getLogger().warning("Не удалось сохранить herald-data.yml: " + exception.getMessage());

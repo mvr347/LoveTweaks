@@ -26,8 +26,11 @@ public class FirstJoinItemsListener implements Listener {
 
     private final LoveTweaks plugin;
 
+    private final org.bukkit.NamespacedKey firstJoinKey;
+
     public FirstJoinItemsListener(LoveTweaks plugin) {
         this.plugin = plugin;
+        this.firstJoinKey = new org.bukkit.NamespacedKey(plugin, "first_join_received");
     }
 
     @EventHandler
@@ -43,14 +46,14 @@ public class FirstJoinItemsListener implements Listener {
     }
 
     private void giveFirstJoinItemsIfEligible(Player player) {
-        // hasPlayedBefore() надёжно определяет самый первый вход — в отличие от собственного
-        // флага, его не нужно отдельно хранить и он не может рассинхронизироваться.
-        if (player.hasPlayedBefore()) {
+        if (player.hasPlayedBefore() || player.getPersistentDataContainer().has(firstJoinKey, org.bukkit.persistence.PersistentDataType.BYTE)) {
             return;
         }
         if (!plugin.getLoveTweaksConfig().isFirstJoinEnabled()) {
             return;
         }
+
+        player.getPersistentDataContainer().set(firstJoinKey, org.bukkit.persistence.PersistentDataType.BYTE, (byte) 1);
 
         for (FirstJoinItem item : plugin.getLoveTweaksConfig().getFirstJoinItems()) {
             giveItem(player, item);

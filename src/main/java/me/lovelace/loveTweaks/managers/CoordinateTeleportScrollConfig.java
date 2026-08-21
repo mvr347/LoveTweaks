@@ -1,50 +1,89 @@
 package me.lovelace.loveTweaks.managers;
 
-import me.lovelace.loveTweaks.items.CoordinateScrollDefinition;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
 /**
- * Глобальные лимиты безопасности, сообщения и список точек назначения координатного свитка
- * телепортации, загружается из {@code coord-teleport-scroll.*}. Сами точки — {@link CoordinateScrollDefinition}
- * — лежат в {@code coord-teleport-scroll.scrolls.<id>} и хранят только координаты/предмет, лимиты
- * общие для всех точек и живут здесь же.
+ * Конфигурация свитка телепортации по координатам ({@code coord-teleport-scroll}).
  */
-public final class CoordinateTeleportScrollConfig {
+public class CoordinateTeleportScrollConfig {
 
     private boolean enabled = true;
+    private String targetWorld = "world";
     private int castTimeSeconds = 5;
     private int cooldownSeconds = 30;
 
-    // ─── Лимиты безопасности (применяются к точке НАЗНАЧЕНИЯ каждого свитка) ──────────────
+    private String itemsadderItem = "";
+    private Material itemMaterial = Material.PAPER;
+    private int customModelData = 0;
+    private String itemName = "&b✦ Свиток телепортации: Координаты ✦";
+    private List<String> itemLore = List.of(
+            "&7Позволяет телепортироваться по координатам",
+            "&7в мире &fworld",
+            "",
+            "&eПКМ&7 — использовать свиток"
+    );
+
     private double minY = -64;
     private double maxY = 320;
     private boolean respectWorldBorder = true;
     private double maxDistanceFromSpawn = 0;
-    private List<String> allowedWorlds = List.of();
+    private List<String> allowedWorlds = List.of("world");
+
+    private static final Map<String, String> DEFAULT_MESSAGES = Map.ofEntries(
+            Map.entry("prompt", "&b✦ Введите координаты в чат &e(X Z или X Y Z)&b, или \"отмена\" (10 секунд)"),
+            Map.entry("timeout", "&c✗ Время ожидания ввода координат истекло!"),
+            Map.entry("chat-cancelled", "&7Ввод координат отменён."),
+            Map.entry("invalid-format", "&c✗ Неверный формат! Введите: <X> <Z> (например: 100 200) или <X> <Y> <Z>"),
+            Map.entry("world-not-allowed", "&c✗ Телепортация по координатам разрешена только в мире world!"),
+            Map.entry("destination-blocked", "&c✗ Точка назначения недоступна (вне границы мира или недопустимая высота)!"),
+            Map.entry("destination-water", "&c✗ Нельзя телепортироваться на воду! Выберите координаты на суше."),
+            Map.entry("destination-underground", "&c✗ Нельзя телепортироваться под землю или в шахту! Телепортация разрешена только на поверхность суши."),
+            Map.entry("destination-unsafe", "&c✗ Точка назначения опасна (лава, огонь или препятствия)!"),
+            Map.entry("no-permission", "&cУ вас нет прав на этот свиток!"),
+            Map.entry("on-cooldown", "&cЭтот свиток будет готов через &e<seconds> сек&c!"),
+            Map.entry("countdown", "&6✦ Телепортация через &e<seconds> сек&6... Не двигайтесь!"),
+            Map.entry("cancelled", "&c✗ Телепортация отменена! <reason>"),
+            Map.entry("success", "&a✦ Телепортация по координатам выполнена!"),
+            Map.entry("reason-moved", "(вы двигались)"),
+            Map.entry("reason-invisible", "(вы в невидимости)"),
+            Map.entry("reason-pvp", "(вы в PvP)"),
+            Map.entry("reason-dropped", "(свиток убран из руки)")
+    );
 
     private final Map<String, String> messages = new HashMap<>();
-    // LinkedHashMap — сохраняем порядок объявления из config.yml (пригодится для /lovetweaksadmin givecoordscroll без аргумента и т.п.)
-    private final Map<String, CoordinateScrollDefinition> scrolls = new LinkedHashMap<>();
 
     public void load(ConfigurationSection section, Logger logger) {
         messages.clear();
-        scrolls.clear();
+        messages.putAll(DEFAULT_MESSAGES);
 
         if (section == null) {
             return;
         }
 
         enabled = section.getBoolean("enabled", true);
+        targetWorld = section.getString("target-world", "world");
         castTimeSeconds = Math.max(0, section.getInt("cast-time-seconds", 5));
         cooldownSeconds = Math.max(0, section.getInt("cooldown-seconds", 30));
+
+        itemsadderItem = section.getString("item.itemsadder-item", section.getString("item.itemsadder", ""));
+        Object matObj = section.get("item.material");
+        if (matObj != null) {
+            Material matched = Material.matchMaterial(String.valueOf(matObj).toUpperCase());
+            if (matched != null) itemMaterial = matched;
+        }
+        customModelData = section.getInt("item.custom-model-data", section.getInt("item.cmd", 0));
+        itemName = section.getString("item.name", itemName);
+        List<String> lore = section.getStringList("item.lore");
+        if (!lore.isEmpty()) {
+            itemLore = new ArrayList<>(lore);
+        }
 
         ConfigurationSection limits = section.getConfigurationSection("limits");
         if (limits != null) {
@@ -53,15 +92,17 @@ public final class CoordinateTeleportScrollConfig {
             respectWorldBorder = limits.getBoolean("respect-world-border", true);
             maxDistanceFromSpawn = Math.max(0, limits.getDouble("max-distance-from-spawn", 0));
             allowedWorlds = limits.getStringList("allowed-worlds");
+            if (allowedWorlds.isEmpty()) {
+                allowedWorlds = List.of(targetWorld);
+            }
         } else {
             minY = -64;
             maxY = 320;
             respectWorldBorder = true;
             maxDistanceFromSpawn = 0;
-            allowedWorlds = List.of();
+            allowedWorlds = List.of(targetWorld);
         }
         if (minY > maxY) {
-            // Защита от опечатки в конфиге: иначе диапазон высоты пуст и все свитки перестанут работать молча.
             double tmp = minY;
             minY = maxY;
             maxY = tmp;
@@ -73,64 +114,28 @@ public final class CoordinateTeleportScrollConfig {
         ConfigurationSection messagesSection = section.getConfigurationSection("messages");
         if (messagesSection != null) {
             for (String key : messagesSection.getKeys(false)) {
-                messages.put(key, messagesSection.getString(key, ""));
-            }
-        }
-
-        ConfigurationSection scrollsSection = section.getConfigurationSection("scrolls");
-        if (scrollsSection != null) {
-            for (String id : scrollsSection.getKeys(false)) {
-                ConfigurationSection s = scrollsSection.getConfigurationSection(id);
-                if (s == null) continue;
-
-                String world = s.getString("world", "world");
-                double x = s.getDouble("x", 0);
-                double y = s.getDouble("y", 100);
-                double z = s.getDouble("z", 0);
-                float yaw = (float) s.getDouble("yaw", 0);
-                float pitch = (float) s.getDouble("pitch", 0);
-                String permission = s.getString("permission", "");
-
-                Material material = Material.PAPER;
-                Object materialObj = s.get("item.material");
-                if (materialObj != null) {
-                    Material matched = Material.matchMaterial(String.valueOf(materialObj).toUpperCase());
-                    if (matched != null) material = matched;
-                }
-                String itemName = s.getString("item.name", "&6✦ Свиток телепортации ✦");
-                List<String> itemLore = s.getStringList("item.lore");
-
-                CoordinateScrollDefinition def = new CoordinateScrollDefinition(
-                        id, world, x, y, z, yaw, pitch, permission,
-                        material, itemName, itemLore.isEmpty() ? List.of() : itemLore
-                );
-
-                // Предупреждаем в консоли сразу при загрузке, если координаты уже сейчас нарушают
-                // лимиты — не блокируем загрузку конфига, но админ узнаёт об опечатке из лога,
-                // а не когда игрок в игре молча получит "телепортация недоступна".
-                if (logger != null && (y < minY || y > maxY)) {
-                    logger.warning("[coord-teleport-scroll] Свиток '" + id + "': y=" + y
-                            + " вне допустимого диапазона [" + minY + ", " + maxY + "] — телепортация будет отклоняться в игре.");
-                }
-
-                scrolls.put(id, def);
+                messages.put(key, messagesSection.getString(key, DEFAULT_MESSAGES.getOrDefault(key, "")));
             }
         }
     }
 
     public boolean isEnabled() { return enabled; }
+    public String getTargetWorld() { return targetWorld; }
     public int getCastTimeSeconds() { return castTimeSeconds; }
     public int getCooldownSeconds() { return cooldownSeconds; }
+    public String getItemsadderItem() { return itemsadderItem; }
+    public Material getItemMaterial() { return itemMaterial; }
+    public int getCustomModelData() { return customModelData; }
+    public String getItemName() { return itemName; }
+    public List<String> getItemLore() { return itemLore; }
     public double getMinY() { return minY; }
     public double getMaxY() { return maxY; }
     public boolean isRespectWorldBorder() { return respectWorldBorder; }
     public double getMaxDistanceFromSpawn() { return maxDistanceFromSpawn; }
-    public List<String> getAllowedWorlds() { return allowedWorlds != null ? allowedWorlds : List.of(); }
-    public Map<String, CoordinateScrollDefinition> getScrolls() { return Collections.unmodifiableMap(scrolls); }
-    public CoordinateScrollDefinition getScroll(String id) { return scrolls.get(id); }
+    public List<String> getAllowedWorlds() { return allowedWorlds != null ? allowedWorlds : List.of(targetWorld); }
 
-    /** Raw message template for {@code key} (with its own {@code <placeholder>} tags), or the key itself if unset. */
+    /** Raw message template for {@code key} (with its own {@code <placeholder>} tags), or the default if unset. */
     public String message(String key) {
-        return messages.getOrDefault(key, key);
+        return messages.getOrDefault(key, DEFAULT_MESSAGES.getOrDefault(key, key));
     }
 }

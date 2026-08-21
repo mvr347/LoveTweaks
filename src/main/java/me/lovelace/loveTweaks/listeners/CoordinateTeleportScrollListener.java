@@ -1,8 +1,10 @@
 package me.lovelace.loveTweaks.listeners;
 
+import io.papermc.paper.event.player.AsyncChatEvent;
 import me.lovelace.loveTweaks.LoveTweaks;
 import me.lovelace.loveTweaks.items.CoordinateTeleportScroll;
 import me.lovelace.loveTweaks.managers.CoordinateTeleportScrollManager;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -15,23 +17,22 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
 /**
- * Обрабатывает использование координатного свитка телепортации. Устроен по образцу
- * {@link TeleportScrollListener}: ПКМ запускает отсчёт, смена предмета в руке/выброс
- * отменяют его, выход с сервера подчищает сессию.
+ * Обрабатывает использование координатного свитка телепортации.
  */
 public class CoordinateTeleportScrollListener implements Listener {
 
+    private final LoveTweaks plugin;
     private final CoordinateTeleportScrollManager manager;
 
     public CoordinateTeleportScrollListener(LoveTweaks plugin, CoordinateTeleportScrollManager manager) {
+        this.plugin = plugin;
         this.manager = manager;
     }
 
     /**
-     * ПКМ с координатным свитком в основной руке — запускаем отсчёт телепортации.
-     * Проверяем EquipmentSlot.HAND, чтобы не срабатывало дважды (ПКМ вызывает два события: HAND и OFF_HAND).
+     * ПКМ со свитком в руке — запускаем ввод координат.
      */
-    @EventHandler(priority = EventPriority.NORMAL)
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND) {
             return;
@@ -45,13 +46,31 @@ public class CoordinateTeleportScrollListener implements Listener {
         Player player = event.getPlayer();
         ItemStack item = player.getInventory().getItemInMainHand();
 
-        String scrollId = CoordinateTeleportScroll.getScrollId(item);
-        if (scrollId == null) {
+        if (!CoordinateTeleportScroll.isScroll(item)) {
             return;
         }
 
         event.setCancelled(true);
-        manager.startCast(player, scrollId);
+        manager.startInputPhase(player);
+    }
+
+    /**
+     * Перехватываем ввод координат в чат.
+     */
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onPlayerChat(AsyncChatEvent event) {
+        Player player = event.getPlayer();
+
+        if (!manager.isWaitingForInput(player.getUniqueId())) {
+            return;
+        }
+
+        event.setCancelled(true);
+        final String message = PlainTextComponentSerializer.plainText().serialize(event.message());
+
+        plugin.getServer().getScheduler().runTask(plugin, () ->
+                manager.handleChatInput(player, message)
+        );
     }
 
     @EventHandler
@@ -77,10 +96,33 @@ public class CoordinateTeleportScrollListener implements Listener {
         }
     }
 
-    /**
-     * При выходе игрока с сервера — отменяем его активный отсчёт, чтобы не висели
-     * задачи-"призраки" в scheduler'е.
-     */
+    @EventHandler
+    public void onPlayerSwapHandItems(org.bukkit.event.player.PlayerSwapHandItemsEvent event) {
+        Player player = event.getPlayer();
+        if (!manager.hasSession(player.getUniqueId())) {
+            return;
+        }
+        manager.cancelSession(player.getUniqueId(), "reason-dropped");
+    }
+
+    @EventHandler
+    public void onPlayerDeath(org.bukkit.event.entity.PlayerDeathEvent event) {
+        Player player = event.getPlayer();
+        if (manager.hasSession(player.getUniqueId())) {
+            manager.cancelSession(player.getUniqueId(), null);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerTeleport(org.bukkit.event.player.PlayerTeleportEvent event) {
+        if (event.getCause() != org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.PLUGIN) {
+            Player player = event.getPlayer();
+            if (manager.hasSession(player.getUniqueId())) {
+                manager.cancelSession(player.getUniqueId(), null);
+            }
+        }
+    }
+
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         manager.onQuit(event.getPlayer().getUniqueId());

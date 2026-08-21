@@ -22,7 +22,7 @@ import java.util.List;
 public final class HeraldGUI {
 
     public static final int GUI_SIZE = 27;
-    public static final int SLOT_INFO = 4;
+    public static final int SLOT_INFO = 0;
     public static final int[] SLOT_POSITIONS = {12, 13, 14};
     public static final int SLOT_CLOSE = 26;
 
@@ -38,31 +38,37 @@ public final class HeraldGUI {
         holder.setInventory(inv);
 
         ItemStack filler = GuiItemUtil.buildItem(sbConfig.getFillerMaterial(), sbConfig.getFillerName(), List.of());
-        for (int slot = 0; slot < inv.getSize(); slot++) {
+
+        // Header: слоты 0-8 (слот 0 — инфо/тема, слоты 1-8 — стекло)
+        inv.setItem(SLOT_INFO, buildInfoItem(player, plugin, sbConfig, heraldGui));
+        for (int slot = 1; slot <= 8; slot++) {
             inv.setItem(slot, filler);
         }
 
-        inv.setItem(SLOT_INFO, buildInfoItem(plugin, sbConfig, heraldGui));
-
+        // Рабочая зона: слоты 9-17 (боковые стенки и незанятые слоты — пусто/null, стекло запрещено)
         int slotCount = Math.min(manager.slotCount(), SLOT_POSITIONS.length);
         for (int i = 0; i < slotCount; i++) {
-            inv.setItem(SLOT_POSITIONS[i], buildSlotItem(manager, i, sbConfig, heraldGui));
+            inv.setItem(SLOT_POSITIONS[i], buildSlotItem(player, manager, i, sbConfig, heraldGui));
         }
 
-        inv.setItem(SLOT_CLOSE, GuiItemUtil.buildItem(sbConfig.getCloseMaterial(), sbConfig.getCloseName(), sbConfig.getCloseLore()));
+        // Footer: слоты 18-26 (18-25 — стекло, 26 — Close)
+        for (int slot = 18; slot < 26; slot++) {
+            inv.setItem(slot, filler);
+        }
+        inv.setItem(SLOT_CLOSE, GuiItemUtil.buildItem(player, sbConfig.getCloseMaterial(), sbConfig.getCloseName(), sbConfig.getCloseLore()));
 
         player.openInventory(inv);
     }
 
-    private static ItemStack buildInfoItem(LoveTweaks plugin, ScoreboardConfig sbConfig, HeraldGuiConfig heraldGui) {
+    private static ItemStack buildInfoItem(Player player, LoveTweaks plugin, ScoreboardConfig sbConfig, HeraldGuiConfig heraldGui) {
         List<String> lore = new ArrayList<>();
         for (String line : heraldGui.infoLore()) {
             lore.add(line.replace("<max>", String.valueOf(plugin.getLoveTweaksConfig().getHeraldSlots())));
         }
-        return GuiItemUtil.buildItem(sbConfig.getPlaceholderOnMaterial(), heraldGui.infoName(), lore);
+        return GuiItemUtil.buildItem(player, sbConfig.getPlaceholderOnMaterial(), heraldGui.infoName(), lore);
     }
 
-    private static ItemStack buildSlotItem(HeraldManager manager, int index, ScoreboardConfig sbConfig, HeraldGuiConfig heraldGui) {
+    private static ItemStack buildSlotItem(Player player, HeraldManager manager, int index, ScoreboardConfig sbConfig, HeraldGuiConfig heraldGui) {
         HeraldSlot slot = manager.getSlot(index);
         String indexLabel = String.valueOf(index + 1);
 
@@ -77,7 +83,7 @@ public final class HeraldGUI {
                         .replace("<remaining>", String.valueOf(Math.max(0, remainingMinutes))));
             }
             String name = heraldGui.slotOccupiedName().replace("<index>", indexLabel);
-            return GuiItemUtil.buildItem(sbConfig.getPlaceholderOffMaterial(), name, lore);
+            return GuiItemUtil.buildItem(player, sbConfig.getPlaceholderOffMaterial(), name, lore);
         }
 
         List<String> lore = new ArrayList<>();
@@ -85,6 +91,6 @@ public final class HeraldGUI {
             lore.add(line.replace("<index>", indexLabel));
         }
         String name = heraldGui.slotFreeName().replace("<index>", indexLabel);
-        return GuiItemUtil.buildItem(sbConfig.getPlaceholderOnMaterial(), name, lore);
+        return GuiItemUtil.buildItem(player, sbConfig.getPlaceholderOnMaterial(), name, lore);
     }
 }

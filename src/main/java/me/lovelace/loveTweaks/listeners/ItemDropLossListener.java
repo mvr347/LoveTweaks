@@ -40,7 +40,7 @@ public class ItemDropLossListener implements Listener {
 
         if (hasDurability(stack)) {
             if (roll(plugin.getLoveTweaksConfig().getItemDropBreakChance() * multiplier)) {
-                breakItem(player, itemEntity);
+                damageOrBreakItem(player, itemEntity, stack);
             }
         } else {
             if (roll(plugin.getLoveTweaksConfig().getItemDropLossChance() * multiplier)) {
@@ -66,6 +66,38 @@ public class ItemDropLossListener implements Listener {
                 .filter(levels -> levels.politenessLevel(player.getUniqueId()) == 0)
                 .map(levels -> plugin.getLoveTweaksConfig().getItemDropTerriblePolitenessMultiplier())
                 .orElse(1.0);
+    }
+
+    private void damageOrBreakItem(Player player, Item itemEntity, ItemStack stack) {
+        if (!(stack.getItemMeta() instanceof Damageable meta)) {
+            breakItem(player, itemEntity);
+            return;
+        }
+
+        int maxDurability = stack.getType().getMaxDurability();
+        int currentDamage = meta.getDamage();
+        int remainingDurability = maxDurability - currentDamage;
+
+        // Случайный урон по прочности (от 5% до 25% макс. прочности, минимум 1-5 единиц)
+        int minDmg = Math.max(1, (int) Math.round(maxDurability * 0.05));
+        int maxDmg = Math.max(minDmg + 1, (int) Math.round(maxDurability * 0.25));
+        int damageLoss = ThreadLocalRandom.current().nextInt(minDmg, maxDmg + 1);
+
+        // Если прочности не хватает, чтобы пережить урон, или предмет уже критически сломан (<= 5% прочности)
+        if (remainingDurability <= damageLoss || remainingDurability <= Math.max(2, (int) Math.round(maxDurability * 0.05))) {
+            breakItem(player, itemEntity);
+            return;
+        }
+
+        meta.setDamage(currentDamage + damageLoss);
+        stack.setItemMeta(meta);
+        itemEntity.setItemStack(stack);
+
+        Location location = itemEntity.getLocation();
+        location.getWorld().playSound(location, Sound.ENTITY_ITEM_BREAK, 0.6f, 1.6f);
+        location.getWorld().spawnParticle(Particle.CRIT, location, 8, 0.15, 0.15, 0.15, 0.05);
+
+        player.sendMessage(GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getItemDropDamageMessage()));
     }
 
     private void breakItem(Player player, Item itemEntity) {

@@ -65,7 +65,7 @@ public class ScoreboardConfig {
         top = sb.getString("top", "&c✌ &7V O I D C O R E &c✌");
         bottom = sb.getString("bottom", "&c✌ &7V O I D C O R E &c✌");
         separator = sb.getString("separator", "");
-        updateInterval = sb.getInt("update-interval", 20);
+        updateInterval = Math.max(1, sb.getInt("update-interval", 20));
         maxPlaceholders = sb.getInt("max-placeholders", 8);
         disabledWorlds = sb.getStringList("disabled-worlds");
 

@@ -38,7 +38,7 @@ public class HeraldListener implements Listener {
     private final LoveTweaks plugin;
     private final HeraldManager manager;
     private final CitizensIntegration citizens;
-    private final Map<UUID, ChatSession> pendingChatInput = new HashMap<>();
+    private final Map<UUID, ChatSession> pendingChatInput = new java.util.concurrent.ConcurrentHashMap<>();
 
     public HeraldListener(LoveTweaks plugin, HeraldManager manager, CitizensIntegration citizens) {
         this.plugin = plugin;
@@ -48,6 +48,9 @@ public class HeraldListener implements Listener {
 
     @EventHandler
     public void onNpcInteract(PlayerInteractEntityEvent event) {
+        if (event.getHand() != org.bukkit.inventory.EquipmentSlot.HAND) {
+            return;
+        }
         if (!plugin.getLoveTweaksConfig().isHeraldEnabled()) {
             return;
         }
@@ -150,10 +153,44 @@ public class HeraldListener implements Listener {
             return;
         }
         if (slot == HeraldPurchaseGUI.SLOT_BOOK) {
+            if (holder.getTextSource() == HeraldPurchaseHolder.TextSource.CHAT) {
+                player.sendMessage(colorize(heraldGui.message("source-chat-active")));
+                try {
+                    player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                } catch (Throwable ignored) {}
+                return;
+            }
+            if (holder.getTextSource() == HeraldPurchaseHolder.TextSource.BOOK && event.isRightClick()) {
+                holder.setPendingMessage(null);
+                holder.setTextSource(HeraldPurchaseHolder.TextSource.NONE);
+                player.sendMessage(colorize(heraldGui.message("text-reset")));
+                try {
+                    player.playSound(player.getLocation(), org.bukkit.Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
+                } catch (Throwable ignored) {}
+                HeraldPurchaseGUI.refresh(player, event.getInventory(), plugin, holder);
+                return;
+            }
             handleBookDrop(event, player, holder, heraldGui);
             return;
         }
         if (slot == HeraldPurchaseGUI.SLOT_WRITE_CHAT) {
+            if (holder.getTextSource() == HeraldPurchaseHolder.TextSource.BOOK) {
+                player.sendMessage(colorize(heraldGui.message("source-book-active")));
+                try {
+                    player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                } catch (Throwable ignored) {}
+                return;
+            }
+            if (holder.getTextSource() == HeraldPurchaseHolder.TextSource.CHAT && event.isRightClick()) {
+                holder.setPendingMessage(null);
+                holder.setTextSource(HeraldPurchaseHolder.TextSource.NONE);
+                player.sendMessage(colorize(heraldGui.message("text-reset")));
+                try {
+                    player.playSound(player.getLocation(), org.bukkit.Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
+                } catch (Throwable ignored) {}
+                HeraldPurchaseGUI.refresh(player, event.getInventory(), plugin, holder);
+                return;
+            }
             player.closeInventory();
             pendingChatInput.put(player.getUniqueId(), new ChatSession(holder.slotIndex(), holder.durationMinutes()));
             int maxLength = plugin.getLoveTweaksConfig().getHeraldMaxMessageLength();
@@ -162,7 +199,7 @@ public class HeraldListener implements Listener {
         }
         if (slot == HeraldPurchaseGUI.SLOT_DURATION) {
             cycleDuration(event, holder);
-            HeraldPurchaseGUI.refresh(event.getInventory(), plugin, holder);
+            HeraldPurchaseGUI.refresh(player, event.getInventory(), plugin, holder);
             return;
         }
         if (slot == HeraldPurchaseGUI.SLOT_CONFIRM) {
@@ -185,7 +222,11 @@ public class HeraldListener implements Listener {
             return;
         }
         holder.setPendingMessage(text);
-        HeraldPurchaseGUI.refresh(event.getInventory(), plugin, holder);
+        holder.setTextSource(HeraldPurchaseHolder.TextSource.BOOK);
+        try {
+            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.2f);
+        } catch (Throwable ignored) {}
+        HeraldPurchaseGUI.refresh(player, event.getInventory(), plugin, holder);
     }
 
     private void cycleDuration(InventoryClickEvent event, HeraldPurchaseHolder holder) {
@@ -210,6 +251,15 @@ public class HeraldListener implements Listener {
         if (message == null || message.isEmpty()) {
             return;
         }
+        long cost = manager.computeCost(holder.durationMinutes(), message.length());
+        var economy = dev.lovelace.lovecore.api.LoveCore.service(dev.lovelace.lovecore.api.economy.LoveEconomy.class);
+        if (economy.isPresent() && !economy.get().has(player, cost)) {
+            player.sendMessage(colorize(player, heraldGui.message("insufficient-funds").replace("<cost>", heraldGui.formatCost(cost))));
+            try {
+                player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+            } catch (Throwable ignored) {}
+            return;
+        }
         applyPurchase(player, holder.slotIndex(), holder.durationMinutes(), message, heraldGui);
     }
 
@@ -220,21 +270,21 @@ public class HeraldListener implements Listener {
 
         switch (result) {
             case SUCCESS -> {
-                player.sendMessage(colorize(heraldGui.message("published").replace("<minutes>", String.valueOf(durationMinutes))));
+                player.sendMessage(colorize(player, heraldGui.message("published").replace("<minutes>", String.valueOf(durationMinutes))));
                 player.closeInventory();
             }
             case SLOT_TAKEN -> {
-                player.sendMessage(colorize(heraldGui.message("no-free-slots")));
+                player.sendMessage(colorize(player, heraldGui.message("no-free-slots")));
                 player.closeInventory();
             }
-            case EMPTY_MESSAGE -> player.sendMessage(colorize(heraldGui.message("empty-message")));
-            case TOO_LONG -> player.sendMessage(colorize(heraldGui.message("too-long")
+            case EMPTY_MESSAGE -> player.sendMessage(colorize(player, heraldGui.message("empty-message")));
+            case TOO_LONG -> player.sendMessage(colorize(player, heraldGui.message("too-long")
                     .replace("<max>", String.valueOf(maxLength))
                     .replace("<length>", String.valueOf(message.length()))));
-            case INSUFFICIENT_FUNDS -> player.sendMessage(colorize(heraldGui.message("insufficient-funds")
-                    .replace("<cost>", String.valueOf(cost))));
+            case INSUFFICIENT_FUNDS -> player.sendMessage(colorize(player, heraldGui.message("insufficient-funds")
+                    .replace("<cost>", heraldGui.formatCost(cost))));
             case REJECTED_PROFANITY -> {
-                player.sendMessage(colorize(heraldGui.message("rejected-profanity")));
+                player.sendMessage(colorize(player, heraldGui.message("rejected-profanity")));
                 player.closeInventory();
             }
         }
@@ -252,6 +302,10 @@ public class HeraldListener implements Listener {
             builder.append(text);
         }
         return builder.toString().trim();
+    }
+
+    private static Component colorize(Player player, String text) {
+        return GuiItemUtil.colorize(player, text);
     }
 
     private static Component colorize(String text) {
@@ -279,6 +333,7 @@ public class HeraldListener implements Listener {
 
             HeraldPurchaseHolder holder = new HeraldPurchaseHolder(session.slotIndex(), session.durationMinutes());
             holder.setPendingMessage(message);
+            holder.setTextSource(HeraldPurchaseHolder.TextSource.CHAT);
             HeraldPurchaseGUI.open(player, plugin, holder);
         });
     }

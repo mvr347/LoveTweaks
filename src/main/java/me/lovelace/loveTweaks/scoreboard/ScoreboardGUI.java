@@ -57,25 +57,22 @@ public final class ScoreboardGUI {
      */
     private static void populate(Inventory inv, ScoreboardGUIHolder holder, Player player,
                                  PlayerScoreboardState state, ScoreboardConfig config) {
-        inv.setItem(SLOT_PROFILE, buildProfileHead(player, config));
-
-        Map<String, Integer> slots = config.getPlaceholderSlots();
-
-        Set<Integer> reserved = new HashSet<>(slots.values());
-        reserved.add(SLOT_PROFILE);
-        reserved.add(SLOT_TOGGLE);
-        reserved.add(SLOT_BACK);
-        reserved.add(SLOT_CLOSE);
-
-        Set<Integer> emptyWalls = new HashSet<>();
-        for (int slot : WORK_ZONE_WALLS) emptyWalls.add(slot);
-
         ItemStack filler = buildItem(config.getFillerMaterial(), config.getFillerName(), List.of());
-        for (int slot = 0; slot < inv.getSize(); slot++) {
-            if (reserved.contains(slot)) continue;
-            inv.setItem(slot, emptyWalls.contains(slot) ? null : filler);
+
+        // Header Row 0 (слоты 0-8): слот 0 — голова игрока (RULE 3), слоты 1-8 — стекло
+        inv.setItem(SLOT_PROFILE, buildProfileHead(player, config));
+        for (int slot = 1; slot <= 8; slot++) {
+            inv.setItem(slot, filler);
         }
 
+        // Header Row 1 (слоты 9-17): второй ряд Header'а (RULE 5) — всегда 100% стекло
+        for (int slot = 9; slot <= 17; slot++) {
+            inv.setItem(slot, filler);
+        }
+
+        // Рабочая зона (слоты 18-44): только контентные кнопки (RULE 2, RULE 6).
+        // Боковые стенки (18, 26, 27, 35, 36, 44) и незанятые слоты остаются null (AIR).
+        Map<String, Integer> slots = config.getPlaceholderSlots();
         boolean maxed = state.getActivePlaceholders().size() >= config.getMaxPlaceholders();
         for (Map.Entry<String, Integer> entry : slots.entrySet()) {
             String id = entry.getKey();
@@ -91,8 +88,21 @@ public final class ScoreboardGUI {
             holder.mapSlot(entry.getValue(), id);
         }
 
+        // Footer (слоты 45-53): всегда ровно 1 ряд (RULE 7)
+        // Позиции 1-6 (слоты 45-50) — стекло
+        for (int slot = 45; slot <= 50; slot++) {
+            inv.setItem(slot, filler);
+        }
+        // Позиция 7 (слот 51) — доп. функциональная кнопка (Д): вкл/выкл скорборда
         inv.setItem(SLOT_TOGGLE, buildToggle(state, config));
-        inv.setItem(SLOT_BACK, buildItem(config.getBackMaterial(), config.getBackName(), config.getBackLore()));
+        // Позиция 8 (слот 52) — кнопка «Назад» (B): если задана backCommand, иначе стекло (RULE 2 п.5)
+        String backCmd = config.getBackCommand();
+        if (backCmd != null && !backCmd.isBlank()) {
+            inv.setItem(SLOT_BACK, buildItem(config.getBackMaterial(), config.getBackName(), config.getBackLore()));
+        } else {
+            inv.setItem(SLOT_BACK, filler);
+        }
+        // Позиция 9 (слот 53) — кнопка «Закрыть» (C): всегда статичный элемент
         inv.setItem(SLOT_CLOSE, buildItem(config.getCloseMaterial(), config.getCloseName(), config.getCloseLore()));
     }
 

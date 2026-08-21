@@ -10,6 +10,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
 
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,9 +37,14 @@ public class TeleportScrollManager {
     // потока чата, пока главный поток параллельно пишет в эту же карту (put/remove) —
     // обычный HashMap в таких условиях даёт неопределённое поведение (порча структуры,
     // видимость изменений между потоками), что и приводило к "залипанию" сессий.
+    // Активные сессии: UUID инициатора → сессия.
     private final Map<UUID, TeleportSession> sessions = new ConcurrentHashMap<>();
-    // Время последнего реального движения по позиции (не поворота камеры)
-    private final Map<UUID, Long> lastMoveTime = new ConcurrentHashMap<>();
+    // Время последнего реального движения по позиции (не поворота камеры) — bounded expiring cache
+    private final com.github.benmanes.caffeine.cache.Cache<UUID, Long> lastMoveTime =
+            com.github.benmanes.caffeine.cache.Caffeine.newBuilder()
+                    .maximumSize(10_000)
+                    .expireAfterAccess(java.time.Duration.ofMinutes(30))
+                    .build();
 
     public TeleportScrollManager(LoveTweaks plugin) {
         this.plugin = plugin;
@@ -55,7 +61,14 @@ public class TeleportScrollManager {
     }
 
     public void removePlayer(UUID uuid) {
-        lastMoveTime.remove(uuid);
+        lastMoveTime.invalidate(uuid);
+    }
+
+    public void cancelAll() {
+        for (UUID id : new ArrayList<>(sessions.keySet())) {
+            cancelSession(id, null, null);
+        }
+        lastMoveTime.invalidateAll();
     }
 
     private Component msg(String key) {
@@ -81,7 +94,7 @@ public class TeleportScrollManager {
     }
 
     private boolean isAfk(Player player) {
-        Long last = lastMoveTime.get(player.getUniqueId());
+        Long last = lastMoveTime.getIfPresent(player.getUniqueId());
         if (last == null) return false;
         return (System.currentTimeMillis() - last) >= AFK_THRESHOLD_MS;
     }
@@ -95,6 +108,22 @@ public class TeleportScrollManager {
      * Вызывается из TeleportScrollListener при ПКМ со свитком.
      */
     public void startInputPhase(Player initiator) {
+        if (isInCombat(initiator)) {
+            var cfg = plugin.getLoveTweaksConfig().getTeleportScrollConfig();
+            Component c = GuiItemUtil.colorize(cfg.message("cancelled-initiator").replace("<reason>", cfg.message("reason-pvp-self")));
+            initiator.sendMessage(c);
+            sendActionBar(initiator, c);
+            return;
+        }
+
+        if (initiator.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
+            var cfg = plugin.getLoveTweaksConfig().getTeleportScrollConfig();
+            Component c = GuiItemUtil.colorize(cfg.message("cancelled-initiator").replace("<reason>", cfg.message("reason-invisible-self")));
+            initiator.sendMessage(c);
+            sendActionBar(initiator, c);
+            return;
+        }
+
         // Если у игрока уже есть активная сессия — отменяем старую
         cancelSession(initiator.getUniqueId(), null, null);
 
@@ -102,6 +131,10 @@ public class TeleportScrollManager {
         sessions.put(initiator.getUniqueId(), session);
 
         sendActionBar(initiator, msg("prompt"));
+        initiator.sendMessage(msg("prompt"));
+        try {
+            initiator.playSound(initiator.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.5f);
+        } catch (Throwable ignored) {}
 
         // Таймер отмены если игрок не ввёл ник
         BukkitTask timeoutTask = Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -111,6 +144,7 @@ public class TeleportScrollManager {
                 sessions.remove(initiator.getUniqueId());
                 Player p = Bukkit.getPlayer(initiator.getUniqueId());
                 if (p != null) {
+                    p.sendMessage(msg("timeout"));
                     sendActionBar(p, msg("timeout"));
                 }
             }
@@ -136,19 +170,34 @@ public class TeleportScrollManager {
 
         if (target == null || !target.isOnline()) {
             sessions.remove(initiator.getUniqueId());
-            sendActionBar(initiator, msg("player-not-found", "<player>", input.trim()));
+            Component c = msg("player-not-found", "<player>", input.trim());
+            initiator.sendMessage(c);
+            sendActionBar(initiator, c);
             return true;
         }
 
         if (target.getUniqueId().equals(initiator.getUniqueId())) {
             sessions.remove(initiator.getUniqueId());
-            sendActionBar(initiator, msg("cannot-target-self"));
+            Component c = msg("cannot-target-self");
+            initiator.sendMessage(c);
+            sendActionBar(initiator, c);
+            return true;
+        }
+
+        // Проверяем, что цель находится в мире 'world'
+        if (!target.getWorld().getName().equalsIgnoreCase("world")) {
+            sessions.remove(initiator.getUniqueId());
+            Component c = msg("target-not-in-world", "<player>", target.getName());
+            initiator.sendMessage(c);
+            sendActionBar(initiator, c);
             return true;
         }
 
         if (isAfk(target)) {
             sessions.remove(initiator.getUniqueId());
-            sendActionBar(initiator, msg("target-afk", "<player>", target.getName()));
+            Component c = msg("target-afk", "<player>", target.getName());
+            initiator.sendMessage(c);
+            sendActionBar(initiator, c);
             return true;
         }
 
@@ -182,14 +231,26 @@ public class TeleportScrollManager {
         if (reasonForInitiator != null) {
             Player initiator = Bukkit.getPlayer(initiatorUuid);
             if (initiator != null) {
-                sendActionBar(initiator, GuiItemUtil.colorize(reasonForInitiator));
+                Component comp = GuiItemUtil.colorize(reasonForInitiator);
+                sendActionBar(initiator, comp);
+                initiator.sendMessage(comp);
+                try {
+                    initiator.playSound(initiator.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.8f);
+                } catch (Throwable ignored) {}
+                spawnCancelParticles(initiator.getLocation());
             }
         }
 
         if (reasonForTarget != null && session.getTargetUuid() != null) {
             Player target = Bukkit.getPlayer(session.getTargetUuid());
             if (target != null) {
-                sendActionBar(target, GuiItemUtil.colorize(reasonForTarget));
+                Component comp = GuiItemUtil.colorize(reasonForTarget);
+                sendActionBar(target, comp);
+                target.sendMessage(comp);
+                try {
+                    target.playSound(target.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.8f);
+                } catch (Throwable ignored) {}
+                spawnCancelParticles(target.getLocation());
             }
         }
     }
@@ -220,20 +281,34 @@ public class TeleportScrollManager {
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Запускает отсчёт как цепочку одноразовых {@code runTaskLater}-задач, а не повторяющийся
-     * {@code runTaskTimer}. Каждый шаг сам планирует следующий только если сессия всё ещё
-     * активна — если что-то пойдёт не так с отменой (например, сессия удалена из map, но
-     * ссылка на BukkitTask почему-то не была отменена), цепочка просто не продолжится сама
-     * по себе, в отличие от повторяющегося таймера, который тикает независимо от состояния
-     * сессии, пока его явно не cancel()-нуть. Это исключает саму возможность "бесконечной"
-     * телепортации из-за незакрытой задачи.
+     * Запускает отсчёт с немедленным уведомлением цели и инициатора, а также визуальными эффектами.
      */
     private void startCountdown(Player initiator, Player target, TeleportSession session) {
         final UUID initiatorUuid = initiator.getUniqueId();
         final UUID targetUuid = target.getUniqueId();
         final String initiatorName = initiator.getName();
 
-        scheduleCountdownStep(initiatorUuid, targetUuid, initiatorName, session, COUNTDOWN_SECONDS);
+        // 1. Уведомление инициатора
+        Component initMsg = msg("countdown-initiator", "<seconds>", String.valueOf(COUNTDOWN_SECONDS));
+        sendActionBar(initiator, initMsg);
+        initiator.sendMessage(initMsg);
+
+        // 2. ОБЯЗАТЕЛЬНОЕ уведомление игрока-цели (в чат и экшнбар)
+        Component targetMsg = msg("countdown-target", "<player>", initiatorName);
+        sendActionBar(target, targetMsg);
+        target.sendMessage(targetMsg);
+
+        // 3. Звуки запуска отсчёта
+        try {
+            initiator.playSound(initiator.getLocation(), org.bukkit.Sound.BLOCK_BEACON_POWER_SELECT, 1.0f, 1.2f);
+            target.playSound(target.getLocation(), org.bukkit.Sound.BLOCK_BEACON_POWER_SELECT, 1.0f, 1.2f);
+        } catch (Throwable ignored) {}
+
+        // 4. Визуальные частицы вокруг обоих игроков
+        spawnCountdownParticles(initiator.getLocation());
+        spawnCountdownParticles(target.getLocation());
+
+        scheduleCountdownStep(initiatorUuid, targetUuid, initiatorName, session, COUNTDOWN_SECONDS - 1);
     }
 
     private void scheduleCountdownStep(UUID initiatorUuid, UUID targetUuid, String initiatorName,
@@ -282,6 +357,15 @@ public class TeleportScrollManager {
         sendActionBar(p, msg("countdown-initiator", "<seconds>", String.valueOf(secondsLeft)));
         sendActionBar(t, msg("countdown-target", "<player>", initiatorName));
 
+        // Звуки тика и визуальные частицы ауры
+        try {
+            p.playSound(p.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_HAT, 0.7f, 1.6f);
+            t.playSound(t.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_HAT, 0.7f, 1.6f);
+        } catch (Throwable ignored) {}
+
+        spawnCountdownParticles(p.getLocation());
+        spawnCountdownParticles(t.getLocation());
+
         // Планируем следующий шаг только пока сессия жива — цепочка не может продолжиться сама по себе
         scheduleCountdownStep(initiatorUuid, targetUuid, initiatorName, current, secondsLeft - 1);
     }
@@ -300,14 +384,65 @@ public class TeleportScrollManager {
         sessions.remove(initiatorUuid);
         session.cancelAllTasks();
 
+        Location fromLoc = initiator.getLocation().clone();
+        Location toLoc = target.getLocation().clone();
+
+        // Визуальный и звуковой эффект на месте отправления
+        spawnTeleportBurst(fromLoc);
+        try {
+            fromLoc.getWorld().playSound(fromLoc, org.bukkit.Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
+        } catch (Throwable ignored) {}
+
         // Телепортируем на главном потоке (мы уже на нём, т.к. runTaskLater)
-        initiator.teleport(target.getLocation());
+        initiator.teleport(toLoc);
+
+        // Визуальный и звуковой эффект на месте прибытия
+        spawnTeleportBurst(toLoc);
+        try {
+            toLoc.getWorld().playSound(toLoc, org.bukkit.Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.2f);
+            toLoc.getWorld().playSound(toLoc, org.bukkit.Sound.BLOCK_PORTAL_TRAVEL, 0.6f, 1.4f);
+            toLoc.getWorld().playSound(toLoc, org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, 0.8f, 1.5f);
+        } catch (Throwable ignored) {}
 
         // Убираем свиток из руки
         removeScrollFromHand(initiator);
 
-        sendActionBar(initiator, msg("success-initiator"));
-        sendActionBar(target, msg("success-target", "<player>", initiator.getName()));
+        Component succInit = msg("success-initiator");
+        sendActionBar(initiator, succInit);
+        initiator.sendMessage(succInit);
+
+        // ОБЯЗАТЕЛЬНОЕ уведомление цели телепортации в чат и экшнбар
+        Component succTarg = msg("success-target", "<player>", initiator.getName());
+        sendActionBar(target, succTarg);
+        target.sendMessage(succTarg);
+    }
+
+    private void spawnCountdownParticles(Location loc) {
+        if (loc == null || loc.getWorld() == null) return;
+        org.bukkit.World w = loc.getWorld();
+        for (int i = 0; i < 12; i++) {
+            double angle = (2 * Math.PI * i) / 12.0;
+            double x = Math.cos(angle) * 0.75;
+            double z = Math.sin(angle) * 0.75;
+            w.spawnParticle(org.bukkit.Particle.PORTAL, loc.clone().add(x, 0.2 + (i * 0.12), z), 1, 0, 0, 0, 0);
+            w.spawnParticle(org.bukkit.Particle.ENCHANT, loc.clone().add(x, 0.4, z), 1, 0, 0, 0, 0.1);
+        }
+    }
+
+    private void spawnTeleportBurst(Location loc) {
+        if (loc == null || loc.getWorld() == null) return;
+        org.bukkit.World w = loc.getWorld();
+        Location center = loc.clone().add(0, 1.0, 0);
+        w.spawnParticle(org.bukkit.Particle.PORTAL, center, 45, 0.5, 0.7, 0.5, 0.8);
+        w.spawnParticle(org.bukkit.Particle.REVERSE_PORTAL, center, 25, 0.4, 0.6, 0.4, 0.1);
+        w.spawnParticle(org.bukkit.Particle.ENCHANT, center, 35, 0.6, 0.8, 0.6, 0.3);
+        w.spawnParticle(org.bukkit.Particle.FLASH, center, 1, 0, 0, 0, 0);
+    }
+
+    private void spawnCancelParticles(Location loc) {
+        if (loc == null || loc.getWorld() == null) return;
+        org.bukkit.World w = loc.getWorld();
+        w.spawnParticle(org.bukkit.Particle.SMOKE, loc.clone().add(0, 1.0, 0), 15, 0.3, 0.4, 0.3, 0.05);
     }
 
     /**
@@ -316,6 +451,11 @@ public class TeleportScrollManager {
      */
     private String checkConditions(Player initiator, Player target, TeleportSession session) {
         var tsConfig = plugin.getLoveTweaksConfig().getTeleportScrollConfig();
+
+        // Проверка наличия свитка в руке (защита от перекладывания в сундук во время отсчёта)
+        if (!me.lovelace.loveTweaks.items.TeleportScroll.isScroll(initiator.getInventory().getItemInMainHand())) {
+            return tsConfig.message("reason-dropped");
+        }
 
         // Проверка движения — сравниваем с позицией прошлой секунды
         if (hasMoved(initiator.getLocation(), session.getLastInitiatorLocation())) {
@@ -338,6 +478,11 @@ public class TeleportScrollManager {
         }
         if (isInCombat(target)) {
             return tsConfig.message("reason-pvp-target").replace("<player>", target.getName());
+        }
+
+        // Проверка мира цели — цель должна оставаться в мире world
+        if (!target.getWorld().getName().equalsIgnoreCase("world")) {
+            return tsConfig.message("reason-wrong-world").replace("<player>", target.getName());
         }
 
         return null;
@@ -365,10 +510,14 @@ public class TeleportScrollManager {
 
     /**
      * Убирает свиток из основной руки игрока.
-     * Так как maxStackSize = 1, просто очищаем слот.
      */
     private void removeScrollFromHand(Player player) {
-        player.getInventory().setItemInMainHand(null);
+        var item = player.getInventory().getItemInMainHand();
+        if (item.getAmount() > 1) {
+            item.setAmount(item.getAmount() - 1);
+        } else {
+            player.getInventory().setItemInMainHand(null);
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
