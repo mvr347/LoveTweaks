@@ -172,6 +172,43 @@ public class ConfigAndGuiStandardTest {
         assertEquals("lovetweaks:purification_potion", potionConfig.itemsadderItem());
         assertEquals(30, potionConfig.cooldownSeconds());
         assertEquals("&bЗелье очищения", potionConfig.name());
+        assertTrue(potionConfig.ignoredEffects().contains("BAD_OMEN"));
+    }
+
+    @Test
+    @DisplayName("PurificationPotionConfig correctly ignores bad omen and configured effects")
+    void testPurificationPotionIgnoredEffects() {
+        me.lovelace.loveTweaks.managers.PurificationPotionConfig config = new me.lovelace.loveTweaks.managers.PurificationPotionConfig();
+        config.load(null);
+
+        // Default ignored effects: BAD_OMEN, RAID_OMEN, TRIAL_OMEN
+        assertTrue(config.isEffectIgnored("BAD_OMEN"));
+        assertTrue(config.isEffectIgnored("bad_omen"));
+        assertTrue(config.isEffectIgnored("minecraft:bad_omen"));
+        assertTrue(config.isEffectIgnored("RAID_OMEN"));
+        assertTrue(config.isEffectIgnored("TRIAL_OMEN"));
+        assertFalse(config.isEffectIgnored("SPEED"));
+        assertFalse(config.isEffectIgnored("POISON"));
+        assertFalse(config.isEffectIgnored("REGENERATION"));
+
+        // Custom config
+        org.bukkit.configuration.file.YamlConfiguration yaml = new org.bukkit.configuration.file.YamlConfiguration();
+        yaml.set("ignored-effects", java.util.List.of("POISON", "WITHER", "minecraft:speed"));
+        config.load(yaml);
+
+        assertTrue(config.isEffectIgnored("POISON"));
+        assertTrue(config.isEffectIgnored("WITHER"));
+        assertTrue(config.isEffectIgnored("SPEED"));
+        assertTrue(config.isEffectIgnored("speed"));
+        assertFalse(config.isEffectIgnored("BAD_OMEN"));
+
+        // Empty list config - all effects are clearable
+        org.bukkit.configuration.file.YamlConfiguration emptyYaml = new org.bukkit.configuration.file.YamlConfiguration();
+        emptyYaml.set("ignored-effects", java.util.List.of());
+        config.load(emptyYaml);
+
+        assertFalse(config.isEffectIgnored("BAD_OMEN"));
+        assertFalse(config.isEffectIgnored("POISON"));
     }
 
     @Test

@@ -267,8 +267,14 @@ public class MilkListener implements Listener {
     }
 
     private void clearAllEffects(Player player) {
+        PurificationPotionConfig cfg = plugin != null && plugin.getLoveTweaksConfig() != null
+                ? plugin.getLoveTweaksConfig().getPurificationPotionConfig()
+                : null;
         List<PotionEffect> activeEffects = new ArrayList<>(player.getActivePotionEffects());
         for (PotionEffect effect : activeEffects) {
+            if (cfg != null && cfg.isEffectIgnored(effect.getType())) {
+                continue;
+            }
             player.removePotionEffect(effect.getType());
         }
     }

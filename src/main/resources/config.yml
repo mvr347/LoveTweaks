@@ -57,6 +57,11 @@ milk:
     cooldown-message: '&cВы сможете использовать зелье очищения через <seconds> сек.'
     # Сообщение при успешном употреблении
     purification-message: '&bВы ощущаете очищение...'
+    # Список эффектов, которые НЕ сбрасываются зельем очищения (например: BAD_OMEN, RAID_OMEN, TRIAL_OMEN)
+    ignored-effects:
+      - BAD_OMEN
+      - RAID_OMEN
+      - TRIAL_OMEN
     # Рецепт крафта на верстаке (бесформенный)
     recipe:
       enabled: true
