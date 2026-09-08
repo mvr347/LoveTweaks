@@ -97,6 +97,13 @@ public class ScoreboardListener implements Listener, CommandExecutor {
     }
 
     @EventHandler
+    public void onInventoryDrag(org.bukkit.event.inventory.InventoryDragEvent event) {
+        if (event.getInventory().getHolder() instanceof ScoreboardGUIHolder) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (!(event.getInventory().getHolder() instanceof ScoreboardGUIHolder holder)) return;
         event.setCancelled(true);

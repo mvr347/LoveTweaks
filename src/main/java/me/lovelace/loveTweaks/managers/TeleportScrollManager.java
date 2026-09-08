@@ -502,6 +502,9 @@ public class TeleportScrollManager {
         if (last == null) {
             return false;
         }
+        if (current.getWorld() == null || last.getWorld() == null || !current.getWorld().equals(last.getWorld())) {
+            return true;
+        }
         // Сравниваем с точностью до блока (floor), чтобы микродвижения не мешали
         return current.getBlockX() != last.getBlockX()
                 || current.getBlockY() != last.getBlockY()
@@ -513,10 +516,13 @@ public class TeleportScrollManager {
      */
     private void removeScrollFromHand(Player player) {
         var item = player.getInventory().getItemInMainHand();
-        if (item.getAmount() > 1) {
-            item.setAmount(item.getAmount() - 1);
-        } else {
-            player.getInventory().setItemInMainHand(null);
+        if (item != null && item.getType() != org.bukkit.Material.AIR) {
+            if (item.getAmount() > 1) {
+                item.setAmount(item.getAmount() - 1);
+                player.getInventory().setItemInMainHand(item);
+            } else {
+                player.getInventory().setItemInMainHand(null);
+            }
         }
     }
 

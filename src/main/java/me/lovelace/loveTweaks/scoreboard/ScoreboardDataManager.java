@@ -1,7 +1,5 @@
 package me.lovelace.loveTweaks.scoreboard;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import me.lovelace.loveTweaks.LoveTweaks;
@@ -13,15 +11,16 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 /**
- * Асинхронный менеджер данных скорборда с пулом соединений HikariCP и кэшем Caffeine.
+ * Асинхронный менеджер данных скорборда с пулом соединений HikariCP и потокобезопасным кэшем.
  * Все запросы к БД выполняются строго асинхронно, соединения не удерживаются между тиками.
  */
 public class ScoreboardDataManager {
@@ -29,11 +28,8 @@ public class ScoreboardDataManager {
     private final LoveTweaks plugin;
     private HikariDataSource dataSource;
 
-    // Bounded Caffeine cache with expiration to prevent memory leaks
-    private final Cache<UUID, PlayerScoreboardState> cache = Caffeine.newBuilder()
-            .maximumSize(10_000)
-            .expireAfterAccess(Duration.ofMinutes(30))
-            .build();
+    // Потокобезопасный кэш активных состояний скорборда игроков
+    private final Map<UUID, PlayerScoreboardState> cache = new ConcurrentHashMap<>();
 
     public ScoreboardDataManager(LoveTweaks plugin) {
         this.plugin = plugin;
@@ -41,7 +37,7 @@ public class ScoreboardDataManager {
     }
 
     public synchronized void reload() {
-        cache.invalidateAll();
+        cache.clear();
         initDataSource();
         initSchemaAndMigrate();
     }
@@ -125,7 +121,7 @@ public class ScoreboardDataManager {
      * Возвращает состояние скорборда из кэша (или синхронный fallback/default).
      */
     public PlayerScoreboardState getState(UUID uuid) {
-        PlayerScoreboardState state = cache.getIfPresent(uuid);
+        PlayerScoreboardState state = cache.get(uuid);
         if (state == null) {
             state = loadFromDbSync(uuid);
             cache.put(uuid, state);
@@ -189,7 +185,7 @@ public class ScoreboardDataManager {
      * Асинхронно сохраняет профиль игрока.
      */
     public CompletableFuture<Void> savePlayerAsync(UUID uuid) {
-        PlayerScoreboardState state = cache.getIfPresent(uuid);
+        PlayerScoreboardState state = cache.get(uuid);
         if (state == null) return CompletableFuture.completedFuture(null);
 
         boolean enabled = state.isScoreboardEnabled();
@@ -206,30 +202,39 @@ public class ScoreboardDataManager {
         if (dataSource == null) return;
         try (Connection connection = dataSource.getConnection()) {
             connection.setAutoCommit(false);
-            try (PreparedStatement ps = connection.prepareStatement(
-                    "INSERT INTO scoreboard_players (uuid, enabled) VALUES (?, ?) " +
-                    "ON CONFLICT(uuid) DO UPDATE SET enabled = excluded.enabled")) {
-                ps.setString(1, uuid.toString());
-                ps.setInt(2, enabled ? 1 : 0);
-                ps.executeUpdate();
-            }
-            try (PreparedStatement del = connection.prepareStatement(
-                    "DELETE FROM scoreboard_placeholders WHERE uuid = ?")) {
-                del.setString(1, uuid.toString());
-                del.executeUpdate();
-            }
-            try (PreparedStatement ins = connection.prepareStatement(
-                    "INSERT INTO scoreboard_placeholders (uuid, position, placeholder_id) VALUES (?, ?, ?)")) {
-                int pos = 0;
-                for (String id : placeholders) {
-                    ins.setString(1, uuid.toString());
-                    ins.setInt(2, pos++);
-                    ins.setString(3, id);
-                    ins.addBatch();
+            try {
+                try (PreparedStatement ps = connection.prepareStatement(
+                        "INSERT INTO scoreboard_players (uuid, enabled) VALUES (?, ?) " +
+                        "ON CONFLICT(uuid) DO UPDATE SET enabled = excluded.enabled")) {
+                    ps.setString(1, uuid.toString());
+                    ps.setInt(2, enabled ? 1 : 0);
+                    ps.executeUpdate();
                 }
-                ins.executeBatch();
+                try (PreparedStatement del = connection.prepareStatement(
+                        "DELETE FROM scoreboard_placeholders WHERE uuid = ?")) {
+                    del.setString(1, uuid.toString());
+                    del.executeUpdate();
+                }
+                try (PreparedStatement ins = connection.prepareStatement(
+                        "INSERT INTO scoreboard_placeholders (uuid, position, placeholder_id) VALUES (?, ?, ?)")) {
+                    int pos = 0;
+                    for (String id : placeholders) {
+                        ins.setString(1, uuid.toString());
+                        ins.setInt(2, pos++);
+                        ins.setString(3, id);
+                        ins.addBatch();
+                    }
+                    ins.executeBatch();
+                }
+                connection.commit();
+            } catch (SQLException e) {
+                try {
+                    connection.rollback();
+                } catch (SQLException rollbackEx) {
+                    plugin.getLogger().log(Level.FINE, "Failed to rollback scoreboard transaction: " + rollbackEx.getMessage());
+                }
+                throw e;
             }
-            connection.commit();
         } catch (SQLException e) {
             plugin.getLogger().log(Level.WARNING, "Failed to save scoreboard state for " + uuid + ": " + e.getMessage(), e);
         }
@@ -237,7 +242,7 @@ public class ScoreboardDataManager {
 
     public void saveAll() {
         try {
-            for (var entry : cache.asMap().entrySet()) {
+            for (Map.Entry<UUID, PlayerScoreboardState> entry : cache.entrySet()) {
                 UUID uuid = entry.getKey();
                 PlayerScoreboardState state = entry.getValue();
                 if (uuid != null && state != null) {
@@ -254,8 +259,10 @@ public class ScoreboardDataManager {
     }
 
     public void unload(UUID uuid) {
-        savePlayerAsync(uuid);
-        cache.invalidate(uuid);
+        PlayerScoreboardState state = cache.remove(uuid);
+        if (state != null) {
+            CompletableFuture.runAsync(() -> savePlayerSync(uuid, state.isScoreboardEnabled(), state.getActivePlaceholders()));
+        }
     }
 
     public synchronized void close() {
@@ -266,9 +273,9 @@ public class ScoreboardDataManager {
         }
         closeDataSource();
         try {
-            cache.invalidateAll();
+            cache.clear();
         } catch (Throwable t) {
-            plugin.getLogger().log(Level.FINE, "Cache invalidation on close: " + t.getMessage());
+            plugin.getLogger().log(Level.FINE, "Cache clear on close: " + t.getMessage());
         }
     }
 

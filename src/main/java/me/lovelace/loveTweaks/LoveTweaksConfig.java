@@ -46,6 +46,13 @@ public class LoveTweaksConfig {
     private List<String> purificationPotionLore = List.of();
     private String purificationMessage;
 
+    // Зельеварение и варочные стойки
+    private boolean disableBrewing;
+    private boolean disableBrewingStandCraft;
+    private boolean disableBrewingStandWorld;
+    private boolean disablePotionNaturalDrops;
+    private String disabledBrewingMessage;
+
     // Потеря/поломка предметов при выбрасывании
     private boolean itemDropLossEnabled;
     private double itemDropLossChance;
@@ -143,6 +150,13 @@ public class LoveTweaksConfig {
         purificationPotionLore = purificationPotionConfig.lore();
         purificationMessage = purificationPotionConfig.purificationMessage();
 
+        // Зельеварение и варочные стойки
+        disableBrewing = config.getBoolean("brewing.disable-brewing", true);
+        disableBrewingStandCraft = config.getBoolean("brewing.disable-brewing-stand-craft", true);
+        disableBrewingStandWorld = config.getBoolean("brewing.disable-brewing-stand-world", true);
+        disablePotionNaturalDrops = config.getBoolean("brewing.disable-potion-natural-drops", true);
+        disabledBrewingMessage = config.getString("brewing.disabled-message", "&cЗельеварение и варочные стойки отключены на этом сервере.");
+
         itemDropLossEnabled = config.getBoolean("item-drop-loss.enabled", false);
         itemDropLossChance = config.getDouble("item-drop-loss.lose-chance", 0.22);
         itemDropBreakChance = config.getDouble("item-drop-loss.break-chance", 0.33);
@@ -238,6 +252,23 @@ public class LoveTweaksConfig {
                     for (String key : defHerald.getKeys(true)) {
                         if (!liveHerald.contains(key)) {
                             liveHerald.set(key, defHerald.get(key));
+                            changed = true;
+                        }
+                    }
+                }
+            }
+
+            // Миграция секции brewing
+            if (!config.isConfigurationSection("brewing")) {
+                config.set("brewing", defaults.get("brewing"));
+                changed = true;
+            } else {
+                ConfigurationSection defBrewing = defaults.getConfigurationSection("brewing");
+                ConfigurationSection liveBrewing = config.getConfigurationSection("brewing");
+                if (defBrewing != null && liveBrewing != null) {
+                    for (String key : defBrewing.getKeys(true)) {
+                        if (!liveBrewing.contains(key)) {
+                            liveBrewing.set(key, defBrewing.get(key));
                             changed = true;
                         }
                     }
@@ -341,5 +372,10 @@ public class LoveTweaksConfig {
     public boolean isDisableFriendsAndReports() { return disableFriendsAndReports; }
     public String getDisabledVanillaCommandMessage() { return disabledVanillaCommandMessage; }
     public List<String> getBlockedVanillaCommands() { return blockedVanillaCommands; }
+    public boolean isDisableBrewing() { return disableBrewing; }
+    public boolean isDisableBrewingStandCraft() { return disableBrewingStandCraft; }
+    public boolean isDisableBrewingStandWorld() { return disableBrewingStandWorld; }
+    public boolean isDisablePotionNaturalDrops() { return disablePotionNaturalDrops; }
+    public String getDisabledBrewingMessage() { return disabledBrewingMessage; }
     public ScoreboardConfig getScoreboardConfig() { return scoreboardConfig; }
 }

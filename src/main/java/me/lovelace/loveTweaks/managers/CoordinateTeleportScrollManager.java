@@ -518,6 +518,9 @@ public class CoordinateTeleportScrollManager {
         if (last == null) {
             return false;
         }
+        if (current.getWorld() == null || last.getWorld() == null || !current.getWorld().equals(last.getWorld())) {
+            return true;
+        }
         return current.getBlockX() != last.getBlockX()
                 || current.getBlockY() != last.getBlockY()
                 || current.getBlockZ() != last.getBlockZ();
@@ -525,10 +528,13 @@ public class CoordinateTeleportScrollManager {
 
     private void removeScrollFromHand(Player player) {
         var item = player.getInventory().getItemInMainHand();
-        if (item.getAmount() > 1) {
-            item.setAmount(item.getAmount() - 1);
-        } else {
-            player.getInventory().setItemInMainHand(null);
+        if (item != null && item.getType() != org.bukkit.Material.AIR) {
+            if (item.getAmount() > 1) {
+                item.setAmount(item.getAmount() - 1);
+                player.getInventory().setItemInMainHand(item);
+            } else {
+                player.getInventory().setItemInMainHand(null);
+            }
         }
     }
 

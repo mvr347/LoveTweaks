@@ -72,11 +72,15 @@ public class FirstJoinItemsListener implements Listener {
     }
 
     private void giveItem(Player player, FirstJoinItem item) {
-        ItemStack stack = item.teleportScroll() ? TeleportScroll.create() : buildItem(item);
-        stack.setAmount(Math.min(item.amount(), stack.getMaxStackSize()));
-
-        for (ItemStack leftover : player.getInventory().addItem(stack).values()) {
-            player.getWorld().dropItemNaturally(player.getLocation(), leftover);
+        int remaining = Math.max(1, item.amount());
+        while (remaining > 0) {
+            ItemStack stack = item.teleportScroll() ? TeleportScroll.create() : buildItem(item);
+            int toGive = Math.min(remaining, stack.getMaxStackSize());
+            stack.setAmount(toGive);
+            remaining -= toGive;
+            for (ItemStack leftover : player.getInventory().addItem(stack).values()) {
+                player.getWorld().dropItemNaturally(player.getLocation(), leftover);
+            }
         }
     }
 

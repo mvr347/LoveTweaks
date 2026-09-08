@@ -15,6 +15,7 @@ import me.lovelace.loveTweaks.listeners.HeraldListener;
 import me.lovelace.loveTweaks.listeners.HungerListener;
 import me.lovelace.loveTweaks.listeners.ItemDropLossListener;
 import me.lovelace.loveTweaks.listeners.MilkListener;
+import me.lovelace.loveTweaks.listeners.BrewingListener;
 import me.lovelace.loveTweaks.listeners.ScoreboardListener;
 import me.lovelace.loveTweaks.listeners.TeleportScrollListener;
 import me.lovelace.loveTweaks.listeners.VanillaProtectionListener;
@@ -49,8 +50,10 @@ public final class LoveTweaks extends JavaPlugin {
     private ChatFilterIntegration chatFilterIntegration;
     private HeraldManager heraldManager;
     private BukkitTask heraldBroadcastTask;
+    private BukkitTask hungerTask;
     private EnderChestListener enderChestListener;
     private MilkListener milkListener;
+    private BrewingListener brewingListener;
     private me.lovelace.loveTweaks.listeners.VanillaProtectionListener vanillaProtectionListener;
 
     @Override
@@ -101,6 +104,8 @@ public final class LoveTweaks extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new HungerListener(this), this);
         milkListener = new MilkListener(this);
         getServer().getPluginManager().registerEvents(milkListener, this);
+        brewingListener = new BrewingListener(this);
+        getServer().getPluginManager().registerEvents(brewingListener, this);
         getServer().getPluginManager().registerEvents(new ItemDropLossListener(this), this);
         getServer().getPluginManager().registerEvents(new TeleportScrollListener(this, teleportScrollManager), this);
         getServer().getPluginManager().registerEvents(new CoordinateTeleportScrollListener(this, coordTeleportScrollManager), this);
@@ -120,18 +125,7 @@ public final class LoveTweaks extends JavaPlugin {
         getCommand("lovetweaksadmin").setTabCompleter(adminCommand);
 
         // Hunger exhaustion task
-        if (loveTweaksConfig.getExtraExhaustionPerSecond() > 0) {
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    for (Player player : getServer().getOnlinePlayers()) {
-                        if (player.getGameMode() == GameMode.SURVIVAL || player.getGameMode() == GameMode.ADVENTURE) {
-                            player.setExhaustion(player.getExhaustion() + loveTweaksConfig.getExtraExhaustionPerSecond());
-                        }
-                    }
-                }
-            }.runTaskTimer(this, 20L, 20L);
-        }
+        startHungerTask();
 
         // Scoreboard update task
         startScoreboardTask();
@@ -151,6 +145,25 @@ public final class LoveTweaks extends JavaPlugin {
                     + "Весь конфиг свитков телепортации хранится в " + getDataFolder().getPath()
                     + "/config.yml (секции teleport-scroll / coord-teleport-scroll). "
                     + "Эту папку можно безопасно удалить после сверки её содержимого.");
+        }
+    }
+
+    private void startHungerTask() {
+        if (hungerTask != null) {
+            hungerTask.cancel();
+            hungerTask = null;
+        }
+        if (loveTweaksConfig.getExtraExhaustionPerSecond() > 0) {
+            hungerTask = new BukkitRunnable() {
+                @Override
+                public void run() {
+                    for (Player player : getServer().getOnlinePlayers()) {
+                        if (player.getGameMode() == GameMode.SURVIVAL || player.getGameMode() == GameMode.ADVENTURE) {
+                            player.setExhaustion((float) (player.getExhaustion() + loveTweaksConfig.getExtraExhaustionPerSecond()));
+                        }
+                    }
+                }
+            }.runTaskTimer(this, 20L, 20L);
         }
     }
 
@@ -180,6 +193,10 @@ public final class LoveTweaks extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (hungerTask != null) {
+            hungerTask.cancel();
+            hungerTask = null;
+        }
         if (scoreboardTask != null) {
             scoreboardTask.cancel();
             scoreboardTask = null;
@@ -199,19 +216,23 @@ public final class LoveTweaks extends JavaPlugin {
 
     /**
      * Полная перезагрузка плагина: конфиг, состояние скорборда, PAPI-плейсхолдеры скорборда,
-     * число слотов Глашатая и оба повторяющихся таска. Используется командой
+     * число слотов Глашатая и повторяющиеся таски. Используется командой
      * {@code /lovetweaksadmin reload} — см. {@link me.lovelace.loveTweaks.commands.LoveTweaksAdminCommand}.
      */
     public void reloadAll() {
         loveTweaksConfig.loadConfig();
+        me.lovelace.loveTweaks.textures.HeadsConfig.reload();
+        me.lovelace.loveTweaks.utils.ItemsAdderHook.resetCache();
         if (teleportScrollManager != null) teleportScrollManager.cancelAll();
         if (coordTeleportScrollManager != null) coordTeleportScrollManager.cancelAll();
         if (milkListener != null) milkListener.reload();
+        if (brewingListener != null) brewingListener.removeBrewingStandRecipes();
         if (enderChestListener != null) enderChestListener.closeAll();
         scoreboardDataManager.reload();
         scoreboardDisplayManager.refreshPAPI();
         heraldManager.resize(loveTweaksConfig.getHeraldSlots());
         if (vanillaProtectionListener != null) vanillaProtectionListener.applyGameRules();
+        startHungerTask();
         startScoreboardTask();
         startHeraldBroadcastTask();
     }
@@ -228,4 +249,5 @@ public final class LoveTweaks extends JavaPlugin {
     public HeraldManager getHeraldManager() { return heraldManager; }
     public EnderChestListener getEnderChestListener() { return enderChestListener; }
     public MilkListener getMilkListener() { return milkListener; }
+    public BrewingListener getBrewingListener() { return brewingListener; }
 }

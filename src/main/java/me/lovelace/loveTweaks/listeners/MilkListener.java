@@ -246,11 +246,16 @@ public class MilkListener implements Listener {
         if (stack == null || stack.getType() == Material.AIR) return;
         if (stack.getAmount() > 1) {
             stack.setAmount(stack.getAmount() - 1);
+            if (slot == EquipmentSlot.OFF_HAND) {
+                inventory.setItemInOffHand(stack);
+            } else {
+                inventory.setItemInMainHand(stack);
+            }
         } else {
             if (slot == EquipmentSlot.OFF_HAND) {
-                inventory.setItemInOffHand(new ItemStack(Material.AIR));
+                inventory.setItemInOffHand(null);
             } else {
-                inventory.setItemInMainHand(new ItemStack(Material.AIR));
+                inventory.setItemInMainHand(null);
             }
         }
     }

@@ -198,12 +198,30 @@ public class EnderChestListener implements Listener {
     }
 
     /**
-     * Закрывает все открытые виртуальные эндер-сундуки при отключении или перезагрузке плагина.
+     * Закрывает все открытые виртуальные эндер-сундуки и сохраняет их данные при отключении или перезагрузке плагина.
      */
     public void closeAll() {
-        for (Inventory inv : new ArrayList<>(activeInventories.values())) {
-            for (HumanEntity viewer : new ArrayList<>(inv.getViewers())) {
-                viewer.closeInventory();
+        for (Map.Entry<BlockKey, Inventory> entry : new ArrayList<>(activeInventories.entrySet())) {
+            Inventory inv = entry.getValue();
+            if (inv != null && inv.getHolder() instanceof EnderChestInventoryHolder holder) {
+                Block block = holder.getEnderChestBlock();
+                if (block != null && block.getType() == Material.ENDER_CHEST) {
+                    BlockState state = block.getState();
+                    if (state instanceof TileState tileState) {
+                        try {
+                            String serialized = InventorySerializationUtil.inventoryToBase64(inv);
+                            tileState.getPersistentDataContainer().set(plugin.getEnderChestKey(), PersistentDataType.STRING, serialized);
+                            tileState.update();
+                        } catch (Throwable t) {
+                            plugin.getLogger().log(Level.WARNING, "Failed to save Ender Chest on closeAll at " + block.getLocation() + ": " + t.getMessage());
+                        }
+                    }
+                }
+            }
+            if (inv != null) {
+                for (HumanEntity viewer : new ArrayList<>(inv.getViewers())) {
+                    viewer.closeInventory();
+                }
             }
         }
         activeInventories.clear();

@@ -10,13 +10,19 @@ import java.io.File;
  * заменить без пересборки плагина. Значения из Java-констант остаются запасным вариантом
  * на случай, если ключ отсутствует в heads.yml.
  */
-final class HeadsConfig {
+public final class HeadsConfig {
     private static volatile YamlConfiguration config;
 
     private HeadsConfig() {
     }
 
-    static String get(String key, String fallback) {
+    public static void reload() {
+        synchronized (HeadsConfig.class) {
+            config = null;
+        }
+    }
+
+    public static String get(String key, String fallback) {
         YamlConfiguration yaml = config();
         if (yaml == null) {
             return fallback;

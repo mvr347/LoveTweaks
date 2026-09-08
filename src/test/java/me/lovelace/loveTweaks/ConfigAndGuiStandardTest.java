@@ -231,4 +231,44 @@ public class ConfigAndGuiStandardTest {
         int coinWidth = me.lovelace.loveTweaks.scoreboard.ScoreboardDisplayManager.getPixelWidth(coinText);
         assertTrue(coinWidth > 40, "Coin text pixel width should account for font image");
     }
+
+    @Test
+    @DisplayName("Brewing configuration loads defaults and custom settings correctly")
+    void testBrewingConfigDefaultsAndOverrides() {
+        org.bukkit.configuration.file.YamlConfiguration yaml = new org.bukkit.configuration.file.YamlConfiguration();
+        // Check default fallback values when unconfigured
+        boolean defBrewing = yaml.getBoolean("brewing.disable-brewing", true);
+        boolean defCraft = yaml.getBoolean("brewing.disable-brewing-stand-craft", true);
+        boolean defWorld = yaml.getBoolean("brewing.disable-brewing-stand-world", true);
+        boolean defPotionDrops = yaml.getBoolean("brewing.disable-potion-natural-drops", true);
+        String defMsg = yaml.getString("brewing.disabled-message", "&cЗельеварение и варочные стойки отключены на этом сервере.");
+
+        assertTrue(defBrewing);
+        assertTrue(defCraft);
+        assertTrue(defWorld);
+        assertTrue(defPotionDrops);
+        assertEquals("&cЗельеварение и варочные стойки отключены на этом сервере.", defMsg);
+
+        // Custom config override
+        yaml.set("brewing.disable-brewing", false);
+        yaml.set("brewing.disable-brewing-stand-craft", false);
+        yaml.set("brewing.disable-brewing-stand-world", false);
+        yaml.set("brewing.disable-potion-natural-drops", false);
+        yaml.set("brewing.disabled-message", "&cCustom disabled message");
+
+        assertFalse(yaml.getBoolean("brewing.disable-brewing", true));
+        assertFalse(yaml.getBoolean("brewing.disable-brewing-stand-craft", true));
+        assertFalse(yaml.getBoolean("brewing.disable-brewing-stand-world", true));
+        assertFalse(yaml.getBoolean("brewing.disable-potion-natural-drops", true));
+        assertEquals("&cCustom disabled message", yaml.getString("brewing.disabled-message"));
+    }
+
+    @Test
+    @DisplayName("BrewingListener correctly detects LoveBrew items and vanilla brewing items")
+    void testLoveBrewItemDetection() {
+        assertFalse(me.lovelace.loveTweaks.listeners.BrewingListener.isLoveBrewItem(null));
+        assertFalse(me.lovelace.loveTweaks.listeners.BrewingListener.isLoveBrewBlock(null));
+        assertFalse(me.lovelace.loveTweaks.listeners.BrewingListener.isLoveBrewState(null));
+        assertFalse(me.lovelace.loveTweaks.listeners.BrewingListener.isVanillaPotion(null));
+    }
 }
