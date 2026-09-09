@@ -15,8 +15,10 @@ import me.lovelace.loveTweaks.listeners.HeraldListener;
 import me.lovelace.loveTweaks.listeners.HungerListener;
 import me.lovelace.loveTweaks.listeners.ItemDropLossListener;
 import me.lovelace.loveTweaks.listeners.MilkListener;
+import me.lovelace.loveTweaks.listeners.BrewingListener;
 import me.lovelace.loveTweaks.listeners.ScoreboardListener;
 import me.lovelace.loveTweaks.listeners.TeleportScrollListener;
+import me.lovelace.loveTweaks.listeners.VanillaProtectionListener;
 import me.lovelace.loveTweaks.managers.CoordinateTeleportScrollManager;
 import me.lovelace.loveTweaks.managers.TeleportScrollManager;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardConfig;
@@ -48,6 +50,11 @@ public final class LoveTweaks extends JavaPlugin {
     private ChatFilterIntegration chatFilterIntegration;
     private HeraldManager heraldManager;
     private BukkitTask heraldBroadcastTask;
+    private BukkitTask hungerTask;
+    private EnderChestListener enderChestListener;
+    private MilkListener milkListener;
+    private BrewingListener brewingListener;
+    private me.lovelace.loveTweaks.listeners.VanillaProtectionListener vanillaProtectionListener;
 
     @Override
     public void onEnable() {
@@ -67,6 +74,9 @@ public final class LoveTweaks extends JavaPlugin {
         CoordinateTeleportScroll.init(this);
         coordTeleportScrollManager = new CoordinateTeleportScrollManager(this);
         getLogger().info("CoordinateTeleportScroll manager initialized.");
+
+        me.lovelace.loveTweaks.items.PurificationPotion.init(this);
+        getLogger().info("PurificationPotion initialized.");
 
         // Scoreboard
         scoreboardDataManager = new ScoreboardDataManager(this);
@@ -88,16 +98,22 @@ public final class LoveTweaks extends JavaPlugin {
         getLogger().info("Herald manager initialized.");
 
         // Listeners
-        getServer().getPluginManager().registerEvents(new EnderChestListener(this), this);
+        enderChestListener = new EnderChestListener(this);
+        getServer().getPluginManager().registerEvents(enderChestListener, this);
         getServer().getPluginManager().registerEvents(new EnchantmentListener(this), this);
         getServer().getPluginManager().registerEvents(new HungerListener(this), this);
-        getServer().getPluginManager().registerEvents(new MilkListener(this), this);
+        milkListener = new MilkListener(this);
+        getServer().getPluginManager().registerEvents(milkListener, this);
+        brewingListener = new BrewingListener(this);
+        getServer().getPluginManager().registerEvents(brewingListener, this);
         getServer().getPluginManager().registerEvents(new ItemDropLossListener(this), this);
         getServer().getPluginManager().registerEvents(new TeleportScrollListener(this, teleportScrollManager), this);
         getServer().getPluginManager().registerEvents(new CoordinateTeleportScrollListener(this, coordTeleportScrollManager), this);
         getServer().getPluginManager().registerEvents(new FirstJoinItemsListener(this), this);
         getServer().getPluginManager().registerEvents(
                 new HeraldListener(this, heraldManager, citizensIntegration), this);
+        vanillaProtectionListener = new VanillaProtectionListener(this);
+        getServer().getPluginManager().registerEvents(vanillaProtectionListener, this);
 
         ScoreboardListener scoreboardListener = new ScoreboardListener(this, scoreboardDataManager, scoreboardDisplayManager);
         getServer().getPluginManager().registerEvents(scoreboardListener, this);
@@ -109,18 +125,7 @@ public final class LoveTweaks extends JavaPlugin {
         getCommand("lovetweaksadmin").setTabCompleter(adminCommand);
 
         // Hunger exhaustion task
-        if (loveTweaksConfig.getExtraExhaustionPerSecond() > 0) {
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    for (Player player : getServer().getOnlinePlayers()) {
-                        if (player.getGameMode() == GameMode.SURVIVAL || player.getGameMode() == GameMode.ADVENTURE) {
-                            player.setExhaustion(player.getExhaustion() + loveTweaksConfig.getExtraExhaustionPerSecond());
-                        }
-                    }
-                }
-            }.runTaskTimer(this, 20L, 20L);
-        }
+        startHungerTask();
 
         // Scoreboard update task
         startScoreboardTask();
@@ -129,15 +134,6 @@ public final class LoveTweaks extends JavaPlugin {
         startHeraldBroadcastTask();
     }
 
-    /**
-     * Все данные и конфиг свитков телепортации (обычного и координатного) всегда жили и живут
-     * внутри {@code plugins/LoveTweaks/} — в {@code config.yml}, секции {@code teleport-scroll}
-     * и {@code coord-teleport-scroll}. Отдельная папка {@code plugins/LoveTeleportScroll/}
-     * никогда не создавалась кодом этого плагина. Если она всё же существует на диске — это
-     * след старой отдельной установки, предшествовавшей переносу фичи в LoveTweaks; сам плагин
-     * её не трогает (ничего не удаляет и не читает оттуда), только предупреждает в консоли,
-     * чтобы админ мог убрать её вручную и не путаться, откуда берётся конфиг.
-     */
     private void warnAboutLegacyTeleportScrollFolder() {
         File pluginsFolder = getDataFolder().getParentFile();
         if (pluginsFolder == null) {
@@ -152,9 +148,28 @@ public final class LoveTweaks extends JavaPlugin {
         }
     }
 
+    private void startHungerTask() {
+        if (hungerTask != null) {
+            hungerTask.cancel();
+            hungerTask = null;
+        }
+        if (loveTweaksConfig.getExtraExhaustionPerSecond() > 0) {
+            hungerTask = new BukkitRunnable() {
+                @Override
+                public void run() {
+                    for (Player player : getServer().getOnlinePlayers()) {
+                        if (player.getGameMode() == GameMode.SURVIVAL || player.getGameMode() == GameMode.ADVENTURE) {
+                            player.setExhaustion((float) (player.getExhaustion() + loveTweaksConfig.getExtraExhaustionPerSecond()));
+                        }
+                    }
+                }
+            }.runTaskTimer(this, 20L, 20L);
+        }
+    }
+
     private void startScoreboardTask() {
         if (scoreboardTask != null) scoreboardTask.cancel();
-        int interval = getScoreboardConfig().getUpdateInterval();
+        int interval = Math.max(1, getScoreboardConfig().getUpdateInterval());
         scoreboardTask = new BukkitRunnable() {
             @Override
             public void run() {
@@ -178,13 +193,22 @@ public final class LoveTweaks extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // Bukkit cancels all of the plugin's scheduler tasks automatically right after onDisable()
-        // returns, but that only helps on a real plugin disable. Cancelling explicitly here means
-        // these two repeating tasks are guaranteed dead the moment onDisable() runs (and not left
-        // relying on implicit cleanup), matching the defensive pattern already used before
-        // starting a fresh one in startScoreboardTask()/startHeraldBroadcastTask().
-        if (scoreboardTask != null) scoreboardTask.cancel();
-        if (heraldBroadcastTask != null) heraldBroadcastTask.cancel();
+        if (hungerTask != null) {
+            hungerTask.cancel();
+            hungerTask = null;
+        }
+        if (scoreboardTask != null) {
+            scoreboardTask.cancel();
+            scoreboardTask = null;
+        }
+        if (heraldBroadcastTask != null) {
+            heraldBroadcastTask.cancel();
+            heraldBroadcastTask = null;
+        }
+        if (teleportScrollManager != null) teleportScrollManager.cancelAll();
+        if (coordTeleportScrollManager != null) coordTeleportScrollManager.cancelAll();
+        if (milkListener != null) milkListener.clearAll();
+        if (enderChestListener != null) enderChestListener.closeAll();
         if (scoreboardDisplayManager != null) scoreboardDisplayManager.removeAll();
         if (scoreboardDataManager != null) scoreboardDataManager.close();
         getLogger().info("LoveTweaks disabled.");
@@ -192,14 +216,23 @@ public final class LoveTweaks extends JavaPlugin {
 
     /**
      * Полная перезагрузка плагина: конфиг, состояние скорборда, PAPI-плейсхолдеры скорборда,
-     * число слотов Глашатая и оба повторяющихся таска. Используется командой
+     * число слотов Глашатая и повторяющиеся таски. Используется командой
      * {@code /lovetweaksadmin reload} — см. {@link me.lovelace.loveTweaks.commands.LoveTweaksAdminCommand}.
      */
     public void reloadAll() {
         loveTweaksConfig.loadConfig();
+        me.lovelace.loveTweaks.textures.HeadsConfig.reload();
+        me.lovelace.loveTweaks.utils.ItemsAdderHook.resetCache();
+        if (teleportScrollManager != null) teleportScrollManager.cancelAll();
+        if (coordTeleportScrollManager != null) coordTeleportScrollManager.cancelAll();
+        if (milkListener != null) milkListener.reload();
+        if (brewingListener != null) brewingListener.removeBrewingStandRecipes();
+        if (enderChestListener != null) enderChestListener.closeAll();
         scoreboardDataManager.reload();
         scoreboardDisplayManager.refreshPAPI();
         heraldManager.resize(loveTweaksConfig.getHeraldSlots());
+        if (vanillaProtectionListener != null) vanillaProtectionListener.applyGameRules();
+        startHungerTask();
         startScoreboardTask();
         startHeraldBroadcastTask();
     }
@@ -211,6 +244,10 @@ public final class LoveTweaks extends JavaPlugin {
     public ScoreboardDisplayManager getScoreboardDisplayManager() { return scoreboardDisplayManager; }
     public NamespacedKey getEnderChestKey() { return enderChestKey; }
     public TeleportScrollManager getTeleportScrollManager() { return teleportScrollManager; }
+    public CoordinateTeleportScrollManager getCoordTeleportScrollManager() { return coordTeleportScrollManager; }
     public CitizensIntegration getCitizensIntegration() { return citizensIntegration; }
     public HeraldManager getHeraldManager() { return heraldManager; }
+    public EnderChestListener getEnderChestListener() { return enderChestListener; }
+    public MilkListener getMilkListener() { return milkListener; }
+    public BrewingListener getBrewingListener() { return brewingListener; }
 }

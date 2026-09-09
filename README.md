@@ -18,13 +18,12 @@ LoveTweaks предоставляет набор специализирован�
 |---|---|---|
 | `/lovetweaks` | Администраторские команды | `lovetweaks.admin` |
 | `/lovetweaks reload` | Перезагрузить конфигурацию | `lovetweaks.admin` |
-| `/lovetweaks givescroll` | Выдать телепортационный свиток (к игроку) | `lovetweaks.admin` |
-| `/lovetweaks givecoordscroll <игрок> <id>` | Выдать свиток телепортации к координатам (id из `coord-teleport-scroll.scrolls`) | `lovetweaks.admin` |
+| `/lovetweaks givescroll <игрок>` | Выдать свиток телепортации к игроку | `lovetweaks.admin` |
+| `/lovetweaks givecoordscroll <игрок>` | Выдать свиток телепортации по координатам в мире `world` | `lovetweaks.admin` |
 | `/lovetweaks herald bind` | Привязать NPC Глашатая (смотреть на NPC) | `lovetweaks.admin` |
 | `/lovetweaks herald unbind` | Отвязать NPC Глашатая | `lovetweaks.admin` |
 | `/lovetweaks herald clear` | Очистить все объявления | `lovetweaks.admin` |
-| `/lovetweaks post bind` | Привязать NPC Почтмейстера | `lovetweaks.admin` |
-| `/lovetweaks post unbind` | Отвязать NPC Почтмейстера | `lovetweaks.admin` |
+| `/lovetweaks herald open [игрок]` | Открыть меню Глашатая | `lovetweaks.admin` |
 | `/scoreboard` | Открыть меню настроек скорборда | - (доступно всем) |
 
 ## Пермишины
@@ -40,7 +39,6 @@ LoveTweaks предоставляет набор специализирован�
 | Пермишин | Описание | Default |
 |---|---|---|
 | `lovetweaks.herald.buy` | Покупка объявлений у Глашатая | true |
-| `lovetweaks.post.send` | Отправка посылок через Почту | true |
 | `lovetweaks.scoreboard.use` | Использование скорборда | true |
 
 ## Конфигурация
@@ -61,6 +59,13 @@ hunger:
 
 milk:
   disable-milk: true  # отключить молоко (не очищает эффекты)
+
+brewing:
+  disable-brewing: true               # отключить варку любых зелий в варочной стойке
+  disable-brewing-stand-craft: true   # отключить крафт варочной стойки
+  disable-brewing-stand-world: true   # удалить варочные стойки из мира (генерация, сундуки, установка)
+  disable-potion-natural-drops: true  # отключить естественное появление и выпадение зелий (сундуки, ведьмы, бартер, рыбалка)
+  disabled-message: '&cЗельеварение и варочные стойки отключены на этом сервере.'
 ```
 
 ### Потеря предметов при выбрасывании
@@ -74,33 +79,27 @@ item-drop-loss:
 
 ### Свиток телепортации к координатам
 
-Отдельно от обычного свитка (телепорт к игроку) — свиток на заранее заданную в конфиге точку.
-ПКМ запускает отсчёт (отменяется движением/невидимостью/PvP), затем телепортирует. Каждая
-точка настраивается под своим `id` в `coord-teleport-scroll.scrolls`, выдаётся через
-`/lovetweaks givecoordscroll <игрок> <id>`.
+Свиток для свободной телепортации по координатам в основном мире (`world`).
+ПКМ со свитком запускает 10-секундный ввод координат в чат (формат `X Z` или `X Y Z`).
+После ввода запускается 5-секундный отсчёт (отменяется движением/невидимостью/PvP/выбрасыванием свитка), после чего игрок телепортируется на указанную точку. Выдаётся командой:
+`/lovetweaks givecoordscroll <игрок>`.
 
 ```yaml
 coord-teleport-scroll:
   enabled: true
+  target-world: 'world'
   cast-time-seconds: 5      # отсчёт перед телепортацией
-  cooldown-seconds: 30      # кулдаун повторного использования одного id
+  cooldown-seconds: 30      # кулдаун повторного использования
   limits:
-    min-y: -32                    # ниже — телепортация запрещена (шахты/пещеры)
+    min-y: -64                    # ниже — телепортация запрещена
     max-y: 320                    # выше — телепортация запрещена
     respect-world-border: true    # точка обязана быть внутри world border
     max-distance-from-spawn: 0    # 0 = не ограничивать; иначе макс. блоков от спавна мира
-    allowed-worlds: []            # пусто = все миры разрешены
-  scrolls:
-    spawn:
-      permission: ''       # пусто = доступно всем
-      world: world
-      x: 0.5
-      y: 100.0
-      z: 0.5
+    allowed-worlds:
+      - 'world'
 ```
 
-Лимиты `limits` общие для всех точек в `scrolls` и проверяются дважды: перед стартом
-отсчёта и ещё раз прямо перед телепортацией (на случай live-reload конфига).
+Лимиты `limits` проверяются при вводе координат и перед самой телепортацией.
 
 ### Королевский Глашатай
 

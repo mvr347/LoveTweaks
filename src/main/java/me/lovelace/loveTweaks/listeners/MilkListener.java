@@ -1,77 +1,161 @@
 package me.lovelace.loveTweaks.listeners;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import me.lovelace.loveTweaks.LoveTweaks;
+import me.lovelace.loveTweaks.items.PurificationPotion;
+import me.lovelace.loveTweaks.managers.PurificationPotionConfig;
 import me.lovelace.loveTweaks.utils.GuiItemUtil;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
-
 import org.bukkit.NamespacedKey;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.ShapelessRecipe;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataContainer;
-import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 
+/**
+ * Обработчик употребления молока и кастомного "Зелья очищения".
+ * Поддерживает настраиваемый кулдаун (30 сек по умолчанию), очищение всех эффектов,
+ * текстуры ItemsAdder и защищенную от утечек память на базе Caffeine Cache.
+ */
 public class MilkListener implements Listener {
 
     private final LoveTweaks plugin;
-    private final NamespacedKey purificationKey;
+    private final NamespacedKey recipeKey;
+
+    // Время окончания кулдауна для игрока (UUID -> System.currentTimeMillis() + cooldownMs)
+    private final Cache<UUID, Long> cooldowns = Caffeine.newBuilder()
+            .maximumSize(10_000)
+            .expireAfterWrite(Duration.ofMinutes(10))
+            .build();
 
     public MilkListener(LoveTweaks plugin) {
         this.plugin = plugin;
-        this.purificationKey = new NamespacedKey(plugin, "purification_potion");
+        this.recipeKey = new NamespacedKey(plugin, "purification_potion");
 
         registerPurificationRecipe();
     }
 
-    private void registerPurificationRecipe() {
-        NamespacedKey recipeKey = new NamespacedKey(plugin, "purification_potion");
-        ShapelessRecipe recipe = new ShapelessRecipe(recipeKey, createPurificationPotion());
-        recipe.addIngredient(Material.GHAST_TEAR);
-        recipe.addIngredient(Material.FERMENTED_SPIDER_EYE);
-        recipe.addIngredient(Material.NETHER_WART);
+    public void reload() {
+        registerPurificationRecipe();
+        cooldowns.invalidateAll();
+    }
 
-        plugin.getServer().addRecipe(recipe);
+    public void clearAll() {
+        cooldowns.invalidateAll();
     }
 
     /**
-     * Создаёт зелье очищения — кастомный предмет, помеченный через PersistentDataContainer,
-     * который снимает все активные эффекты при употреблении.
+     * Регистрирует бесформенный рецепт крафта зелья очищения.
      */
-    public ItemStack createPurificationPotion() {
-        ItemStack potion = new ItemStack(Material.POTION);
-        ItemMeta meta = potion.getItemMeta();
-        if (meta != null) {
-            var config = plugin.getLoveTweaksConfig();
-            meta.displayName(GuiItemUtil.colorize(config.getPurificationPotionName())
-                    .decoration(TextDecoration.ITALIC, false));
+    public void registerPurificationRecipe() {
+        try {
+            plugin.getServer().removeRecipe(recipeKey);
+        } catch (Throwable ignored) {}
 
-            List<Component> lore = new ArrayList<>();
-            for (String line : config.getPurificationPotionLore()) {
-                lore.add(GuiItemUtil.colorize(line).decoration(TextDecoration.ITALIC, false));
-            }
-            meta.lore(lore);
-
-            PersistentDataContainer container = meta.getPersistentDataContainer();
-            container.set(purificationKey, PersistentDataType.BYTE, (byte) 1);
-
-            potion.setItemMeta(meta);
+        PurificationPotionConfig cfg = plugin.getLoveTweaksConfig().getPurificationPotionConfig();
+        if (!cfg.isRecipeEnabled()) {
+            return;
         }
-        return potion;
+
+        try {
+            ShapelessRecipe recipe = new ShapelessRecipe(recipeKey, PurificationPotion.create());
+            List<String> ingredients = cfg.recipeIngredients();
+            if (ingredients == null || ingredients.isEmpty()) {
+                recipe.addIngredient(Material.GHAST_TEAR);
+                recipe.addIngredient(Material.FERMENTED_SPIDER_EYE);
+                recipe.addIngredient(Material.NETHER_WART);
+            } else {
+                for (String ingName : ingredients) {
+                    Material mat = Material.matchMaterial(ingName.toUpperCase());
+                    if (mat != null) {
+                        recipe.addIngredient(mat);
+                    }
+                }
+            }
+            plugin.getServer().addRecipe(recipe);
+        } catch (Throwable t) {
+            plugin.getLogger().warning("Не удалось зарегистрировать рецепт зелья очищения: " + t.getMessage());
+        }
     }
 
-    @EventHandler
+    /**
+     * Создаёт зелье очищения через фабрику {@link PurificationPotion}.
+     */
+    public ItemStack createPurificationPotion() {
+        return PurificationPotion.create();
+    }
+
+    public boolean isPurificationPotion(ItemStack item) {
+        return PurificationPotion.isPurificationPotion(item);
+    }
+
+    /**
+     * Возвращает оставшееся время кулдауна в секундах (0.0 если кулдауна нет).
+     */
+    public double getRemainingCooldown(Player player) {
+        Long expireTime = cooldowns.getIfPresent(player.getUniqueId());
+        if (expireTime == null) return 0.0;
+        long now = System.currentTimeMillis();
+        if (now >= expireTime) {
+            cooldowns.invalidate(player.getUniqueId());
+            return 0.0;
+        }
+        return (expireTime - now) / 1000.0;
+    }
+
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
+        ItemStack item = event.getItem();
+        if (item == null || item.getType() == Material.AIR) {
+            return;
+        }
+        if (!isPurificationPotion(item)) {
+            return;
+        }
+
+        Player player = event.getPlayer();
+        double remaining = getRemainingCooldown(player);
+
+        // Если это зелье или съедобный предмет, но кулдаун активен — блокируем анимацию питья
+        if (item.getType() == Material.POTION || item.getType() == Material.MILK_BUCKET || item.getType().isEdible()) {
+            if (remaining > 0.0) {
+                event.setCancelled(true);
+                sendCooldownMessage(player, remaining);
+            }
+            return;
+        }
+
+        // Если кастомный предмет ItemsAdder не является ванильным съедобным материалом (Instant use)
+        event.setCancelled(true);
+        if (remaining > 0.0) {
+            sendCooldownMessage(player, remaining);
+            return;
+        }
+
+        applyPurification(player, item, event.getHand());
+    }
+
+    @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerItemConsume(PlayerItemConsumeEvent event) {
         ItemStack item = event.getItem();
         Player player = event.getPlayer();
@@ -83,46 +167,95 @@ public class MilkListener implements Listener {
             return;
         }
 
-        if (item.getType() == Material.POTION && isPurificationPotion(item)) {
-            // Ванильное употребление зелья не должно происходить - убираем предмет вручную
-            // и обрабатываем эффект очищения сами
+        if (isPurificationPotion(item)) {
             event.setCancelled(true);
 
-            consumeFromHand(player, item);
-            giveEmptyBottle(player);
-            clearAllEffects(player);
+            double remaining = getRemainingCooldown(player);
+            if (remaining > 0.0) {
+                sendCooldownMessage(player, remaining);
+                return;
+            }
 
-            player.sendMessage(GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getPurificationMessage()));
+            EquipmentSlot hand = isPurificationPotion(player.getInventory().getItemInMainHand()) ? EquipmentSlot.HAND : EquipmentSlot.OFF_HAND;
+            applyPurification(player, item, hand);
         }
     }
 
-    /**
-     * Убирает зелье очищения из руки игрока (основной или дополнительной),
-     * уменьшая количество предметов в стаке или очищая слот полностью.
-     */
-    private void consumeFromHand(Player player, ItemStack item) {
-        PlayerInventory inventory = player.getInventory();
+    private void applyPurification(Player player, ItemStack item, EquipmentSlot hand) {
+        PurificationPotionConfig cfg = plugin.getLoveTweaksConfig().getPurificationPotionConfig();
 
-        ItemStack mainHand = inventory.getItemInMainHand();
-        if (isPurificationPotion(mainHand)) {
-            decreaseOrClear(inventory, mainHand, EquipmentSlot.HAND);
-            return;
+        // 1. Устанавливаем кулдаун
+        int cooldownSec = cfg.cooldownSeconds();
+        if (cooldownSec > 0) {
+            cooldowns.put(player.getUniqueId(), System.currentTimeMillis() + (cooldownSec * 1000L));
         }
 
-        ItemStack offHand = inventory.getItemInOffHand();
-        if (isPurificationPotion(offHand)) {
-            decreaseOrClear(inventory, offHand, EquipmentSlot.OFF_HAND);
+        // 2. Снимаем предмет из руки и выдаем пустую бутылочку при необходимости
+        consumeFromHand(player, hand);
+        if (item.getType() == Material.POTION) {
+            giveEmptyBottle(player);
+        }
+
+        // 3. Очищаем ВСЕ эффекты (и положительные, и отрицательные)
+        clearAllEffects(player);
+
+        // 4. Отправляем сообщение об очищении
+        String msg = cfg.purificationMessage();
+        if (msg != null && !msg.isBlank()) {
+            player.sendMessage(GuiItemUtil.colorize(player, msg));
+        }
+
+        // 5. Визуальные эффекты и звук
+        try {
+            player.playSound(player.getLocation(), Sound.ITEM_BOTTLE_EMPTY, 1.0f, 1.0f);
+            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.6f, 1.6f);
+            player.getWorld().spawnParticle(Particle.POOF, player.getLocation().add(0, 1.0, 0), 12, 0.3, 0.4, 0.3, 0.03);
+            player.getWorld().spawnParticle(Particle.ENCHANT, player.getLocation().add(0, 1.0, 0), 15, 0.4, 0.5, 0.4, 0.5);
+        } catch (Throwable t) {
+            plugin.getLogger().log(java.util.logging.Level.FINE, "Could not play purification effects: " + t.getMessage());
+        }
+    }
+
+    private void sendCooldownMessage(Player player, double remainingSeconds) {
+        PurificationPotionConfig cfg = plugin.getLoveTweaksConfig().getPurificationPotionConfig();
+        String formatted = String.format(Locale.ROOT, "%.1f", remainingSeconds);
+        String msg = cfg.cooldownMessage()
+                .replace("<seconds>", formatted)
+                .replace("<time>", formatted);
+        player.sendMessage(GuiItemUtil.colorize(player, msg));
+
+        try {
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.8f, 1.0f);
+        } catch (Throwable t) {
+            plugin.getLogger().log(java.util.logging.Level.FINE, "Could not play error sound: " + t.getMessage());
+        }
+    }
+
+    private void consumeFromHand(Player player, EquipmentSlot slot) {
+        PlayerInventory inv = player.getInventory();
+        if (slot == EquipmentSlot.OFF_HAND && isPurificationPotion(inv.getItemInOffHand())) {
+            decreaseOrClear(inv, inv.getItemInOffHand(), EquipmentSlot.OFF_HAND);
+        } else if (isPurificationPotion(inv.getItemInMainHand())) {
+            decreaseOrClear(inv, inv.getItemInMainHand(), EquipmentSlot.HAND);
+        } else if (isPurificationPotion(inv.getItemInOffHand())) {
+            decreaseOrClear(inv, inv.getItemInOffHand(), EquipmentSlot.OFF_HAND);
         }
     }
 
     private void decreaseOrClear(PlayerInventory inventory, ItemStack stack, EquipmentSlot slot) {
+        if (stack == null || stack.getType() == Material.AIR) return;
         if (stack.getAmount() > 1) {
             stack.setAmount(stack.getAmount() - 1);
-        } else {
-            if (slot == EquipmentSlot.HAND) {
-                inventory.setItemInMainHand(new ItemStack(Material.AIR));
+            if (slot == EquipmentSlot.OFF_HAND) {
+                inventory.setItemInOffHand(stack);
             } else {
-                inventory.setItemInOffHand(new ItemStack(Material.AIR));
+                inventory.setItemInMainHand(stack);
+            }
+        } else {
+            if (slot == EquipmentSlot.OFF_HAND) {
+                inventory.setItemInOffHand(null);
+            } else {
+                inventory.setItemInMainHand(null);
             }
         }
     }
@@ -139,22 +272,16 @@ public class MilkListener implements Listener {
     }
 
     private void clearAllEffects(Player player) {
-        // Копируем в новый список, чтобы избежать ConcurrentModificationException
-        // при удалении эффектов во время итерации
+        PurificationPotionConfig cfg = plugin != null && plugin.getLoveTweaksConfig() != null
+                ? plugin.getLoveTweaksConfig().getPurificationPotionConfig()
+                : null;
         List<PotionEffect> activeEffects = new ArrayList<>(player.getActivePotionEffects());
         for (PotionEffect effect : activeEffects) {
+            if (cfg != null && cfg.isEffectIgnored(effect.getType())) {
+                continue;
+            }
             player.removePotionEffect(effect.getType());
         }
     }
-
-    public boolean isPurificationPotion(ItemStack item) {
-        if (item == null || item.getType() != Material.POTION || !item.hasItemMeta()) {
-            return false;
-        }
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) {
-            return false;
-        }
-        return meta.getPersistentDataContainer().has(purificationKey, PersistentDataType.BYTE);
-    }
 }
+

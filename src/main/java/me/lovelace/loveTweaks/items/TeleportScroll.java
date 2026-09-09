@@ -24,9 +24,14 @@ public class TeleportScroll {
     private static NamespacedKey scrollKey;
     private static LoveTweaks plugin;
 
+    private static NamespacedKey legacyKey1;
+    private static NamespacedKey legacyKey2;
+
     public static void init(LoveTweaks pluginInstance) {
         plugin = pluginInstance;
         scrollKey = new NamespacedKey(pluginInstance, "teleport_scroll");
+        legacyKey1 = NamespacedKey.fromString("loveteleportscroll:teleport_scroll");
+        legacyKey2 = NamespacedKey.fromString("lovetweaks:teleport_scroll");
     }
 
     public static NamespacedKey getScrollKey() {
@@ -34,16 +39,22 @@ public class TeleportScroll {
     }
 
     /**
-     * Создаёт ItemStack свитка телепортации с кастомными метаданными.
+     * Создаёт ItemStack свитка телепортации с кастомными метаданными и поддержкой ItemsAdder.
      * maxStackSize = 1 выставляется через ItemMeta (Paper 1.20.5+ API).
      */
     public static ItemStack create() {
-        ItemStack scroll = new ItemStack(Material.PAPER);
+        var config = plugin.getLoveTweaksConfig().getTeleportScrollConfig();
+
+        ItemStack scroll = null;
+        if (config.itemsadderItem() != null && !config.itemsadderItem().isBlank()) {
+            scroll = me.lovelace.loveTweaks.utils.ItemsAdderHook.createCustomItem(config.itemsadderItem());
+        }
+        if (scroll == null) {
+            scroll = new ItemStack(config.material());
+        }
+
         ItemMeta meta = scroll.getItemMeta();
-
         if (meta != null) {
-            var config = plugin.getLoveTweaksConfig().getTeleportScrollConfig();
-
             // Без курсива — Adventure по умолчанию добавляет курсив к custom именам
             meta.displayName(GuiItemUtil.colorize(config.itemName())
                     .decoration(TextDecoration.ITALIC, false));
@@ -53,6 +64,11 @@ public class TeleportScroll {
                 lore.add(GuiItemUtil.colorize(line).decoration(TextDecoration.ITALIC, false));
             }
             meta.lore(lore);
+
+            // CustomModelData если задан
+            if (config.customModelData() > 0) {
+                meta.setCustomModelData(config.customModelData());
+            }
 
             // Запрещаем стакаться — максимальный размер стака = 1
             meta.setMaxStackSize(1);
@@ -68,7 +84,7 @@ public class TeleportScroll {
     }
 
     /**
-     * Проверяет, является ли предмет свитком телепортации по метке в PDC.
+     * Проверяет, является ли предмет свитком телепортации по метке в PDC, ItemsAdder или имени.
      */
     public static boolean isScroll(ItemStack item) {
         if (item == null || item.getType() == Material.AIR || !item.hasItemMeta()) {
@@ -78,6 +94,33 @@ public class TeleportScroll {
         if (meta == null) {
             return false;
         }
-        return meta.getPersistentDataContainer().has(scrollKey, PersistentDataType.BYTE);
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        if (scrollKey != null && pdc.has(scrollKey, PersistentDataType.BYTE)) {
+            return true;
+        }
+        if (legacyKey1 != null && pdc.has(legacyKey1, PersistentDataType.BYTE)) {
+            return true;
+        }
+        if (legacyKey2 != null && pdc.has(legacyKey2, PersistentDataType.BYTE)) {
+            return true;
+        }
+        if (plugin != null) {
+            var cfg = plugin.getLoveTweaksConfig().getTeleportScrollConfig();
+            if (cfg != null) {
+                if (cfg.itemsadderItem() != null && !cfg.itemsadderItem().isBlank()
+                        && me.lovelace.loveTweaks.utils.ItemsAdderHook.isCustomItem(item, cfg.itemsadderItem())) {
+                    return true;
+                }
+                // Запасная проверка по названию предмета из конфигурации
+                if (meta.hasDisplayName()) {
+                    String expectedName = GuiItemUtil.stripColor(cfg.itemName());
+                    String actualName = GuiItemUtil.stripColor(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(meta.displayName()));
+                    if (!expectedName.isEmpty() && expectedName.equalsIgnoreCase(actualName)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 }

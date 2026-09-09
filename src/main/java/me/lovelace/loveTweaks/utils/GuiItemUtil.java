@@ -6,6 +6,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -27,15 +28,21 @@ public final class GuiItemUtil {
     private GuiItemUtil() {}
 
     public static ItemStack buildItem(String materialStr, String displayName, List<String> lore) {
+        return buildItem(null, materialStr, displayName, lore);
+    }
+
+    public static ItemStack buildItem(Player player, String materialStr, String displayName, List<String> lore) {
         ItemStack item = resolveItem(materialStr);
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return item;
 
-        meta.displayName(colorize(displayName));
+        meta.displayName(colorize(player, displayName));
 
         List<Component> loreComponents = new ArrayList<>();
-        for (String line : lore) {
-            loreComponents.add(colorize(line));
+        if (lore != null) {
+            for (String line : lore) {
+                loreComponents.add(colorize(player, line));
+            }
         }
         meta.lore(loreComponents);
 
@@ -45,7 +52,25 @@ public final class GuiItemUtil {
     }
 
     public static Component colorize(String text) {
-        return LEGACY.deserialize(text.replace('&', '§'));
+        return colorize(null, text);
+    }
+
+    public static Component colorize(Player player, String text) {
+        if (text == null) return Component.empty();
+        String processed = text;
+        if (player != null) {
+            try {
+                if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+                    processed = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, processed);
+                }
+            } catch (Throwable ignored) {}
+        }
+        return LEGACY.deserialize(processed.replace('&', '§'));
+    }
+
+    public static String stripColor(String text) {
+        if (text == null) return "";
+        return text.replaceAll("(?i)[&§][0-9a-fk-or]", "").trim();
     }
 
     private static ItemStack resolveItem(String materialStr) {

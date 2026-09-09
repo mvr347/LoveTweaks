@@ -10,10 +10,17 @@ import org.bukkit.inventory.InventoryHolder;
  */
 public class HeraldPurchaseHolder implements InventoryHolder {
 
+    public enum TextSource {
+        NONE,
+        CHAT,
+        BOOK
+    }
+
     private Inventory inventory;
     private final int slotIndex;
     private int durationMinutes;
     private String pendingMessage;
+    private TextSource textSource = TextSource.NONE;
 
     public HeraldPurchaseHolder(int slotIndex, int initialDurationMinutes) {
         this.slotIndex = slotIndex;
@@ -34,4 +41,6 @@ public class HeraldPurchaseHolder implements InventoryHolder {
     public void setDurationMinutes(int durationMinutes) { this.durationMinutes = durationMinutes; }
     public String pendingMessage() { return pendingMessage; }
     public void setPendingMessage(String pendingMessage) { this.pendingMessage = pendingMessage; }
+    public TextSource getTextSource() { return textSource; }
+    public void setTextSource(TextSource textSource) { this.textSource = textSource != null ? textSource : TextSource.NONE; }
 }

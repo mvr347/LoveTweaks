@@ -32,7 +32,7 @@ public class TeleportScrollListener implements Listener {
      * ПКМ со свитком в основной руке — запускаем фазу ввода ника.
      * Проверяем EquipmentSlot.HAND, чтобы не срабатывало дважды (ПКМ вызывает два события: HAND и OFF_HAND).
      */
-    @EventHandler(priority = EventPriority.NORMAL)
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerInteract(PlayerInteractEvent event) {
         // Фильтруем: только ПКМ, только основная рука, только со свитком
         if (event.getHand() != EquipmentSlot.HAND) {
@@ -89,7 +89,10 @@ public class TeleportScrollListener implements Listener {
             return;
         }
         if (TeleportScroll.isScroll(event.getItemDrop().getItemStack())) {
-            manager.cancelSession(player.getUniqueId(), "Телепортация отменена!", "Телепортация отменена!");
+            var cfg = plugin.getLoveTweaksConfig().getTeleportScrollConfig();
+            manager.cancelSession(player.getUniqueId(),
+                    cfg.message("cancelled-initiator").replace("<reason>", cfg.message("reason-dropped")),
+                    cfg.message("cancelled-target"));
         }
     }
 
@@ -101,7 +104,41 @@ public class TeleportScrollListener implements Listener {
         }
         ItemStack prevItem = player.getInventory().getItem(event.getPreviousSlot());
         if (TeleportScroll.isScroll(prevItem)) {
-            manager.cancelSession(player.getUniqueId(), "Телепортация отменена!", "Телепортация отменена!");
+            var cfg = plugin.getLoveTweaksConfig().getTeleportScrollConfig();
+            manager.cancelSession(player.getUniqueId(),
+                    cfg.message("cancelled-initiator").replace("<reason>", cfg.message("reason-dropped")),
+                    cfg.message("cancelled-target"));
+        }
+    }
+
+    @EventHandler
+    public void onPlayerSwapHandItems(org.bukkit.event.player.PlayerSwapHandItemsEvent event) {
+        Player player = event.getPlayer();
+        if (!manager.hasSession(player.getUniqueId())) {
+            return;
+        }
+        var cfg = plugin.getLoveTweaksConfig().getTeleportScrollConfig();
+        manager.cancelSession(player.getUniqueId(),
+                cfg.message("cancelled-initiator").replace("<reason>", cfg.message("reason-dropped")),
+                cfg.message("cancelled-target"));
+    }
+
+    @EventHandler
+    public void onPlayerDeath(org.bukkit.event.entity.PlayerDeathEvent event) {
+        Player player = event.getPlayer();
+        if (manager.hasSession(player.getUniqueId())) {
+            manager.cancelSession(player.getUniqueId(), null, null);
+        }
+        manager.cancelSessionsTargeting(player.getUniqueId());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerTeleport(org.bukkit.event.player.PlayerTeleportEvent event) {
+        if (event.getCause() != org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.PLUGIN) {
+            Player player = event.getPlayer();
+            if (manager.hasSession(player.getUniqueId())) {
+                manager.cancelSession(player.getUniqueId(), null, null);
+            }
         }
     }
 

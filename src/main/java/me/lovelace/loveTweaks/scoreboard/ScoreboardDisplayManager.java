@@ -126,49 +126,161 @@ public class ScoreboardDisplayManager {
             return null;
         }
 
-        String rawTop = applyPAPI(player, config.getTop());
+        String rawTitle = applyPAPI(player, config.getTitle());
         String rawBottom = applyPAPI(player, config.getBottom());
 
-        // Ширина берётся из ВСЕХ строк — включая top/bottom, а не только плейсхолдеров.
-        // Раньше top/bottom центрировались относительно ширины плейсхолдеров, поэтому если
-        // сама строка top/bottom оказывалась шире всех плейсхолдеров, она вообще не получала
-        // отступ (оставалась прижатой влево), а более короткие плейсхолдеры центрировались
-        // по заведомо неверной (слишком маленькой) ширине. Учитывая top/bottom здесь, центр
-        // всегда пересчитывается динамически от самой широкой строки скорборда.
-        int widest = Math.max(visibleLength(rawTop), visibleLength(rawBottom));
-        for (String line : valid) widest = Math.max(widest, visibleLength(line));
+        // Максимальная пиксельная ширина по видимым строкам плейсхолдеров и заголовку
+        int contentWidth = getPixelWidth(rawTitle);
+        for (String line : valid) {
+            contentWidth = Math.max(contentWidth, getPixelWidth(line));
+        }
 
-        String top = center(rawTop, widest);
-        String bottom = center(rawBottom, widest);
+        // Динамическое центрирование нижней строки по ширине контента
+        String bottom = center(rawBottom, contentWidth);
 
         List<String> lines = new ArrayList<>();
-        lines.add(top);
+        // Строка-разделитель между названием и плейсхолдерами (вместо top)
+        lines.add(config.getSeparator());
+
         String separator = config.getSeparator();
         for (int i = 0; i < valid.size(); i += 2) {
             lines.add(valid.get(i));
-            if (i + 1 < valid.size()) lines.add(valid.get(i + 1));
+            if (i + 1 < valid.size()) {
+                lines.add(valid.get(i + 1));
+            }
             lines.add(separator);
         }
         lines.add(bottom);
         return lines;
     }
 
-    // Matches both a plain legacy code (&a, §a, ...) and the hex-color sequence Bukkit uses
-    // (&x&1&2&3&4&5&6 / §x§1§2§3§4§5§6) — the latter's leading "x" isn't a normal code char,
-    // so without this it leaked into the visible-length count and threw off centering.
+    public static final int DEFAULT_MIN_PADDING_SPACES = 3;
+
     private static final java.util.regex.Pattern COLOR_CODES = java.util.regex.Pattern.compile(
-            "[&§]x([&§][0-9a-fA-F]){6}|[&§][0-9a-fk-orA-FK-OR]"
+            "[&§]x([&§][0-9a-fA-F]){6}|[&§]#[0-9a-fA-F]{6}|[&§][0-9a-fk-orA-FK-OR]"
     );
 
-    /** Visible character count of a legacy-colored string, ignoring `&`/`§` color codes. */
-    private static int visibleLength(String legacyText) {
-        return COLOR_CODES.matcher(legacyText).replaceAll("").length();
+    /**
+     * Вычисляет пиксельную ширину строки в шрифте Minecraft с учётом
+     * форматирования, значков, ItemsAdder font_images (:copper_coin:, etc.) и Unicode PUA.
+     */
+    public static int getPixelWidth(String legacyText) {
+        if (legacyText == null || legacyText.isEmpty()) return 0;
+        int width = 0;
+        boolean isBold = false;
+        char[] chars = legacyText.toCharArray();
+        for (int i = 0; i < chars.length; i++) {
+            char c = chars[i];
+            // Обработка цветовых кодов
+            if ((c == '§' || c == '&') && i + 1 < chars.length) {
+                char code = Character.toLowerCase(chars[i + 1]);
+                if (code == 'x' && i + 13 < chars.length) {
+                    // Формат &x&r&r&g&g&b&b или §x§r§r§g§g§b§b (14 символов)
+                    i += 13;
+                    isBold = false;
+                    continue;
+                } else if (code == '#' && i + 7 < chars.length) {
+                    // Формат &#rrggbb или §#rrggbb (8 символов)
+                    i += 7;
+                    isBold = false;
+                    continue;
+                } else if (code == 'l') {
+                    isBold = true;
+                } else if (code == 'r' || (code >= '0' && code <= '9') || (code >= 'a' && code <= 'f')) {
+                    isBold = false;
+                }
+                i++; // пропускаем код цвета
+                continue;
+            }
+
+            // Обработка ItemsAdder font_images тегов, например :copper_coin:, :iron_coin: и т.д.
+            if (c == ':') {
+                int nextColon = legacyText.indexOf(':', i + 1);
+                if (nextColon != -1 && nextColon - i <= 32) {
+                    String tag = legacyText.substring(i + 1, nextColon).toLowerCase();
+                    if (isFontImageTag(tag)) {
+                        width += 9 + 1; // scale_ratio 9 + 1px spacing
+                        i = nextColon;
+                        continue;
+                    }
+                }
+            }
+
+            // Обработка ItemsAdder плейсхолдеров формата %img_copper_coin% и т.д.
+            if (c == '%') {
+                int nextPercent = legacyText.indexOf('%', i + 1);
+                if (nextPercent != -1 && nextPercent - i <= 40) {
+                    String placeholder = legacyText.substring(i + 1, nextPercent).toLowerCase();
+                    if (placeholder.startsWith("img_")) {
+                        width += 9 + 1; // scale_ratio 9 + 1px spacing
+                        i = nextPercent;
+                        continue;
+                    }
+                }
+            }
+
+            int charWidth = getCharPixelWidth(c);
+            if (isBold && c != ' ') {
+                charWidth += 1;
+            }
+            width += charWidth;
+        }
+        return width;
     }
 
-    /** Pads a legacy-colored line with leading spaces so it centers against {@code targetWidth}. */
-    private static String center(String legacyText, int targetWidth) {
-        int pad = (targetWidth - visibleLength(legacyText)) / 2;
-        return pad > 0 ? " ".repeat(pad) + legacyText : legacyText;
+    private static boolean isFontImageTag(String tag) {
+        return tag.endsWith("_coin") || tag.endsWith("coin")
+                || tag.startsWith("mini") || tag.equals("copper_coin")
+                || tag.equals("iron_coin") || tag.equals("gold_coin")
+                || tag.equals("diamond_coin") || tag.equals("netherite_coin");
+    }
+
+    public static int getCharPixelWidth(char c) {
+        if (c == ' ' || c == '\u00A0') return 4;
+        if (c == '!' || c == '.' || c == ',' || c == ':' || c == ';' || c == 'i' || c == '|' || c == '¦') return 2;
+        if (c == '\'' || c == '`' || c == 'l') return 3;
+        if (c == 'I' || c == '[' || c == ']' || c == 't' || c == 'і' || c == 'ї') return 4;
+        if (c == 'f' || c == 'k' || c == 'к' || c == '(' || c == ')' || c == '{' || c == '}' || c == '<' || c == '>') return 5;
+        if (c == '@' || c == '~') return 7;
+        if (c == 'ж' || c == 'ш' || c == 'щ' || c == 'ы' || c == 'ю'
+                || c == 'Ж' || c == 'М' || c == 'Ш' || c == 'Щ' || c == 'Ю') return 7;
+        // Значки и спецсимволы юникода (✌, ⚔, ✦, ⏱, ⚖, ☠, ❤, ⚑, ◆, ▸, ☯ и т.д.) — 8px глиф + 2px отступ
+        if (c >= 0x2000 && c <= 0x2BFF) return 10;
+        // ItemsAdder / кастомные шрифты из ресурс-пака (Private Use Area: E000-F8FF, scale_ratio: 9)
+        if (c >= 0xE000 && c <= 0xF8FF) return 9;
+        // Стандартные символы ASCII и кириллицы (а-я, А-Я, 0-9, A-Z, a-z и т.д.)
+        return 6;
+    }
+
+    /**
+     * Центрирует строку относительно целевой пиксельной ширины контента с автоматическим
+     * добавлением отступов слева и справа, чтобы нижняя строка (и значки) не съедались
+     * краями скорборда, даже если плейсхолдеры короткие.
+     * Использует неразрывные пробелы (\u00A0), которые клиент Minecraft гарантированно
+     * учитывает при расчёте ширины окна скорборда и никогда не обрезает в конце строки.
+     */
+    public static String center(String legacyText, int targetPixelWidth) {
+        return center(legacyText, targetPixelWidth, DEFAULT_MIN_PADDING_SPACES);
+    }
+
+    /**
+     * Центрирует строку с указанным минимальным количеством пробелов отступа по бокам.
+     */
+    public static String center(String legacyText, int targetPixelWidth, int minPaddingSpaces) {
+        if (legacyText == null || legacyText.isEmpty()) return "";
+        int textWidth = getPixelWidth(legacyText);
+        int minPaddingPx = Math.max(0, minPaddingSpaces) * 4;
+
+        // Если контент плейсхолдеров короче нижней строки (или с учётом отступа),
+        // целевой шириной становится сама нижняя строка + отступы с обеих сторон.
+        int effectiveTargetWidth = Math.max(targetPixelWidth, textWidth + (minPaddingPx * 2));
+        int diff = effectiveTargetWidth - textWidth;
+
+        int leftSpaces = Math.max(minPaddingSpaces, (int) Math.round((diff / 2.0) / 4.0));
+        // Гарантируем увеличенный отступ справа (неразрывные пробелы), чтобы клиент Minecraft
+        // расширил фон скорборда и ни при каких условиях не обрезал правый край/значок
+        int rightSpaces = Math.max(leftSpaces, minPaddingSpaces + 2);
+        return "\u00A0".repeat(leftSpaces) + legacyText + "\u00A0".repeat(rightSpaces);
     }
 
     private Scoreboard createBoard(Player player, List<String> lines) {

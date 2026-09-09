@@ -69,19 +69,17 @@ public class EnchantmentListener implements Listener {
     @EventHandler
     public void onLootGenerate(LootGenerateEvent event) {
         if (plugin.getLoveTweaksConfig().isDisableAllEnchantments()) {
-            // Clear all loot if all enchantments are disabled (might be too harsh, consider removing only enchanted items)
-            // For now, let's just remove enchantments from items.
             for (ItemStack item : event.getLoot()) {
                 if (item != null && item.hasItemMeta()) {
                     ItemMeta meta = item.getItemMeta();
                     if (meta != null && meta.hasEnchants()) {
-                        for (Enchantment enchantment : meta.getEnchants().keySet()) {
+                        for (Enchantment enchantment : new HashSet<>(meta.getEnchants().keySet())) {
                             meta.removeEnchant(enchantment);
                         }
                         item.setItemMeta(meta);
                     }
                     if (meta instanceof EnchantmentStorageMeta esMeta) {
-                        for (Enchantment enchantment : esMeta.getStoredEnchants().keySet()) {
+                        for (Enchantment enchantment : new HashSet<>(esMeta.getStoredEnchants().keySet())) {
                             esMeta.removeStoredEnchant(enchantment);
                         }
                         item.setItemMeta(esMeta);

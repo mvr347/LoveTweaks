@@ -52,14 +52,25 @@ public class ScoreboardListener implements Listener, CommandExecutor {
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         if (!isAuthenticated(player)) return; // dodges LoveAuth's limbo - onAuthenticated shows it instead
-        // Small delay to ensure world is loaded
-        plugin.getServer().getScheduler().runTaskLater(plugin,
-            () -> displayManager.updateScoreboard(player), 5L);
+        dataManager.loadPlayerAsync(player.getUniqueId()).thenAccept(state -> {
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                if (player.isOnline()) {
+                    displayManager.updateScoreboard(player);
+                }
+            });
+        });
     }
 
     @EventHandler
     public void onAuthenticated(dev.lovelace.lovecore.api.auth.PlayerAuthenticatedEvent event) {
-        displayManager.updateScoreboard(event.player());
+        Player player = event.player();
+        dataManager.loadPlayerAsync(player.getUniqueId()).thenAccept(state -> {
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                if (player.isOnline()) {
+                    displayManager.updateScoreboard(player);
+                }
+            });
+        });
     }
 
     /**
@@ -83,6 +94,13 @@ public class ScoreboardListener implements Listener, CommandExecutor {
     @EventHandler
     public void onWorldChange(PlayerChangedWorldEvent event) {
         displayManager.updateScoreboard(event.getPlayer());
+    }
+
+    @EventHandler
+    public void onInventoryDrag(org.bukkit.event.inventory.InventoryDragEvent event) {
+        if (event.getInventory().getHolder() instanceof ScoreboardGUIHolder) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler
