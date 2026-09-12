@@ -7,6 +7,7 @@ import me.lovelace.loveTweaks.integration.CitizensIntegration;
 import me.lovelace.loveTweaks.placeholder.PlaytimeExpansion;
 import me.lovelace.loveTweaks.items.CoordinateTeleportScroll;
 import me.lovelace.loveTweaks.items.TeleportScroll;
+import me.lovelace.loveTweaks.listeners.AutoRespawnListener;
 import me.lovelace.loveTweaks.listeners.CoordinateTeleportScrollListener;
 import me.lovelace.loveTweaks.listeners.EnchantmentListener;
 import me.lovelace.loveTweaks.listeners.EnderChestListener;
@@ -107,6 +108,7 @@ public final class LoveTweaks extends JavaPlugin {
         brewingListener = new BrewingListener(this);
         getServer().getPluginManager().registerEvents(brewingListener, this);
         getServer().getPluginManager().registerEvents(new ItemDropLossListener(this), this);
+        getServer().getPluginManager().registerEvents(new AutoRespawnListener(this), this);
         getServer().getPluginManager().registerEvents(new TeleportScrollListener(this, teleportScrollManager), this);
         getServer().getPluginManager().registerEvents(new CoordinateTeleportScrollListener(this, coordTeleportScrollManager), this);
         getServer().getPluginManager().registerEvents(new FirstJoinItemsListener(this), this);
