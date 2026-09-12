@@ -1,6 +1,7 @@
 package me.lovelace.loveTweaks.commands;
 
 import me.lovelace.loveTweaks.LoveTweaks;
+import me.lovelace.loveTweaks.enchantments.CustomEnchantType;
 import me.lovelace.loveTweaks.herald.HeraldGUI;
 import me.lovelace.loveTweaks.integration.CitizensIntegration;
 import me.lovelace.loveTweaks.items.CoordinateTeleportScroll;
@@ -32,7 +33,7 @@ import java.util.Locale;
  */
 public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
 
-    private static final List<String> SUBCOMMANDS = List.of("reload", "givescroll", "givecoordscroll", "givepurification", "herald", "help");
+    private static final List<String> SUBCOMMANDS = List.of("reload", "givescroll", "givecoordscroll", "givepurification", "givebook", "enchant", "herald", "help");
     private static final List<String> HERALD_SUBCOMMANDS = List.of("bind", "unbind", "clear", "open");
 
     private final LoveTweaks plugin;
@@ -62,6 +63,8 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
             case "givescroll" -> handleGiveScroll(sender, args);
             case "givecoordscroll" -> handleGiveCoordScroll(sender, args);
             case "givepurification", "givepurificationpotion" -> handleGivePurification(sender, args);
+            case "givebook" -> handleGiveBook(sender, args);
+            case "enchant" -> handleEnchant(sender, args);
             case "herald" -> handleHerald(sender, args);
             default -> sendHelp(sender);
         }
@@ -125,6 +128,101 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
 
         sender.sendMessage(msg("purification-given-sender", "<player>", target.getName()).replace("<amount>", String.valueOf(amount)));
         target.sendMessage(msg("purification-given-target"));
+    }
+
+    private void handleGiveBook(@NotNull CommandSender sender, @NotNull String[] args) {
+        if (args.length < 3) {
+            sender.sendMessage(msg("usage-givebook"));
+            return;
+        }
+        Player target = plugin.getServer().getPlayerExact(args[1]);
+        if (target == null) {
+            sender.sendMessage(msg("player-not-found", "<player>", args[1]));
+            return;
+        }
+        CustomEnchantType type = CustomEnchantType.fromId(args[2]);
+        if (type == null) {
+            sender.sendMessage(msg("enchant-not-found", "<enchant>", args[2]));
+            return;
+        }
+        int level = 1;
+        if (args.length >= 4) {
+            try {
+                level = Integer.parseInt(args[3]);
+            } catch (NumberFormatException ignored) {}
+        }
+        level = Math.max(1, Math.min(level, type.getMaxLevel()));
+        ItemStack book = plugin.getCustomEnchantManager().createEnchantedBook(type, level);
+        target.getInventory().addItem(book);
+
+        sender.sendMessage(msg("book-given-sender", "<player>", target.getName())
+                .replace("<enchant>", type.getDisplayName())
+                .replace("<level>", CustomEnchantType.toRoman(level)));
+        target.sendMessage(msg("book-given-target")
+                .replace("<enchant>", type.getDisplayName())
+                .replace("<level>", CustomEnchantType.toRoman(level)));
+    }
+
+    private void handleEnchant(@NotNull CommandSender sender, @NotNull String[] args) {
+        if (args.length < 2) {
+            sender.sendMessage(msg("usage-enchant"));
+            return;
+        }
+
+        Player target;
+        CustomEnchantType type = CustomEnchantType.fromId(args[1]);
+        int level = 1;
+
+        if (type != null) {
+            if (!(sender instanceof Player player)) {
+                sender.sendMessage(msg("players-only"));
+                return;
+            }
+            target = player;
+            if (args.length >= 3) {
+                try {
+                    level = Integer.parseInt(args[2]);
+                } catch (NumberFormatException ignored) {}
+            }
+        } else {
+            if (args.length < 3) {
+                sender.sendMessage(msg("usage-enchant"));
+                return;
+            }
+            target = plugin.getServer().getPlayerExact(args[1]);
+            if (target == null) {
+                sender.sendMessage(msg("player-not-found", "<player>", args[1]));
+                return;
+            }
+            type = CustomEnchantType.fromId(args[2]);
+            if (type == null) {
+                sender.sendMessage(msg("enchant-not-found", "<enchant>", args[2]));
+                return;
+            }
+            if (args.length >= 4) {
+                try {
+                    level = Integer.parseInt(args[3]);
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+
+        ItemStack held = target.getInventory().getItemInMainHand();
+        if (held.getType().isAir()) {
+            sender.sendMessage(msg("enchant-no-item"));
+            return;
+        }
+
+        level = Math.max(1, Math.min(level, type.getMaxLevel()));
+        plugin.getCustomEnchantManager().applyEnchantment(held, type, level);
+
+        sender.sendMessage(msg("enchant-success", "<player>", target.getName())
+                .replace("<enchant>", type.getDisplayName())
+                .replace("<level>", CustomEnchantType.toRoman(level)));
+        if (!target.equals(sender)) {
+            target.sendMessage(msg("enchant-success-target")
+                    .replace("<enchant>", type.getDisplayName())
+                    .replace("<level>", CustomEnchantType.toRoman(level)));
+        }
     }
 
     private void handleHerald(@NotNull CommandSender sender, @NotNull String[] args) {
@@ -192,6 +290,8 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(msg("help-givescroll"));
         sender.sendMessage(msg("help-givecoordscroll"));
         sender.sendMessage(msg("help-givepurification"));
+        sender.sendMessage(msg("help-givebook"));
+        sender.sendMessage(msg("help-enchant"));
         sender.sendMessage(msg("help-herald"));
         sender.sendMessage(msg("help-footer"));
     }
@@ -229,12 +329,63 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2 && (args[0].equalsIgnoreCase("givescroll")
                 || args[0].equalsIgnoreCase("givecoordscroll")
                 || args[0].equalsIgnoreCase("givepurification")
-                || args[0].equalsIgnoreCase("givepurificationpotion"))) {
+                || args[0].equalsIgnoreCase("givepurificationpotion")
+                || args[0].equalsIgnoreCase("givebook"))) {
             List<String> names = new ArrayList<>();
             for (Player online : plugin.getServer().getOnlinePlayers()) {
                 names.add(online.getName());
             }
             return StringUtil.copyPartialMatches(args[1], names, new ArrayList<>());
+        }
+
+        if (args.length == 3 && args[0].equalsIgnoreCase("givebook")) {
+            List<String> enchants = new ArrayList<>();
+            for (CustomEnchantType type : CustomEnchantType.values()) {
+                enchants.add(type.getId());
+            }
+            return StringUtil.copyPartialMatches(args[2], enchants, new ArrayList<>());
+        }
+
+        if (args.length == 4 && args[0].equalsIgnoreCase("givebook")) {
+            CustomEnchantType type = CustomEnchantType.fromId(args[2]);
+            if (type != null && type.getMaxLevel() > 1) {
+                return StringUtil.copyPartialMatches(args[3], List.of("1", "2"), new ArrayList<>());
+            }
+            return List.of("1");
+        }
+
+        if (args.length == 2 && args[0].equalsIgnoreCase("enchant")) {
+            List<String> suggestions = new ArrayList<>();
+            for (CustomEnchantType type : CustomEnchantType.values()) {
+                suggestions.add(type.getId());
+            }
+            for (Player online : plugin.getServer().getOnlinePlayers()) {
+                suggestions.add(online.getName());
+            }
+            return StringUtil.copyPartialMatches(args[1], suggestions, new ArrayList<>());
+        }
+
+        if (args.length == 3 && args[0].equalsIgnoreCase("enchant")) {
+            CustomEnchantType directType = CustomEnchantType.fromId(args[1]);
+            if (directType != null) {
+                if (directType.getMaxLevel() > 1) {
+                    return StringUtil.copyPartialMatches(args[2], List.of("1", "2"), new ArrayList<>());
+                }
+                return List.of("1");
+            }
+            List<String> enchants = new ArrayList<>();
+            for (CustomEnchantType type : CustomEnchantType.values()) {
+                enchants.add(type.getId());
+            }
+            return StringUtil.copyPartialMatches(args[2], enchants, new ArrayList<>());
+        }
+
+        if (args.length == 4 && args[0].equalsIgnoreCase("enchant")) {
+            CustomEnchantType type = CustomEnchantType.fromId(args[2]);
+            if (type != null && type.getMaxLevel() > 1) {
+                return StringUtil.copyPartialMatches(args[3], List.of("1", "2"), new ArrayList<>());
+            }
+            return List.of("1");
         }
 
         if (args.length == 3 && (args[0].equalsIgnoreCase("givepurification") || args[0].equalsIgnoreCase("givepurificationpotion"))) {

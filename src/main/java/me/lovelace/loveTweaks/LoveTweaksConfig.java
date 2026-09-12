@@ -35,6 +35,10 @@ public class LoveTweaksConfig {
     private boolean disableMending;
     private boolean disableAllEnchantments;
 
+    // Custom Enchantments
+    private boolean customEnchantmentsEnabled;
+    private boolean customEnchantsAllowOnAllSwords;
+
     // Hunger
     private float extraExhaustionPerSecond;
     private float saturationMultiplier;
@@ -146,6 +150,8 @@ public class LoveTweaksConfig {
         enderChestsAsNormalChests = config.getBoolean("ender-chests.as-normal-chests", false);
         disableMending = config.getBoolean("enchantments.disable-mending", false);
         disableAllEnchantments = config.getBoolean("enchantments.disable-all-enchantments", false);
+        customEnchantmentsEnabled = config.getBoolean("custom-enchantments.enabled", true);
+        customEnchantsAllowOnAllSwords = config.getBoolean("custom-enchantments.allow-on-all-swords", false);
         extraExhaustionPerSecond = (float) config.getDouble("hunger.extra-exhaustion-per-second", 0.25);
         saturationMultiplier = (float) config.getDouble("hunger.saturation-multiplier", 0.5);
         disableMilk = config.getBoolean("milk.disable-milk", true);
@@ -393,4 +399,6 @@ public class LoveTweaksConfig {
     public boolean isDisablePotionNaturalDrops() { return disablePotionNaturalDrops; }
     public String getDisabledBrewingMessage() { return disabledBrewingMessage; }
     public ScoreboardConfig getScoreboardConfig() { return scoreboardConfig; }
+    public boolean isCustomEnchantmentsEnabled() { return customEnchantmentsEnabled; }
+    public boolean isCustomEnchantsAllowOnAllSwords() { return customEnchantsAllowOnAllSwords; }
 }

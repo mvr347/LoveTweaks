@@ -31,6 +31,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
+import me.lovelace.loveTweaks.enchantments.CustomEnchantManager;
+import me.lovelace.loveTweaks.enchantments.CustomEnchantListener;
 
 import java.io.File;
 
@@ -42,6 +44,7 @@ public final class LoveTweaks extends JavaPlugin {
     private NamespacedKey enderChestKey;
     private TeleportScrollManager teleportScrollManager;
     private CoordinateTeleportScrollManager coordTeleportScrollManager;
+    private CustomEnchantManager customEnchantManager;
 
     private ScoreboardDataManager scoreboardDataManager;
     private ScoreboardDisplayManager scoreboardDisplayManager;
@@ -116,6 +119,10 @@ public final class LoveTweaks extends JavaPlugin {
                 new HeraldListener(this, heraldManager, citizensIntegration), this);
         vanillaProtectionListener = new VanillaProtectionListener(this);
         getServer().getPluginManager().registerEvents(vanillaProtectionListener, this);
+
+        customEnchantManager = new CustomEnchantManager(this);
+        getServer().getPluginManager().registerEvents(new CustomEnchantListener(this, customEnchantManager), this);
+        getLogger().info("Custom enchantments initialized.");
 
         ScoreboardListener scoreboardListener = new ScoreboardListener(this, scoreboardDataManager, scoreboardDisplayManager);
         getServer().getPluginManager().registerEvents(scoreboardListener, this);
@@ -252,4 +259,5 @@ public final class LoveTweaks extends JavaPlugin {
     public EnderChestListener getEnderChestListener() { return enderChestListener; }
     public MilkListener getMilkListener() { return milkListener; }
     public BrewingListener getBrewingListener() { return brewingListener; }
+    public CustomEnchantManager getCustomEnchantManager() { return customEnchantManager; }
 }
