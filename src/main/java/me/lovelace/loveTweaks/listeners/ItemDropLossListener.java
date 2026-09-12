@@ -43,8 +43,10 @@ public class ItemDropLossListener implements Listener {
                 damageOrBreakItem(player, itemEntity, stack);
             }
         } else {
-            if (roll(plugin.getLoveTweaksConfig().getItemDropLossChance() * multiplier)) {
-                loseItem(player, itemEntity);
+            if (stack.getAmount() > 1 && roll(plugin.getLoveTweaksConfig().getItemDropFullStackLossChance() * multiplier)) {
+                loseWholeStack(player, itemEntity);
+            } else if (roll(plugin.getLoveTweaksConfig().getItemDropLossChance() * multiplier)) {
+                loseItem(player, itemEntity, stack);
             }
         }
     }
@@ -110,13 +112,33 @@ public class ItemDropLossListener implements Listener {
         player.sendMessage(GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getItemDropBreakMessage()));
     }
 
-    private void loseItem(Player player, Item itemEntity) {
+    /** Removes a few items from the dropped stack, not the whole entity - see full-stack-loss-chance for that. */
+    private void loseItem(Player player, Item itemEntity, ItemStack stack) {
         Location location = itemEntity.getLocation();
-        itemEntity.remove();
+        int amount = stack.getAmount();
+        int lost = Math.min(amount, ThreadLocalRandom.current().nextInt(1, 4));
+
+        if (lost >= amount) {
+            itemEntity.remove();
+        } else {
+            stack.setAmount(amount - lost);
+            itemEntity.setItemStack(stack);
+        }
 
         location.getWorld().playSound(location, Sound.ENTITY_ITEM_PICKUP, 1f, 0.5f);
         location.getWorld().spawnParticle(Particle.SMOKE, location, 10, 0.2, 0.2, 0.2, 0.02);
 
         player.sendMessage(GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getItemDropLoseMessage()));
+    }
+
+    /** The rare "entire stack vanishes" case - separate from the usual few-items loss above. */
+    private void loseWholeStack(Player player, Item itemEntity) {
+        Location location = itemEntity.getLocation();
+        itemEntity.remove();
+
+        location.getWorld().playSound(location, Sound.ENTITY_ITEM_PICKUP, 1f, 0.4f);
+        location.getWorld().spawnParticle(Particle.SMOKE, location, 20, 0.3, 0.3, 0.3, 0.03);
+
+        player.sendMessage(GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getItemDropFullStackLoseMessage()));
     }
 }

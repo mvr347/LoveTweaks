@@ -61,6 +61,10 @@ public class LoveTweaksConfig {
     private String itemDropBreakMessage;
     private String itemDropDamageMessage;
     private String itemDropLoseMessage;
+    // Очень маленький отдельный шанс, что весь выброшенный стек (а не только пара предметов
+    // из него) полностью пропадёт. Проверяется только для стекаемых предметов с amount > 1.
+    private double itemDropFullStackLossChance;
+    private String itemDropFullStackLoseMessage;
 
     // Свиток телепортации (к игроку)
     private final TeleportScrollConfig teleportScrollConfig = new TeleportScrollConfig();
@@ -164,6 +168,8 @@ public class LoveTweaksConfig {
         itemDropDamageMessage = config.getString("item-drop-loss.damage-message", "&eВаш предмет повредился при падении!");
         itemDropLoseMessage = config.getString("item-drop-loss.lose-message", "&7Ваш предмет потерялся при падении!");
         itemDropTerriblePolitenessMultiplier = config.getDouble("item-drop-loss.terrible-politeness-multiplier", 1.6);
+        itemDropFullStackLossChance = config.getDouble("item-drop-loss.full-stack-loss-chance", 0.02);
+        itemDropFullStackLoseMessage = config.getString("item-drop-loss.full-stack-lose-message", "&4Вам крупно не повезло - весь выброшенный стек пропал без следа!");
 
         teleportScrollConfig.load(config.getConfigurationSection("teleport-scroll"));
         coordTeleportScrollConfig.load(config.getConfigurationSection("coord-teleport-scroll"), plugin.getLogger());
@@ -342,6 +348,8 @@ public class LoveTweaksConfig {
     public String getItemDropBreakMessage() { return itemDropBreakMessage; }
     public String getItemDropDamageMessage() { return itemDropDamageMessage; }
     public String getItemDropLoseMessage() { return itemDropLoseMessage; }
+    public double getItemDropFullStackLossChance() { return itemDropFullStackLossChance; }
+    public String getItemDropFullStackLoseMessage() { return itemDropFullStackLoseMessage; }
     public TeleportScrollConfig getTeleportScrollConfig() { return teleportScrollConfig; }
     public CoordinateTeleportScrollConfig getCoordTeleportScrollConfig() { return coordTeleportScrollConfig; }
 
