@@ -59,6 +59,7 @@ public class LoveTweaksConfig {
     private double itemDropCompleteStackLossChance;
     private double itemDropBreakChance;
     private double itemDropTerriblePolitenessMultiplier;
+    private double itemDropGoodStandingMultiplier;
     private String itemDropBreakMessage;
     private String itemDropDamageMessage;
     private String itemDropLoseMessage;
@@ -171,6 +172,7 @@ public class LoveTweaksConfig {
         itemDropLoseMessage = config.getString("item-drop-loss.lose-message", "&7Ваш предмет потерялся при падении!");
         itemDropStackPartialLoseMessage = config.getString("item-drop-loss.stack-partial-lose-message", "&7Часть предметов (<count> шт.) потерялась при падении!");
         itemDropTerriblePolitenessMultiplier = config.getDouble("item-drop-loss.terrible-politeness-multiplier", 1.6);
+        itemDropGoodStandingMultiplier = config.getDouble("item-drop-loss.good-standing-multiplier", 0.5);
 
         autoRespawnEnabled = config.getBoolean("auto-respawn.enabled", true);
 
@@ -349,6 +351,7 @@ public class LoveTweaksConfig {
     public double getItemDropCompleteStackLossChance() { return itemDropCompleteStackLossChance; }
     public double getItemDropBreakChance() { return itemDropBreakChance; }
     public double getItemDropTerriblePolitenessMultiplier() { return itemDropTerriblePolitenessMultiplier; }
+    public double getItemDropGoodStandingMultiplier() { return itemDropGoodStandingMultiplier; }
     public String getItemDropBreakMessage() { return itemDropBreakMessage; }
     public String getItemDropDamageMessage() { return itemDropDamageMessage; }
     public String getItemDropLoseMessage() { return itemDropLoseMessage; }

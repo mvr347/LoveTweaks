@@ -71,7 +71,10 @@ public final class HeraldGuiConfig {
             Map.entry("no-permission", "&cУ вас нет прав для этой команды."),
             Map.entry("wrong-book", "&cСюда можно вложить только подписанную книгу."),
             Map.entry("no-free-slots", "&cСейчас все слоты Глашатая заняты."),
-            Map.entry("broadcast-format", "&6&l[Голос Королевства] &f<buyer>&7: &e<message>")
+            Map.entry("broadcast-format", "&6&l[Голос Королевства] &f<buyer>&7: &e<message>"),
+            // Server-declared hunt announcement (LoveBehavior -> LoveHunt auto-bounty bridge),
+            // not one of the player-purchased slots above.
+            Map.entry("hunt-announcement-format", "&6&l[Глашатай] &7Внимание! Игрок &c<player> &7замечен на сервере — на его голову объявлена &4охота&7!")
     );
 
     private final Map<String, String> messages = new HashMap<>();

@@ -143,6 +143,18 @@ public class HeraldManager {
         }
     }
 
+    /**
+     * Server-declared hunt announcement, called via reflection from LoveBehavior's
+     * LoveHuntBridge shortly after a Terrible-politeness player (with an active LoveHunt
+     * auto-bounty) logs in. Independent of the purchasable slots above - not tied to any slot,
+     * not persisted, just a one-off broadcast using its own {@code herald.gui.hunt-announcement-format}.
+     */
+    public void announceHuntedPlayer(String targetName) {
+        String template = plugin.getLoveTweaksConfig().getHeraldGuiConfig().message("hunt-announcement-format");
+        String text = template.replace("<player>", targetName == null ? "" : targetName);
+        plugin.getServer().broadcast(colorize(text));
+    }
+
     private void broadcast(HeraldSlot slot) {
         String template = plugin.getLoveTweaksConfig().getHeraldGuiConfig().message("broadcast-format");
         String text = template
