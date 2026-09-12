@@ -44,9 +44,41 @@ public class ItemDropLossListener implements Listener {
             }
         } else {
             if (roll(plugin.getLoveTweaksConfig().getItemDropLossChance() * multiplier)) {
-                loseItem(player, itemEntity);
+                handleItemOrStackLoss(player, itemEntity, stack, multiplier);
             }
         }
+    }
+
+    private void handleItemOrStackLoss(Player player, Item itemEntity, ItemStack stack, double multiplier) {
+        int amount = stack.getAmount();
+        if (amount <= 1) {
+            loseItem(player, itemEntity);
+            return;
+        }
+
+        // Выброшен стак / несколько предметов:
+        // Очень маленький шанс (базово 1%) полного уничтожения всего стака
+        double completeLossChance = plugin.getLoveTweaksConfig().getItemDropCompleteStackLossChance() * multiplier;
+        if (roll(completeLossChance)) {
+            loseItem(player, itemEntity);
+            return;
+        }
+
+        // В остальных случаях теряется лишь небольшая часть предметов (от 1 до 4)
+        int maxLost = Math.min(4, Math.max(1, amount / 4));
+        int lostCount = ThreadLocalRandom.current().nextInt(1, maxLost + 1);
+        int remaining = amount - lostCount;
+
+        stack.setAmount(remaining);
+        itemEntity.setItemStack(stack);
+
+        Location location = itemEntity.getLocation();
+        location.getWorld().playSound(location, Sound.ENTITY_ITEM_PICKUP, 0.9f, 0.6f);
+        location.getWorld().spawnParticle(Particle.SMOKE, location, 8, 0.2, 0.2, 0.2, 0.02);
+
+        String msg = plugin.getLoveTweaksConfig().getItemDropStackPartialLoseMessage()
+                .replace("<count>", String.valueOf(lostCount));
+        player.sendMessage(GuiItemUtil.colorize(msg));
     }
 
     private boolean hasDurability(ItemStack stack) {

@@ -56,11 +56,16 @@ public class LoveTweaksConfig {
     // Потеря/поломка предметов при выбрасывании
     private boolean itemDropLossEnabled;
     private double itemDropLossChance;
+    private double itemDropCompleteStackLossChance;
     private double itemDropBreakChance;
     private double itemDropTerriblePolitenessMultiplier;
     private String itemDropBreakMessage;
     private String itemDropDamageMessage;
     private String itemDropLoseMessage;
+    private String itemDropStackPartialLoseMessage;
+
+    // Автовозрождение
+    private boolean autoRespawnEnabled;
 
     // Свиток телепортации (к игроку)
     private final TeleportScrollConfig teleportScrollConfig = new TeleportScrollConfig();
@@ -159,11 +164,15 @@ public class LoveTweaksConfig {
 
         itemDropLossEnabled = config.getBoolean("item-drop-loss.enabled", false);
         itemDropLossChance = config.getDouble("item-drop-loss.lose-chance", 0.22);
+        itemDropCompleteStackLossChance = config.getDouble("item-drop-loss.complete-stack-loss-chance", 0.01);
         itemDropBreakChance = config.getDouble("item-drop-loss.break-chance", 0.33);
         itemDropBreakMessage = config.getString("item-drop-loss.break-message", "&cВаш предмет сломался при падении!");
         itemDropDamageMessage = config.getString("item-drop-loss.damage-message", "&eВаш предмет повредился при падении!");
         itemDropLoseMessage = config.getString("item-drop-loss.lose-message", "&7Ваш предмет потерялся при падении!");
+        itemDropStackPartialLoseMessage = config.getString("item-drop-loss.stack-partial-lose-message", "&7Часть предметов (<count> шт.) потерялась при падении!");
         itemDropTerriblePolitenessMultiplier = config.getDouble("item-drop-loss.terrible-politeness-multiplier", 1.6);
+
+        autoRespawnEnabled = config.getBoolean("auto-respawn.enabled", true);
 
         teleportScrollConfig.load(config.getConfigurationSection("teleport-scroll"));
         coordTeleportScrollConfig.load(config.getConfigurationSection("coord-teleport-scroll"), plugin.getLogger());
@@ -337,11 +346,14 @@ public class LoveTweaksConfig {
     public String getPurificationMessage() { return purificationMessage; }
     public boolean isItemDropLossEnabled() { return itemDropLossEnabled; }
     public double getItemDropLossChance() { return itemDropLossChance; }
+    public double getItemDropCompleteStackLossChance() { return itemDropCompleteStackLossChance; }
     public double getItemDropBreakChance() { return itemDropBreakChance; }
     public double getItemDropTerriblePolitenessMultiplier() { return itemDropTerriblePolitenessMultiplier; }
     public String getItemDropBreakMessage() { return itemDropBreakMessage; }
     public String getItemDropDamageMessage() { return itemDropDamageMessage; }
     public String getItemDropLoseMessage() { return itemDropLoseMessage; }
+    public String getItemDropStackPartialLoseMessage() { return itemDropStackPartialLoseMessage; }
+    public boolean isAutoRespawnEnabled() { return autoRespawnEnabled; }
     public TeleportScrollConfig getTeleportScrollConfig() { return teleportScrollConfig; }
     public CoordinateTeleportScrollConfig getCoordTeleportScrollConfig() { return coordTeleportScrollConfig; }
 
