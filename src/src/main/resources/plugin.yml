@@ -1,0 +1,22 @@
+name: LoveTweaks
+version: '${project.version}'
+main: me.lovelace.loveTweaks.LoveTweaks
+api-version: '26.2'
+softdepend:
+  - PlaceholderAPI
+  - Citizens
+  - ItemsAdder
+  - LoveCore
+  - LoveChatFilter
+
+commands:
+  lovetweaksadmin:
+    description: Команды администратора LoveTweaks
+    aliases: [lovetweaks]
+    usage: /lovetweaksadmin <reload|givescroll|givecoordscroll|herald bind/unbind/clear>
+    permission: lovetweaks.admin
+    permission-message: У вас нет прав для этой команды.
+  scoreboard:
+    description: Открыть настройки скорборда
+    aliases: [sb, скорборд]
+    usage: /scoreboard
