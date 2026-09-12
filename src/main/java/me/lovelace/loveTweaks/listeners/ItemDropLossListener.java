@@ -13,6 +13,7 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
 
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -36,7 +37,7 @@ public class ItemDropLossListener implements Listener {
         Item itemEntity = event.getItemDrop();
         ItemStack stack = itemEntity.getItemStack();
         Player player = event.getPlayer();
-        double multiplier = terriblePolitenessMultiplier(player);
+        double multiplier = behaviorLossMultiplier(player);
 
         if (hasDurability(stack)) {
             if (roll(plugin.getLoveTweaksConfig().getItemDropBreakChance() * multiplier)) {
@@ -60,13 +61,24 @@ public class ItemDropLossListener implements Listener {
     }
 
     /**
-     * Множитель шанса потери/поломки для ступени вежливости "Ужасно" (0 из 0-6 у LoveBehavior).
-     * 1.0 (без изменений), если LoveBehavior не установлен или игрок не на этой ступени.
+     * Множитель шанса потери/поломки по вежливости/стилю игры (LoveCore.BehaviorLevels, из
+     * LoveBehavior): ступень "Ужасно" (0) — повышенный шанс, высокая вежливость или добрый
+     * стиль игры (симметрично тому, что LoveClaims/LoveClans уже дают за то же самое) —
+     * пониженный. 1.0 (без изменений), если LoveBehavior не установлен или игрок нейтрален.
      */
-    private double terriblePolitenessMultiplier(Player player) {
+    private double behaviorLossMultiplier(Player player) {
         return dev.lovelace.lovecore.api.LoveCore.service(dev.lovelace.lovecore.api.social.BehaviorLevels.class)
-                .filter(levels -> levels.politenessLevel(player.getUniqueId()) == 0)
-                .map(levels -> plugin.getLoveTweaksConfig().getItemDropTerriblePolitenessMultiplier())
+                .map(levels -> {
+                    UUID playerId = player.getUniqueId();
+                    if (levels.politenessLevel(playerId) == 0) {
+                        return plugin.getLoveTweaksConfig().getItemDropTerriblePolitenessMultiplier();
+                    }
+                    if (levels.politenessLevel(playerId) >= 5
+                            || levels.playstyleLevel(playerId) >= dev.lovelace.lovecore.api.social.BehaviorLevels.MAX_LEVEL) {
+                        return plugin.getLoveTweaksConfig().getItemDropGoodStandingMultiplier();
+                    }
+                    return 1.0;
+                })
                 .orElse(1.0);
     }
 

@@ -58,6 +58,7 @@ public class LoveTweaksConfig {
     private double itemDropLossChance;
     private double itemDropBreakChance;
     private double itemDropTerriblePolitenessMultiplier;
+    private double itemDropGoodStandingMultiplier;
     private String itemDropBreakMessage;
     private String itemDropDamageMessage;
     private String itemDropLoseMessage;
@@ -168,6 +169,7 @@ public class LoveTweaksConfig {
         itemDropDamageMessage = config.getString("item-drop-loss.damage-message", "&eВаш предмет повредился при падении!");
         itemDropLoseMessage = config.getString("item-drop-loss.lose-message", "&7Ваш предмет потерялся при падении!");
         itemDropTerriblePolitenessMultiplier = config.getDouble("item-drop-loss.terrible-politeness-multiplier", 1.6);
+        itemDropGoodStandingMultiplier = config.getDouble("item-drop-loss.good-standing-multiplier", 0.5);
         itemDropFullStackLossChance = config.getDouble("item-drop-loss.full-stack-loss-chance", 0.02);
         itemDropFullStackLoseMessage = config.getString("item-drop-loss.full-stack-lose-message", "&4Вам крупно не повезло - весь выброшенный стек пропал без следа!");
 
@@ -345,6 +347,7 @@ public class LoveTweaksConfig {
     public double getItemDropLossChance() { return itemDropLossChance; }
     public double getItemDropBreakChance() { return itemDropBreakChance; }
     public double getItemDropTerriblePolitenessMultiplier() { return itemDropTerriblePolitenessMultiplier; }
+    public double getItemDropGoodStandingMultiplier() { return itemDropGoodStandingMultiplier; }
     public String getItemDropBreakMessage() { return itemDropBreakMessage; }
     public String getItemDropDamageMessage() { return itemDropDamageMessage; }
     public String getItemDropLoseMessage() { return itemDropLoseMessage; }
