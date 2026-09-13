@@ -39,7 +39,7 @@ public enum CustomEnchantType {
             null,
             new String[]{
                     "При ударе по щиту: Слабость I + Замедление I на 2 сек",
-                    "При ударе по щиту: Слабость I + Замедление II + заморозка на 2.5 сек"
+                    "При ударе по щиту: Слабость I + Замедление II + лёгкое замораживание на 2.5 сек"
             }
     ),
     UDAR_ISPODTISHKA(
@@ -81,8 +81,8 @@ public enum CustomEnchantType {
             Target.DAGGER,
             "krovopiyca",
             new String[]{
-                    "При серии из 4 ударов: Регенерация I на 3 сек",
-                    "При серии из 4 ударов: Регенерация II на 3 сек"
+                    "При серии ударов даёт Регенерацию I",
+                    "При серии ударов даёт Регенерацию II"
             }
     ),
     PRITYAZHENIE(
@@ -156,7 +156,7 @@ public enum CustomEnchantType {
 
     @NotNull
     public NamespacedKey getKey(@NotNull Plugin plugin) {
-        return new NamespacedKey(plugin, "enchant_" + id);
+        return new NamespacedKey(plugin, id);
     }
 
     public String getFormattedName(int level) {

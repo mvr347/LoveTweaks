@@ -355,9 +355,26 @@ public class CustomEnchantListener implements Listener {
             return;
         }
         ItemStack result = event.getResult();
-        if (result != null && manager.hasAnyCustomEnchant(result)) {
-            manager.removeAllCustomEnchantments(result);
-            event.setResult(result);
+        ItemStack upper = event.getInventory().getItem(0);
+        ItemStack lower = event.getInventory().getItem(1);
+
+        if (result != null) {
+            if (manager.hasAnyCustomEnchant(result)) {
+                manager.removeAllCustomEnchantments(result);
+                event.setResult(result);
+            }
+        } else {
+            ItemStack source = (upper != null && !upper.getType().isAir()) ? upper : lower;
+            if (source != null && manager.hasAnyCustomEnchant(source)) {
+                ItemStack disenchanted;
+                if (manager.isBook(source)) {
+                    disenchanted = new ItemStack(org.bukkit.Material.BOOK);
+                } else {
+                    disenchanted = source.clone();
+                    manager.removeAllCustomEnchantments(disenchanted);
+                }
+                event.setResult(disenchanted);
+            }
         }
     }
 

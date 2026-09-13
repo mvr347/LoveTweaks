@@ -30,7 +30,7 @@ public class CustomEnchantManager {
         NamespacedKey key = type.getKey(plugin);
         Integer level = pdc.get(key, PersistentDataType.INTEGER);
         if (level == null) {
-            NamespacedKey altKey = new NamespacedKey(plugin, type.getId());
+            NamespacedKey altKey = new NamespacedKey(plugin, "enchant_" + type.getId());
             level = pdc.get(altKey, PersistentDataType.INTEGER);
         }
         return level != null ? level : 0;
@@ -48,7 +48,7 @@ public class CustomEnchantManager {
             NamespacedKey key = type.getKey(plugin);
             Integer level = pdc.get(key, PersistentDataType.INTEGER);
             if (level == null) {
-                NamespacedKey altKey = new NamespacedKey(plugin, type.getId());
+                NamespacedKey altKey = new NamespacedKey(plugin, "enchant_" + type.getId());
                 level = pdc.get(altKey, PersistentDataType.INTEGER);
             }
             if (level != null && level > 0) {
@@ -76,11 +76,11 @@ public class CustomEnchantManager {
             CustomEnchantType mutual = CustomEnchantType.fromId(type.getMutuallyExclusiveWith());
             if (mutual != null) {
                 pdc.remove(mutual.getKey(plugin));
-                pdc.remove(new NamespacedKey(plugin, mutual.getId()));
+                pdc.remove(new NamespacedKey(plugin, "enchant_" + mutual.getId()));
             }
         }
 
-        updateItemLore(meta);
+        updateItemLore(meta, isBook(item));
         item.setItemMeta(meta);
     }
 
@@ -90,8 +90,8 @@ public class CustomEnchantManager {
         }
         ItemMeta meta = item.getItemMeta();
         meta.getPersistentDataContainer().remove(type.getKey(plugin));
-        meta.getPersistentDataContainer().remove(new NamespacedKey(plugin, type.getId()));
-        updateItemLore(meta);
+        meta.getPersistentDataContainer().remove(new NamespacedKey(plugin, "enchant_" + type.getId()));
+        updateItemLore(meta, isBook(item));
         item.setItemMeta(meta);
     }
 
@@ -103,19 +103,29 @@ public class CustomEnchantManager {
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         for (CustomEnchantType type : CustomEnchantType.values()) {
             pdc.remove(type.getKey(plugin));
-            pdc.remove(new NamespacedKey(plugin, type.getId()));
+            pdc.remove(new NamespacedKey(plugin, "enchant_" + type.getId()));
         }
-        updateItemLore(meta);
+        updateItemLore(meta, isBook(item));
         item.setItemMeta(meta);
     }
 
     public void updateItemLore(@NotNull ItemMeta meta) {
+        updateItemLore(meta, false);
+    }
+
+    public void updateItemLore(@NotNull ItemMeta meta, boolean isBook) {
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         List<String> currentLore = meta.hasLore() ? new ArrayList<>(Objects.requireNonNull(meta.getLore())) : new ArrayList<>();
 
         // Remove all old custom enchant lore lines
         currentLore.removeIf(line -> {
             String stripped = ChatColor.stripColor(line).trim();
+            if (stripped.startsWith("Применяется на:") || (isBook && stripped.isEmpty())) {
+                return true;
+            }
+            if (stripped.startsWith("▪")) {
+                return true;
+            }
             for (CustomEnchantType type : CustomEnchantType.values()) {
                 if (stripped.startsWith(type.getDisplayName())) {
                     return true;
@@ -124,17 +134,49 @@ public class CustomEnchantManager {
             return false;
         });
 
-        // Collect current active custom enchantments
+        if (isBook) {
+            List<String> newLore = new ArrayList<>();
+            Set<CustomEnchantType.Target> targets = new LinkedHashSet<>();
+            for (CustomEnchantType type : CustomEnchantType.values()) {
+                Integer level = pdc.get(type.getKey(plugin), PersistentDataType.INTEGER);
+                if (level == null) {
+                    level = pdc.get(new NamespacedKey(plugin, "enchant_" + type.getId()), PersistentDataType.INTEGER);
+                }
+                if (level != null && level > 0) {
+                    newLore.add(type.getFormattedName(level));
+                    newLore.add("§8▪ §7" + type.getDescription(level));
+                    targets.add(type.getTarget());
+                }
+            }
+            if (!newLore.isEmpty()) {
+                newLore.add("");
+                StringBuilder targetNames = new StringBuilder();
+                for (CustomEnchantType.Target t : targets) {
+                    if (!targetNames.isEmpty()) targetNames.append(", ");
+                    targetNames.append(t.getDisplayName());
+                }
+                newLore.add("§8Применяется на: §f" + targetNames);
+                newLore.addAll(currentLore);
+                meta.setLore(newLore);
+            } else {
+                meta.setLore(currentLore.isEmpty() ? null : currentLore);
+            }
+            return;
+        }
+
+        // Collect current active custom enchantments for equipment
         List<String> enchantLines = new ArrayList<>();
         for (CustomEnchantType type : CustomEnchantType.values()) {
             Integer level = pdc.get(type.getKey(plugin), PersistentDataType.INTEGER);
+            if (level == null) {
+                level = pdc.get(new NamespacedKey(plugin, "enchant_" + type.getId()), PersistentDataType.INTEGER);
+            }
             if (level != null && level > 0) {
                 enchantLines.add(type.getFormattedName(level));
             }
         }
 
         if (!enchantLines.isEmpty()) {
-            // Prepend enchant lines at the top of the lore
             enchantLines.addAll(currentLore);
             meta.setLore(enchantLines);
         } else {
@@ -151,13 +193,7 @@ public class CustomEnchantManager {
         meta.getPersistentDataContainer().set(type.getKey(plugin), PersistentDataType.INTEGER, clampedLevel);
         meta.setDisplayName("§eЗачарованная книга");
 
-        List<String> lore = new ArrayList<>();
-        lore.add(type.getFormattedName(clampedLevel));
-        lore.add("§8▪ §7" + type.getDescription(clampedLevel));
-        lore.add("");
-        lore.add("§8Применяется на: §f" + type.getTarget().getDisplayName());
-
-        meta.setLore(lore);
+        updateItemLore(meta, true);
         book.setItemMeta(meta);
         return book;
     }
