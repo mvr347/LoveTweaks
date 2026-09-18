@@ -191,8 +191,11 @@ public class CustomEnchantManager {
         ItemMeta meta = book.getItemMeta();
 
         meta.getPersistentDataContainer().set(type.getKey(plugin), PersistentDataType.INTEGER, clampedLevel);
-        meta.setDisplayName("§eЗачарованная книга");
-
+        // Раньше здесь был meta.setDisplayName("§eЗачарованная книга") - жёстко заданное имя
+        // ПОДМЕНЯЛО настоящее ванильное "Зачарованная книга" (переводится под клиент игрока и
+        // авто-красится по редкости предмета) на нашу английскую по коду, но всегда русскую и
+        // всегда жёлтую строку. Не трогаем displayName вовсе - ваниль сама выберет и текст, и
+        // цвет ровно как у настоящей зачарованной книги; свою метку оставляем только в лоре ниже.
         updateItemLore(meta, true);
         book.setItemMeta(meta);
         return book;
