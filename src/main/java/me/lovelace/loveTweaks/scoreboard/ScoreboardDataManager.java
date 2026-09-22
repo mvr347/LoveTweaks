@@ -26,7 +26,7 @@ import java.util.logging.Level;
 public class ScoreboardDataManager {
 
     private final LoveTweaks plugin;
-    private HikariDataSource dataSource;
+    private volatile HikariDataSource dataSource;
 
     // Потокобезопасный кэш активных состояний скорборда игроков
     private final Map<UUID, PlayerScoreboardState> cache = new ConcurrentHashMap<>();
@@ -67,9 +67,10 @@ public class ScoreboardDataManager {
     }
 
     private void initSchemaAndMigrate() {
-        if (dataSource == null) return;
+        HikariDataSource ds = dataSource;
+        if (ds == null) return;
         CompletableFuture.runAsync(() -> {
-            try (Connection connection = dataSource.getConnection();
+            try (Connection connection = ds.getConnection();
                  Statement st = connection.createStatement()) {
 
                 // Schema versioning
@@ -118,13 +119,15 @@ public class ScoreboardDataManager {
     }
 
     /**
-     * Возвращает состояние скорборда из кэша (или синхронный fallback/default).
+     * Возвращает состояние скорборда из кэша. Никогда не блокирует вызывающий поток:
+     * при промахе кэша отдаёт безопасный default и асинхронно догружает реальное
+     * состояние из БД, кладя его в кэш для последующих вызовов.
      */
     public PlayerScoreboardState getState(UUID uuid) {
         PlayerScoreboardState state = cache.get(uuid);
         if (state == null) {
-            state = loadFromDbSync(uuid);
-            cache.put(uuid, state);
+            state = defaultState(plugin.getScoreboardConfig().getPlaceholderOrder());
+            loadPlayerAsync(uuid);
         }
         return state;
     }
@@ -142,9 +145,10 @@ public class ScoreboardDataManager {
 
     private PlayerScoreboardState loadFromDbSync(UUID uuid) {
         List<String> known = plugin.getScoreboardConfig().getPlaceholderOrder();
-        if (dataSource == null) return defaultState(known);
+        HikariDataSource ds = dataSource;
+        if (ds == null) return defaultState(known);
 
-        try (Connection connection = dataSource.getConnection()) {
+        try (Connection connection = ds.getConnection()) {
             boolean enabled = true;
             boolean found = false;
             try (PreparedStatement ps = connection.prepareStatement(
@@ -199,8 +203,9 @@ public class ScoreboardDataManager {
     }
 
     private void savePlayerSync(UUID uuid, boolean enabled, List<String> placeholders) {
-        if (dataSource == null) return;
-        try (Connection connection = dataSource.getConnection()) {
+        HikariDataSource ds = dataSource;
+        if (ds == null) return;
+        try (Connection connection = ds.getConnection()) {
             connection.setAutoCommit(false);
             try {
                 try (PreparedStatement ps = connection.prepareStatement(

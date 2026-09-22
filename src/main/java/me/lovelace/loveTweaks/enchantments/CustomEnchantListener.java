@@ -19,6 +19,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.event.inventory.PrepareGrindstoneEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.AnvilInventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
@@ -376,6 +377,15 @@ public class CustomEnchantListener implements Listener {
                 event.setResult(disenchanted);
             }
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onQuit(PlayerQuitEvent event) {
+        UUID id = event.getPlayer().getUniqueId();
+        hitCombo.remove(id);
+        lastHit.remove(id);
+        lastBackstabTime.remove(id);
+        lastBackstabTarget.remove(id);
     }
 
     public static boolean isBackstab(@NotNull Player attacker, @NotNull LivingEntity victim) {
