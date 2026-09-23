@@ -368,6 +368,7 @@ teleport-scroll:
     reason-pvp-self: '(вы в PvP)'
     reason-pvp-target: '(<player> в PvP)'
     reason-wrong-world: '(<player> не в мире world)'
+    reason-dropped: '(свиток убран из руки)'
 
 # ─── Свиток телепортации к координатам ────────────────────────────────────────
 # ПКМ со свитком → ввод координат в чат (X Z или X Y Z, 10 секунд) → отсчёт cast-time-seconds
