@@ -6,7 +6,6 @@ import me.lovelace.loveTweaks.herald.HeraldGUI;
 import me.lovelace.loveTweaks.integration.CitizensIntegration;
 import me.lovelace.loveTweaks.items.CoordinateTeleportScroll;
 import me.lovelace.loveTweaks.items.TeleportScroll;
-import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
 import org.bukkit.command.Command;
@@ -170,6 +169,15 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
         return ids;
     }
 
+    /** Только ID кастомных зачарований - для {@code givebook}, которая ванильные больше не выдаёт. */
+    private List<String> customEnchantIds() {
+        List<String> ids = new ArrayList<>();
+        for (CustomEnchantType type : CustomEnchantType.values()) {
+            ids.add(type.getId());
+        }
+        return ids;
+    }
+
     private List<String> levelSuggestions(@NotNull String prefix, @NotNull ResolvedEnchant resolved) {
         if (!resolved.isPresent() || resolved.maxLevel() <= 1) {
             return List.of("1");
@@ -190,20 +198,6 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
             capitalizeNext = c == ' ';
         }
         return sb.toString();
-    }
-
-    /**
-     * Полностью ванильный вид: только зачарование в EnchantmentStorageMeta, без кастомного
-     * displayName/lore. Ваниль сама рисует тултип (название, уровень, фиолетовый глинт) - любая
-     * своя мета здесь как раз и делает книгу "непохожей на настоящую".
-     */
-    private static ItemStack createVanillaEnchantedBook(@NotNull Enchantment enchantment, int level) {
-        ItemStack book = new ItemStack(Material.ENCHANTED_BOOK);
-        if (book.getItemMeta() instanceof EnchantmentStorageMeta meta) {
-            meta.addStoredEnchant(enchantment, level, true);
-            book.setItemMeta(meta);
-        }
-        return book;
     }
 
     private static void applyVanillaEnchant(@NotNull ItemStack item, @NotNull Enchantment enchantment, int level) {
@@ -235,6 +229,13 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(msg("enchant-not-found", "<enchant>", args[2]));
             return;
         }
+        // givebook is custom-enchant-only: it exists to hand out books for this plugin's own
+        // PDC-based enchants, which the client can't render on its own. A vanilla Enchantment
+        // needs no help from us - /lovetweaksadmin enchant already covers giving/applying it.
+        if (resolved.custom() == null) {
+            sender.sendMessage(msg("givebook-custom-only", "<enchant>", args[2]));
+            return;
+        }
         int level = 1;
         if (args.length >= 4) {
             try {
@@ -243,9 +244,7 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
         }
         level = Math.max(1, Math.min(level, resolved.maxLevel()));
 
-        ItemStack book = resolved.custom() != null
-                ? plugin.getCustomEnchantManager().createEnchantedBook(resolved.custom(), level)
-                : createVanillaEnchantedBook(resolved.vanilla(), level);
+        ItemStack book = plugin.getCustomEnchantManager().createEnchantedBook(resolved.custom(), level);
         target.getInventory().addItem(book);
 
         sender.sendMessage(msg("book-given-sender", "<player>", target.getName())
@@ -436,7 +435,7 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 3 && args[0].equalsIgnoreCase("givebook")) {
-            return StringUtil.copyPartialMatches(args[2].toLowerCase(Locale.ROOT), allEnchantIds(), new ArrayList<>());
+            return StringUtil.copyPartialMatches(args[2].toLowerCase(Locale.ROOT), customEnchantIds(), new ArrayList<>());
         }
 
         if (args.length == 4 && args[0].equalsIgnoreCase("givebook")) {

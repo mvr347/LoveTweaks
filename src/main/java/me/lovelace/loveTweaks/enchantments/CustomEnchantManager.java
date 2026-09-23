@@ -135,8 +135,11 @@ public class CustomEnchantManager {
         });
 
         if (isBook) {
+            // Match real vanilla enchanted books: just colored name + roman-numeral level
+            // per enchant, nothing else. No description bullet, no "Применяется на:" footer -
+            // vanilla never shows either on a book, and since these are fake PDC-based
+            // enchants the client can't tell the difference, so the fake has to look identical.
             List<String> newLore = new ArrayList<>();
-            Set<CustomEnchantType.Target> targets = new LinkedHashSet<>();
             for (CustomEnchantType type : CustomEnchantType.values()) {
                 Integer level = pdc.get(type.getKey(plugin), PersistentDataType.INTEGER);
                 if (level == null) {
@@ -144,18 +147,9 @@ public class CustomEnchantManager {
                 }
                 if (level != null && level > 0) {
                     newLore.add(type.getFormattedName(level));
-                    newLore.add("§8▪ §7" + type.getDescription(level));
-                    targets.add(type.getTarget());
                 }
             }
             if (!newLore.isEmpty()) {
-                newLore.add("");
-                StringBuilder targetNames = new StringBuilder();
-                for (CustomEnchantType.Target t : targets) {
-                    if (!targetNames.isEmpty()) targetNames.append(", ");
-                    targetNames.append(t.getDisplayName());
-                }
-                newLore.add("§8Применяется на: §f" + targetNames);
                 newLore.addAll(currentLore);
                 meta.setLore(newLore);
             } else {
