@@ -15,8 +15,6 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.EnchantmentStorageMeta;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.util.StringUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -38,7 +36,7 @@ import java.util.Locale;
  */
 public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
 
-    private static final List<String> SUBCOMMANDS = List.of("reload", "givescroll", "givecoordscroll", "givepurification", "givebook", "enchant", "herald", "help");
+    private static final List<String> SUBCOMMANDS = List.of("reload", "givescroll", "givecoordscroll", "givepurification", "givebook", "herald", "help");
     private static final List<String> HERALD_SUBCOMMANDS = List.of("bind", "unbind", "clear", "open");
 
     private final LoveTweaks plugin;
@@ -69,7 +67,6 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
             case "givecoordscroll" -> handleGiveCoordScroll(sender, args);
             case "givepurification", "givepurificationpotion" -> handleGivePurification(sender, args);
             case "givebook" -> handleGiveBook(sender, args);
-            case "enchant" -> handleEnchant(sender, args);
             case "herald" -> handleHerald(sender, args);
             default -> sendHelp(sender);
         }
@@ -137,10 +134,9 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
 
     /**
      * Зачарование - либо кастомное (кинжалы/штаны, {@link CustomEnchantType}), либо ванильное
-     * ({@link Enchantment} из {@link Registry#ENCHANTMENT}). {@code givebook}/{@code enchant}
-     * изначально понимали только кастомные ID; этого хватало для собственных зачарований плагина,
-     * но не позволяло тем же командами выдать/наложить обычное ванильное зачарование - отдельного
-     * способа сделать это админской командой не было.
+     * ({@link Enchantment} из {@link Registry#ENCHANTMENT}). {@code givebook} понимает только
+     * кастомные ID - vanilla-ветка здесь нужна только чтобы отличить "это ванильное зачарование"
+     * от "такого зачарования вообще не существует" и показать {@code givebook-custom-only}.
      */
     private record ResolvedEnchant(CustomEnchantType custom, Enchantment vanilla) {
         boolean isPresent() { return custom != null || vanilla != null; }
@@ -155,18 +151,6 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
         if (custom != null) return new ResolvedEnchant(custom, null);
         Enchantment vanilla = Registry.ENCHANTMENT.get(NamespacedKey.minecraft(id.toLowerCase(Locale.ROOT)));
         return new ResolvedEnchant(null, vanilla);
-    }
-
-    /** ID кастомных зачарований плюс ключи всех ванильных ({@code sharpness}, {@code mending}, ...). */
-    private List<String> allEnchantIds() {
-        List<String> ids = new ArrayList<>();
-        for (CustomEnchantType type : CustomEnchantType.values()) {
-            ids.add(type.getId());
-        }
-        for (Enchantment enchantment : Registry.ENCHANTMENT) {
-            ids.add(enchantment.getKey().getKey());
-        }
-        return ids;
     }
 
     /** Только ID кастомных зачарований - для {@code givebook}, которая ванильные больше не выдаёт. */
@@ -200,20 +184,6 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
         return sb.toString();
     }
 
-    private static void applyVanillaEnchant(@NotNull ItemStack item, @NotNull Enchantment enchantment, int level) {
-        if (item.getItemMeta() instanceof EnchantmentStorageMeta esMeta) {
-            // Сам предмет - книга: чары храним, а не накладываем "на выполнение".
-            esMeta.addStoredEnchant(enchantment, level, true);
-            item.setItemMeta(esMeta);
-            return;
-        }
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            meta.addEnchant(enchantment, level, true);
-            item.setItemMeta(meta);
-        }
-    }
-
     private void handleGiveBook(@NotNull CommandSender sender, @NotNull String[] args) {
         if (args.length < 3) {
             sender.sendMessage(msg("usage-givebook"));
@@ -231,7 +201,7 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
         }
         // givebook is custom-enchant-only: it exists to hand out books for this plugin's own
         // PDC-based enchants, which the client can't render on its own. A vanilla Enchantment
-        // needs no help from us - /lovetweaksadmin enchant already covers giving/applying it.
+        // needs no help from us - vanilla /enchant already covers giving/applying it.
         if (resolved.custom() == null) {
             sender.sendMessage(msg("givebook-custom-only", "<enchant>", args[2]));
             return;
@@ -253,72 +223,6 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
         target.sendMessage(msg("book-given-target")
                 .replace("<enchant>", resolved.displayName())
                 .replace("<level>", CustomEnchantType.toRoman(level)));
-    }
-
-    private void handleEnchant(@NotNull CommandSender sender, @NotNull String[] args) {
-        if (args.length < 2) {
-            sender.sendMessage(msg("usage-enchant"));
-            return;
-        }
-
-        Player target;
-        ResolvedEnchant resolved = resolveEnchant(args[1]);
-        int level = 1;
-
-        if (resolved.isPresent()) {
-            if (!(sender instanceof Player player)) {
-                sender.sendMessage(msg("players-only"));
-                return;
-            }
-            target = player;
-            if (args.length >= 3) {
-                try {
-                    level = Integer.parseInt(args[2]);
-                } catch (NumberFormatException ignored) {}
-            }
-        } else {
-            if (args.length < 3) {
-                sender.sendMessage(msg("usage-enchant"));
-                return;
-            }
-            target = plugin.getServer().getPlayerExact(args[1]);
-            if (target == null) {
-                sender.sendMessage(msg("player-not-found", "<player>", args[1]));
-                return;
-            }
-            resolved = resolveEnchant(args[2]);
-            if (!resolved.isPresent()) {
-                sender.sendMessage(msg("enchant-not-found", "<enchant>", args[2]));
-                return;
-            }
-            if (args.length >= 4) {
-                try {
-                    level = Integer.parseInt(args[3]);
-                } catch (NumberFormatException ignored) {}
-            }
-        }
-
-        ItemStack held = target.getInventory().getItemInMainHand();
-        if (held.getType().isAir()) {
-            sender.sendMessage(msg("enchant-no-item"));
-            return;
-        }
-
-        level = Math.max(1, Math.min(level, resolved.maxLevel()));
-        if (resolved.custom() != null) {
-            plugin.getCustomEnchantManager().applyEnchantment(held, resolved.custom(), level);
-        } else {
-            applyVanillaEnchant(held, resolved.vanilla(), level);
-        }
-
-        sender.sendMessage(msg("enchant-success", "<player>", target.getName())
-                .replace("<enchant>", resolved.displayName())
-                .replace("<level>", CustomEnchantType.toRoman(level)));
-        if (!target.equals(sender)) {
-            target.sendMessage(msg("enchant-success-target")
-                    .replace("<enchant>", resolved.displayName())
-                    .replace("<level>", CustomEnchantType.toRoman(level)));
-        }
     }
 
     private void handleHerald(@NotNull CommandSender sender, @NotNull String[] args) {
@@ -387,7 +291,6 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(msg("help-givecoordscroll"));
         sender.sendMessage(msg("help-givepurification"));
         sender.sendMessage(msg("help-givebook"));
-        sender.sendMessage(msg("help-enchant"));
         sender.sendMessage(msg("help-herald"));
         sender.sendMessage(msg("help-footer"));
     }
@@ -439,26 +342,6 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 4 && args[0].equalsIgnoreCase("givebook")) {
-            return levelSuggestions(args[3], resolveEnchant(args[2]));
-        }
-
-        if (args.length == 2 && args[0].equalsIgnoreCase("enchant")) {
-            List<String> suggestions = new ArrayList<>(allEnchantIds());
-            for (Player online : plugin.getServer().getOnlinePlayers()) {
-                suggestions.add(online.getName());
-            }
-            return StringUtil.copyPartialMatches(args[1].toLowerCase(Locale.ROOT), suggestions, new ArrayList<>());
-        }
-
-        if (args.length == 3 && args[0].equalsIgnoreCase("enchant")) {
-            ResolvedEnchant direct = resolveEnchant(args[1]);
-            if (direct.isPresent()) {
-                return levelSuggestions(args[2], direct);
-            }
-            return StringUtil.copyPartialMatches(args[2].toLowerCase(Locale.ROOT), allEnchantIds(), new ArrayList<>());
-        }
-
-        if (args.length == 4 && args[0].equalsIgnoreCase("enchant")) {
             return levelSuggestions(args[3], resolveEnchant(args[2]));
         }
 
