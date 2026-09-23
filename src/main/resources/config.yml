@@ -18,6 +18,7 @@ messages:
   usage-givebook: '&eИспользование: &f/lovetweaksadmin givebook <игрок> <зачарование> [уровень]'
   usage-enchant: '&eИспользование: &f/lovetweaksadmin enchant [игрок] <зачарование> [уровень]'
   enchant-not-found: '&cЗачарование &e<enchant>&c не найдено.'
+  givebook-custom-only: '&cКоманда givebook выдаёт книги только с кастомными зачарованиями. &e<enchant>&c — ванильное зачарование, используйте &f/lovetweaksadmin enchant&c.'
   enchant-no-item: '&cВ руке нет предмета для зачарования.'
   book-given-sender: '&aКнига с зачарованием &e<enchant> <level>&a выдана игроку &e<player>&a.'
   book-given-target: '&6Вы получили зачарованную книгу: &e<enchant> <level>&6!'
