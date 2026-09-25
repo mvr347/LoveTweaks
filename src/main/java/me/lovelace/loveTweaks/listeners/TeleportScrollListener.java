@@ -137,7 +137,14 @@ public class TeleportScrollListener implements Listener {
         if (event.getCause() != org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.PLUGIN) {
             Player player = event.getPlayer();
             if (manager.hasSession(player.getUniqueId())) {
-                manager.cancelSession(player.getUniqueId(), null, null);
+                // Не тихая отмена: любой не-PLUGIN телепорт инициатора (в т.ч. серверная
+                // коррекция позиции "moved wrongly"/"moved too quickly", которая может
+                // сработать даже когда игрок физически не двигался) должен объясняться —
+                // иначе отсчёт молча истекает без телепорта и без единого сообщения игроку.
+                var cfg = plugin.getLoveTweaksConfig().getTeleportScrollConfig();
+                manager.cancelSession(player.getUniqueId(),
+                        cfg.message("cancelled-initiator").replace("<reason>", cfg.message("reason-teleported")),
+                        cfg.message("cancelled-target"));
             }
         }
     }

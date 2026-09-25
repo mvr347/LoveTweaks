@@ -118,7 +118,10 @@ public class CoordinateTeleportScrollListener implements Listener {
         if (event.getCause() != org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.PLUGIN) {
             Player player = event.getPlayer();
             if (manager.hasSession(player.getUniqueId())) {
-                manager.cancelSession(player.getUniqueId(), null);
+                // См. TeleportScrollListener#onPlayerTeleport — та же ловушка: тихая отмена
+                // без сообщения на любой не-PLUGIN телепорт (включая серверную коррекцию
+                // позиции), из-за которой отсчёт истекал без единого объяснения игроку.
+                manager.cancelSession(player.getUniqueId(), "reason-teleported");
             }
         }
     }
