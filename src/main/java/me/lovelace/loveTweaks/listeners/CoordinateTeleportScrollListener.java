@@ -118,9 +118,28 @@ public class CoordinateTeleportScrollListener implements Listener {
         if (event.getCause() != org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.PLUGIN) {
             Player player = event.getPlayer();
             if (manager.hasSession(player.getUniqueId())) {
-                manager.cancelSession(player.getUniqueId(), null);
+                // See TeleportScrollListener#onPlayerTeleport / #isNegligibleTeleport - the
+                // server's own "moved wrongly"/"moved too quickly" position correction fires a
+                // non-PLUGIN teleport even while the player is standing still, and was wrongly
+                // killing the countdown outright. Only a real displacement should cancel it.
+                if (isNegligibleTeleport(event.getFrom(), event.getTo())) {
+                    return;
+                }
+                manager.cancelSession(player.getUniqueId(), "reason-teleported");
             }
         }
+    }
+
+    private static boolean isNegligibleTeleport(org.bukkit.Location from, org.bukkit.Location to) {
+        if (from == null || to == null) {
+            return false;
+        }
+        org.bukkit.World fromWorld = from.getWorld();
+        org.bukkit.World toWorld = to.getWorld();
+        if (fromWorld == null || toWorld == null || !fromWorld.equals(toWorld)) {
+            return false;
+        }
+        return from.distanceSquared(to) < 1.0;
     }
 
     @EventHandler
