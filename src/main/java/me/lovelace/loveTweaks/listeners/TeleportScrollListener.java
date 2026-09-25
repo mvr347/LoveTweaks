@@ -137,16 +137,33 @@ public class TeleportScrollListener implements Listener {
         if (event.getCause() != org.bukkit.event.player.PlayerTeleportEvent.TeleportCause.PLUGIN) {
             Player player = event.getPlayer();
             if (manager.hasSession(player.getUniqueId())) {
-                // Не тихая отмена: любой не-PLUGIN телепорт инициатора (в т.ч. серверная
-                // коррекция позиции "moved wrongly"/"moved too quickly", которая может
-                // сработать даже когда игрок физически не двигался) должен объясняться —
-                // иначе отсчёт молча истекает без телепорта и без единого сообщения игроку.
+                // The server issues its own non-PLUGIN teleport to snap a desynced client back
+                // in place ("moved wrongly"/"moved too quickly" correction), which can fire even
+                // while the player is standing still - that is not the player actually leaving
+                // and must not kill an otherwise-successful countdown. Only a real displacement
+                // (different world, or landed more than a block away) counts as an interruption;
+                // anything smaller is treated as the same corrective no-op and ignored.
+                if (isNegligibleTeleport(event.getFrom(), event.getTo())) {
+                    return;
+                }
                 var cfg = plugin.getLoveTweaksConfig().getTeleportScrollConfig();
                 manager.cancelSession(player.getUniqueId(),
                         cfg.message("cancelled-initiator").replace("<reason>", cfg.message("reason-teleported")),
                         cfg.message("cancelled-target"));
             }
         }
+    }
+
+    private static boolean isNegligibleTeleport(org.bukkit.Location from, org.bukkit.Location to) {
+        if (from == null || to == null) {
+            return false;
+        }
+        org.bukkit.World fromWorld = from.getWorld();
+        org.bukkit.World toWorld = to.getWorld();
+        if (fromWorld == null || toWorld == null || !fromWorld.equals(toWorld)) {
+            return false;
+        }
+        return from.distanceSquared(to) < 1.0;
     }
 
     // Обновляем время последнего движения только при смене блочной позиции (не поворот камеры)
