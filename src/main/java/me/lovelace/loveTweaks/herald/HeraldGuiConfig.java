@@ -61,7 +61,7 @@ public final class HeraldGuiConfig {
             Map.entry("insufficient-funds", "&cНедостаточно монет для покупки (нужно <cost>)."),
             Map.entry("too-long", "&cСлишком длинное сообщение (максимум <max> символов, у вас <length>)."),
             Map.entry("empty-message", "&cОбъявление не может быть пустым."),
-            Map.entry("rejected-profanity", "&cОбъявление отклонено фильтром чата — деньги не возвращаются."),
+            Map.entry("rejected-profanity", "&cОбъявление отклонено фильтром чата."),
             Map.entry("published", "&aОбъявление опубликовано на <minutes> мин.!"),
             Map.entry("chat-prompt", "&eВведите текст объявления в чат (до <max> символов), или \"отмена\":"),
             Map.entry("chat-cancelled", "&7Ввод объявления отменён."),

@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Holds the Herald's independent announcement slots (see {@link HeraldSlot}), the pricing
- * formula, the purchase flow (funds + profanity check), persistence, and the once-a-minute
+ * formula, the purchase flow (profanity check, then funds), persistence, and the once-a-minute
  * round-robin broadcast rotation.
  */
 public class HeraldManager {
@@ -84,9 +84,9 @@ public class HeraldManager {
     }
 
     /**
-     * Attempts to purchase {@code slotIndex} for {@code player}. Money is charged before the
-     * profanity check, and is never refunded if the check rejects the message — the slot simply
-     * never activates, matching the "money already paid is confiscated" spec.
+     * Attempts to purchase {@code slotIndex} for {@code player}. The profanity check runs before
+     * money changes hands: a rejected message costs the player nothing, so LoveChatFilter (when
+     * present) is checked first and only a message that passes gets to the funds check and charge.
      */
     public synchronized PurchaseResult purchase(Player player, int slotIndex, int durationMinutes, String rawMessage) {
         if (slotIndex < 0 || slotIndex >= slots.size()) {
@@ -106,16 +106,16 @@ public class HeraldManager {
             return PurchaseResult.TOO_LONG;
         }
 
+        if (chatFilter.isProfane(message)) {
+            return PurchaseResult.REJECTED_PROFANITY;
+        }
+
         long cost = computeCost(durationMinutes, message.length());
         var economy = LoveCore.service(LoveEconomy.class);
         if (economy.isEmpty() || !economy.get().has(player, cost)) {
             return PurchaseResult.INSUFFICIENT_FUNDS;
         }
         economy.get().charge(player, cost);
-
-        if (chatFilter.isProfane(message)) {
-            return PurchaseResult.REJECTED_PROFANITY;
-        }
 
         long durationMillis = TimeUnit.MINUTES.toMillis(durationMinutes);
         slot.activate(player.getUniqueId(), player.getName(), message, durationMillis);

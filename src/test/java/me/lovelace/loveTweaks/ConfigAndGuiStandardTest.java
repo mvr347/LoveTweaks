@@ -21,7 +21,7 @@ public class ConfigAndGuiStandardTest {
         assertEquals("&cНедостаточно монет для покупки (нужно <cost>).", config.message("insufficient-funds"));
         assertEquals("&eВведите текст объявления в чат (до <max> символов), или \"отмена\":", config.message("chat-prompt"));
         assertEquals("&aОбъявление опубликовано на <minutes> мин.!", config.message("published"));
-        assertEquals("&cОбъявление отклонено фильтром чата — деньги не возвращаются.", config.message("rejected-profanity"));
+        assertEquals("&cОбъявление отклонено фильтром чата.", config.message("rejected-profanity"));
     }
 
     @Test
