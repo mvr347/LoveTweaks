@@ -198,6 +198,13 @@ public class TeleportScrollManager {
             Component c = msg("target-afk", "<player>", target.getName());
             initiator.sendMessage(c);
             sendActionBar(initiator, c);
+            // ОБЯЗАТЕЛЬНОЕ уведомление цели - раньше цель не получала вообще никакого сообщения
+            // и не понимала, почему к ней никто не телепортировался. АФК-эвристика (нет
+            // движения по блокам 15+ секунд) легко ложно срабатывает именно на игроке, который
+            // просто стоит и ждёт телепортации - то есть ведёт себя ровно так, как требуется.
+            Component targetMsg = msg("you-afk", "<player>", initiator.getName());
+            target.sendMessage(targetMsg);
+            sendActionBar(target, targetMsg);
             return true;
         }
 

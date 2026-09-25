@@ -10,11 +10,15 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Выдаёт настроенный в config.yml (секция {@code first-join}) стартовый набор предметов
@@ -28,6 +32,18 @@ public class FirstJoinItemsListener implements Listener {
 
     private final org.bukkit.NamespacedKey firstJoinKey;
 
+    // Кто действительно новый в эту сессию - решается ОДИН раз, в onPlayerJoin, и больше не
+    // пересчитывается. hasPlayedBefore() нельзя перепроверять позже (например, в
+    // onAuthenticated, который может сработать через десятки секунд - пока игрок проходит
+    // регистрацию LoveAuth): это известная особенность Bukkit API - файл playerdata может быть
+    // сохранён на диск (автосейв, explicit save() другим плагином) один раз ещё ВНУТРИ этой же
+    // самой первой сессии игрока, и с этого момента hasPlayedBefore() начинает возвращать true,
+    // хотя игрок только что зашёл впервые и ещё даже не долистал регистрацию. Раньше набор
+    // выдавался по повторной проверке hasPlayedBefore() в onAuthenticated - из двух игроков,
+    // зашедших одновременно, тот, чья регистрация заняла чуть больше времени (и чьи данные
+    // успели сохраниться раньше), молча оставался без стартового набора.
+    private final Set<UUID> newThisSession = ConcurrentHashMap.newKeySet();
+
     public FirstJoinItemsListener(LoveTweaks plugin) {
         this.plugin = plugin;
         this.firstJoinKey = new org.bukkit.NamespacedKey(plugin, "first_join_received");
@@ -35,8 +51,13 @@ public class FirstJoinItemsListener implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        if (isAuthenticated(event.getPlayer())) {
-            giveFirstJoinItemsIfEligible(event.getPlayer());
+        Player player = event.getPlayer();
+        if (!player.hasPlayedBefore()
+                && !player.getPersistentDataContainer().has(firstJoinKey, org.bukkit.persistence.PersistentDataType.BYTE)) {
+            newThisSession.add(player.getUniqueId());
+        }
+        if (isAuthenticated(player)) {
+            giveFirstJoinItemsIfEligible(player);
         }
     }
 
@@ -45,8 +66,15 @@ public class FirstJoinItemsListener implements Listener {
         giveFirstJoinItemsIfEligible(event.player());
     }
 
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        newThisSession.remove(event.getPlayer().getUniqueId());
+    }
+
     private void giveFirstJoinItemsIfEligible(Player player) {
-        if (player.hasPlayedBefore() || player.getPersistentDataContainer().has(firstJoinKey, org.bukkit.persistence.PersistentDataType.BYTE)) {
+        UUID uuid = player.getUniqueId();
+        if (!newThisSession.remove(uuid)
+                || player.getPersistentDataContainer().has(firstJoinKey, org.bukkit.persistence.PersistentDataType.BYTE)) {
             return;
         }
         if (!plugin.getLoveTweaksConfig().isFirstJoinEnabled()) {
