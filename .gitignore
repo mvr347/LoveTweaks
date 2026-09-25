@@ -111,3 +111,7 @@ buildNumber.properties
 
 # Common working directory
 run/
+
+# Scratch worktrees created by Claude Code's agent tooling for isolated background work -
+# never meant to be repo content (each one is its own full git checkout).
+.claude/worktrees/
