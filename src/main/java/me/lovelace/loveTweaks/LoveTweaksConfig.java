@@ -71,6 +71,7 @@ public class LoveTweaksConfig {
 
     // Автовозрождение
     private boolean autoRespawnEnabled;
+    private int autoRespawnDelayTicks;
 
     // Свиток телепортации (к игроку)
     private final TeleportScrollConfig teleportScrollConfig = new TeleportScrollConfig();
@@ -181,6 +182,7 @@ public class LoveTweaksConfig {
         itemDropGoodStandingMultiplier = config.getDouble("item-drop-loss.good-standing-multiplier", 0.5);
 
         autoRespawnEnabled = config.getBoolean("auto-respawn.enabled", true);
+        autoRespawnDelayTicks = Math.max(1, config.getInt("auto-respawn.delay-ticks", 5));
 
         teleportScrollConfig.load(config.getConfigurationSection("teleport-scroll"));
         coordTeleportScrollConfig.load(config.getConfigurationSection("coord-teleport-scroll"), plugin.getLogger());
@@ -363,6 +365,7 @@ public class LoveTweaksConfig {
     public String getItemDropLoseMessage() { return itemDropLoseMessage; }
     public String getItemDropStackPartialLoseMessage() { return itemDropStackPartialLoseMessage; }
     public boolean isAutoRespawnEnabled() { return autoRespawnEnabled; }
+    public int getAutoRespawnDelayTicks() { return autoRespawnDelayTicks; }
     public TeleportScrollConfig getTeleportScrollConfig() { return teleportScrollConfig; }
     public CoordinateTeleportScrollConfig getCoordTeleportScrollConfig() { return coordTeleportScrollConfig; }
 
