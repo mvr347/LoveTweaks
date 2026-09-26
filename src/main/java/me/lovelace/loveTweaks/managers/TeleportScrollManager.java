@@ -28,7 +28,7 @@ public class TeleportScrollManager {
     private static final int CHAT_TIMEOUT_TICKS = 200; // 10 секунд
     private static final int COUNTDOWN_SECONDS = 5;
     // Порог АФК: если игрок не двигался дольше этого времени — считается АФК
-    private static final long AFK_THRESHOLD_MS = 15_000L;
+    private static final long AFK_THRESHOLD_MS = 60_000L;
 
     private final LoveTweaks plugin;
 
@@ -426,30 +426,40 @@ public class TeleportScrollManager {
 
     private void spawnCountdownParticles(Location loc) {
         if (loc == null || loc.getWorld() == null) return;
-        org.bukkit.World w = loc.getWorld();
-        for (int i = 0; i < 12; i++) {
-            double angle = (2 * Math.PI * i) / 12.0;
-            double x = Math.cos(angle) * 0.75;
-            double z = Math.sin(angle) * 0.75;
-            w.spawnParticle(org.bukkit.Particle.PORTAL, loc.clone().add(x, 0.2 + (i * 0.12), z), 1, 0, 0, 0, 0);
-            w.spawnParticle(org.bukkit.Particle.ENCHANT, loc.clone().add(x, 0.4, z), 1, 0, 0, 0, 0.1);
+        try {
+            org.bukkit.World w = loc.getWorld();
+            for (int i = 0; i < 12; i++) {
+                double angle = (2 * Math.PI * i) / 12.0;
+                double x = Math.cos(angle) * 0.75;
+                double z = Math.sin(angle) * 0.75;
+                w.spawnParticle(org.bukkit.Particle.PORTAL, loc.clone().add(x, 0.2 + (i * 0.12), z), 1, 0, 0, 0, 0);
+                w.spawnParticle(org.bukkit.Particle.ENCHANT, loc.clone().add(x, 0.4, z), 1, 0, 0, 0, 0.1);
+            }
+        } catch (Throwable t) {
+            plugin.getLogger().warning("spawnCountdownParticles failed: " + t.getMessage());
         }
     }
 
     private void spawnTeleportBurst(Location loc) {
         if (loc == null || loc.getWorld() == null) return;
-        org.bukkit.World w = loc.getWorld();
-        Location center = loc.clone().add(0, 1.0, 0);
-        w.spawnParticle(org.bukkit.Particle.PORTAL, center, 45, 0.5, 0.7, 0.5, 0.8);
-        w.spawnParticle(org.bukkit.Particle.REVERSE_PORTAL, center, 25, 0.4, 0.6, 0.4, 0.1);
-        w.spawnParticle(org.bukkit.Particle.ENCHANT, center, 35, 0.6, 0.8, 0.6, 0.3);
-        w.spawnParticle(org.bukkit.Particle.FLASH, center, 1, 0, 0, 0, 0);
+        try {
+            org.bukkit.World w = loc.getWorld();
+            Location center = loc.clone().add(0, 1.0, 0);
+            w.spawnParticle(org.bukkit.Particle.PORTAL, center, 45, 0.5, 0.7, 0.5, 0.8);
+            w.spawnParticle(org.bukkit.Particle.REVERSE_PORTAL, center, 25, 0.4, 0.6, 0.4, 0.1);
+            w.spawnParticle(org.bukkit.Particle.ENCHANT, center, 35, 0.6, 0.8, 0.6, 0.3);
+            w.spawnParticle(org.bukkit.Particle.FLASH, center, 1, 0, 0, 0, 0);
+        } catch (Throwable t) {
+            // Particle failures must not abort teleport (e.g. missing Color data on older jars / API mismatch)
+            plugin.getLogger().warning("spawnTeleportBurst failed: " + t.getMessage());
+        }
     }
 
     private void spawnCancelParticles(Location loc) {
         if (loc == null || loc.getWorld() == null) return;
-        org.bukkit.World w = loc.getWorld();
-        w.spawnParticle(org.bukkit.Particle.SMOKE, loc.clone().add(0, 1.0, 0), 15, 0.3, 0.4, 0.3, 0.05);
+        try {
+            loc.getWorld().spawnParticle(org.bukkit.Particle.SMOKE, loc.clone().add(0, 1.0, 0), 15, 0.3, 0.4, 0.3, 0.05);
+        } catch (Throwable ignored) {}
     }
 
     /**
