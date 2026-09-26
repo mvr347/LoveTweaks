@@ -27,7 +27,7 @@ public class HeraldManager {
     private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacySection();
 
     public enum PurchaseResult {
-        SUCCESS, SLOT_TAKEN, EMPTY_MESSAGE, TOO_LONG, INSUFFICIENT_FUNDS, REJECTED_PROFANITY
+        SUCCESS, SLOT_TAKEN, EMPTY_MESSAGE, TOO_LONG, INSUFFICIENT_FUNDS, REJECTED_PROFANITY, ALREADY_OWNS_SLOT
     }
 
     private final LoveTweaks plugin;
@@ -96,6 +96,12 @@ public class HeraldManager {
         if (slot.isActive()) {
             return PurchaseResult.SLOT_TAKEN;
         }
+        // 2026-09-26: один игрок мог выкупить все 3 слота глашатая сразу - проверялась только
+        // занятость КОНКРЕТНОГО слота, но не то, что этот же player.getUniqueId() уже владеет
+        // другим активным слотом. Лимит - один активный слот на игрока одновременно.
+        if (playerOwnsAnySlot(player.getUniqueId())) {
+            return PurchaseResult.ALREADY_OWNS_SLOT;
+        }
 
         String message = rawMessage == null ? "" : rawMessage.trim();
         if (message.isEmpty()) {
@@ -121,6 +127,16 @@ public class HeraldManager {
         slot.activate(player.getUniqueId(), player.getName(), message, durationMillis);
         save();
         return PurchaseResult.SUCCESS;
+    }
+
+    /** True if {@code playerId} already owns an active slot (see the one-slot-per-player limit in {@link #purchase}). */
+    public synchronized boolean playerOwnsAnySlot(UUID playerId) {
+        for (HeraldSlot other : slots) {
+            if (other.isActive() && playerId.equals(other.ownerId())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public synchronized void clear() {
