@@ -128,6 +128,14 @@ public class HeraldListener implements Listener {
                 player.sendMessage(colorize(heraldGui.message("no-free-slots")));
                 return;
             }
+            // 2026-09-26: не даём даже открыть покупку второго слота, если игрок уже владеет
+            // другим активным слотом — иначе он тратит время на ввод текста и только на
+            // подтверждении узнаёт об отказе (manager.purchase всё равно перепроверит это же
+            // на confirm, это доп. защита от гонки, а не единственная проверка).
+            if (manager.playerOwnsAnySlot(player.getUniqueId())) {
+                player.sendMessage(colorize(heraldGui.message("already-owns-slot")));
+                return;
+            }
             int initialDuration = plugin.getLoveTweaksConfig().getHeraldMinDurationMinutes();
             HeraldPurchaseHolder purchaseHolder = new HeraldPurchaseHolder(i, initialDuration);
             HeraldPurchaseGUI.open(player, plugin, purchaseHolder);
@@ -279,6 +287,10 @@ public class HeraldListener implements Listener {
             }
             case SLOT_TAKEN -> {
                 player.sendMessage(colorize(player, heraldGui.message("no-free-slots")));
+                player.closeInventory();
+            }
+            case ALREADY_OWNS_SLOT -> {
+                player.sendMessage(colorize(player, heraldGui.message("already-owns-slot")));
                 player.closeInventory();
             }
             case EMPTY_MESSAGE -> player.sendMessage(colorize(player, heraldGui.message("empty-message")));

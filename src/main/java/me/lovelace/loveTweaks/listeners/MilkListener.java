@@ -15,6 +15,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.EntityPotionEffectEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
@@ -161,9 +162,13 @@ public class MilkListener implements Listener {
         Player player = event.getPlayer();
 
         if (item.getType() == Material.MILK_BUCKET) {
-            if (plugin.getLoveTweaksConfig().isDisableMilk()) {
-                event.setCancelled(true);
-            }
+            // 2026-09-26: раньше milk.disable-milk отменял весь PlayerItemConsumeEvent, из-за
+            // чего ведро молока вообще не расходовалось - анимация питья проигрывалась, а
+            // предмет не превращался в пустое ведро и не покидал инвентарь, то есть молоко
+            // пилось бесконечно (баг). disable-milk должен был только убрать ванильное свойство
+            // молока "снимает все эффекты" (чтобы подталкивать к Зелью очищения), а не отменять
+            // само употребление - для этого достаточно onEntityPotionEffect ниже, поэтому здесь
+            // событие больше не отменяется вовсе.
             return;
         }
 
@@ -178,6 +183,22 @@ public class MilkListener implements Listener {
 
             EquipmentSlot hand = isPurificationPotion(player.getInventory().getItemInMainHand()) ? EquipmentSlot.HAND : EquipmentSlot.OFF_HAND;
             applyPurification(player, item, hand);
+        }
+    }
+
+    /**
+     * Реализация milk.disable-milk: гасит именно ванильное "молоко снимает все эффекты"
+     * (Cause.MILK), а не всё употребление ведра - см. комментарий в onPlayerItemConsume выше.
+     * Событие стреляет по разу на каждый снимаемый эффект, поэтому отменяем только его, ведро
+     * при этом честно расходуется обычным ванильным путём.
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onEntityPotionEffect(EntityPotionEffectEvent event) {
+        if (event.getCause() != EntityPotionEffectEvent.Cause.MILK) {
+            return;
+        }
+        if (plugin.getLoveTweaksConfig().isDisableMilk()) {
+            event.setCancelled(true);
         }
     }
 
