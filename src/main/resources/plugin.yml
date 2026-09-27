@@ -8,6 +8,7 @@ softdepend:
   - ItemsAdder
   - LoveCore
   - LoveChatFilter
+  - ReviveMe
 
 commands:
   lovetweaksadmin:

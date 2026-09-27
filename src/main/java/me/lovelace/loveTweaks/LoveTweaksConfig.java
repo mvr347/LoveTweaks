@@ -294,6 +294,23 @@ public class LoveTweaksConfig {
                 }
             }
 
+            // Миграция секции revive-inventory-fix
+            if (!config.isConfigurationSection("revive-inventory-fix")) {
+                config.set("revive-inventory-fix", defaults.get("revive-inventory-fix"));
+                changed = true;
+            } else {
+                ConfigurationSection defRevive = defaults.getConfigurationSection("revive-inventory-fix");
+                ConfigurationSection liveRevive = config.getConfigurationSection("revive-inventory-fix");
+                if (defRevive != null && liveRevive != null) {
+                    for (String key : defRevive.getKeys(true)) {
+                        if (!liveRevive.contains(key)) {
+                            liveRevive.set(key, defRevive.get(key));
+                            changed = true;
+                        }
+                    }
+                }
+            }
+
             if (changed) {
                 plugin.saveConfig();
             }
