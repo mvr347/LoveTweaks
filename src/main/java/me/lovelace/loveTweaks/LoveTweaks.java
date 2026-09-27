@@ -22,6 +22,7 @@ import me.lovelace.loveTweaks.listeners.TeleportScrollListener;
 import me.lovelace.loveTweaks.listeners.VanillaProtectionListener;
 import me.lovelace.loveTweaks.managers.CoordinateTeleportScrollManager;
 import me.lovelace.loveTweaks.managers.TeleportScrollManager;
+import me.lovelace.loveTweaks.revivemefix.ReviveMeInventoryModule;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardConfig;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardDataManager;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardDisplayManager;
@@ -59,6 +60,7 @@ public final class LoveTweaks extends JavaPlugin {
     private MilkListener milkListener;
     private BrewingListener brewingListener;
     private me.lovelace.loveTweaks.listeners.VanillaProtectionListener vanillaProtectionListener;
+    private ReviveMeInventoryModule reviveMeInventoryModule;
 
     @Override
     public void onEnable() {
@@ -127,6 +129,12 @@ public final class LoveTweaks extends JavaPlugin {
         ScoreboardListener scoreboardListener = new ScoreboardListener(this, scoreboardDataManager, scoreboardDisplayManager);
         getServer().getPluginManager().registerEvents(scoreboardListener, this);
         getCommand("scoreboard").setExecutor(scoreboardListener);
+
+        // Фикс пропажи инвентаря ReviveMe при downed_keep_inventory: false — снимает снимок
+        // инвентаря в момент Downed и дропает его сам при финальной смерти, без гонки по тикам
+        // с собственной пост-смертной обработкой ReviveMe (см. revive-inventory-fix в config.yml).
+        reviveMeInventoryModule = new ReviveMeInventoryModule(this);
+        reviveMeInventoryModule.enable(getConfig().getConfigurationSection("revive-inventory-fix"));
 
         // Единая административная команда: /lovetweaksadmin (алиас /lovetweaks — см. plugin.yml)
         LoveTweaksAdminCommand adminCommand = new LoveTweaksAdminCommand(this);
@@ -220,6 +228,7 @@ public final class LoveTweaks extends JavaPlugin {
         if (enderChestListener != null) enderChestListener.closeAll();
         if (scoreboardDisplayManager != null) scoreboardDisplayManager.removeAll();
         if (scoreboardDataManager != null) scoreboardDataManager.close();
+        if (reviveMeInventoryModule != null) reviveMeInventoryModule.disable();
         getLogger().info("LoveTweaks disabled.");
     }
 
@@ -241,6 +250,7 @@ public final class LoveTweaks extends JavaPlugin {
         scoreboardDisplayManager.refreshPAPI();
         heraldManager.resize(loveTweaksConfig.getHeraldSlots());
         if (vanillaProtectionListener != null) vanillaProtectionListener.applyGameRules();
+        if (reviveMeInventoryModule != null) reviveMeInventoryModule.reload(getConfig().getConfigurationSection("revive-inventory-fix"));
         startHungerTask();
         startScoreboardTask();
         startHeraldBroadcastTask();
