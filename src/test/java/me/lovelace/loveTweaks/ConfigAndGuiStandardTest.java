@@ -141,7 +141,7 @@ public class ConfigAndGuiStandardTest {
         config.load(null);
 
         assertEquals("&6✦ Свиток телепортации ✦", config.itemName());
-        assertEquals("prompt", config.message("prompt"));
+        assertEquals("&6✦ Введите ник игрока в чат &e(10 секунд)", config.message("prompt"));
         assertEquals("", config.itemsadderItem());
         assertEquals(0, config.customModelData());
         assertEquals(org.bukkit.Material.PAPER, config.material());

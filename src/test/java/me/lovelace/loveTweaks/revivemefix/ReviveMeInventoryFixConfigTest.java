@@ -18,8 +18,12 @@ class ReviveMeInventoryFixConfigTest {
 
         assertTrue(config.isEnabled());
         assertTrue(config.isRequireReviveMe());
+        assertEquals(DeathDropHandler.DropMode.NATURAL, config.getDropMode());
         assertTrue(config.isRemoveOnRevive());
         assertFalse(config.isClearSnapshotOnQuit());
+        assertTrue(config.isClearInventoryOnDeath());
+        assertTrue(config.isForceDropOnDownedDeath());
+        assertFalse(config.isDropExp());
         assertEquals(300, config.getSnapshotTimeoutSeconds());
         assertEquals(EventPriority.HIGHEST, config.getDeathEventPriority());
         assertFalse(config.isDebug());
@@ -31,8 +35,12 @@ class ReviveMeInventoryFixConfigTest {
         YamlConfiguration root = new YamlConfiguration();
         root.set("revive-inventory-fix.enabled", false);
         root.set("revive-inventory-fix.require-reviveme", false);
+        root.set("revive-inventory-fix.drop-mode", "event_drops");
         root.set("revive-inventory-fix.remove-on-revive", false);
         root.set("revive-inventory-fix.clear-snapshot-on-quit", true);
+        root.set("revive-inventory-fix.clear-inventory-on-death", false);
+        root.set("revive-inventory-fix.force-drop-on-downed-death", false);
+        root.set("revive-inventory-fix.drop-exp", true);
         root.set("revive-inventory-fix.snapshot-timeout-seconds", 120);
         root.set("revive-inventory-fix.death-event-priority", "monitor");
         root.set("revive-inventory-fix.debug", true);
@@ -42,8 +50,12 @@ class ReviveMeInventoryFixConfigTest {
 
         assertFalse(config.isEnabled());
         assertFalse(config.isRequireReviveMe());
+        assertEquals(DeathDropHandler.DropMode.EVENT_DROPS, config.getDropMode());
         assertFalse(config.isRemoveOnRevive());
         assertTrue(config.isClearSnapshotOnQuit());
+        assertFalse(config.isClearInventoryOnDeath());
+        assertFalse(config.isForceDropOnDownedDeath());
+        assertTrue(config.isDropExp());
         assertEquals(120, config.getSnapshotTimeoutSeconds());
         assertEquals(EventPriority.MONITOR, config.getDeathEventPriority());
         assertTrue(config.isDebug());

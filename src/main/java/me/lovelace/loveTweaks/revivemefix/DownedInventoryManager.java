@@ -19,9 +19,19 @@ final class DownedInventoryManager {
 
     private final Map<UUID, InventorySnapshot> snapshots = new ConcurrentHashMap<>();
 
-    /** No-op if a snapshot for this player already exists — a snapshot is taken once per Downed. */
+    /** Saves a snapshot if none exists for this player yet. */
     void save(Player player) {
         snapshots.putIfAbsent(player.getUniqueId(), InventorySnapshot.capture(player));
+    }
+
+    /** Forces updating an existing snapshot with the player's current inventory. */
+    void update(Player player) {
+        snapshots.computeIfPresent(player.getUniqueId(), (uuid, prev) -> InventorySnapshot.capture(player));
+    }
+
+    /** Saves or updates the snapshot. */
+    void saveOrUpdate(Player player) {
+        snapshots.put(player.getUniqueId(), InventorySnapshot.capture(player));
     }
 
     /** Atomically removes and returns the snapshot, or {@code null} if none exists. */

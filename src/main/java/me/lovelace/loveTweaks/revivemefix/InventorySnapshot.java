@@ -19,13 +19,17 @@ final class InventorySnapshot {
     private final ItemStack[] contents;
     private final ItemStack[] armor;
     private final ItemStack offHand;
+    private final int totalExperience;
+    private final int level;
 
-    private InventorySnapshot(UUID playerId, long createdAtMillis, ItemStack[] contents, ItemStack[] armor, ItemStack offHand) {
+    private InventorySnapshot(UUID playerId, long createdAtMillis, ItemStack[] contents, ItemStack[] armor, ItemStack offHand, int totalExperience, int level) {
         this.playerId = playerId;
         this.createdAtMillis = createdAtMillis;
         this.contents = contents;
         this.armor = armor;
         this.offHand = offHand;
+        this.totalExperience = totalExperience;
+        this.level = level;
     }
 
     static InventorySnapshot capture(Player player) {
@@ -35,7 +39,9 @@ final class InventorySnapshot {
                 System.currentTimeMillis(),
                 InventoryCloneUtil.cloneArray(inventory.getStorageContents()),
                 InventoryCloneUtil.cloneArray(inventory.getArmorContents()),
-                InventoryCloneUtil.cloneItem(inventory.getItemInOffHand())
+                InventoryCloneUtil.cloneItem(inventory.getItemInOffHand()),
+                player.getTotalExperience(),
+                player.getLevel()
         );
     }
 
@@ -53,6 +59,36 @@ final class InventorySnapshot {
 
     ItemStack offHand() {
         return offHand;
+    }
+
+    int totalExperience() {
+        return totalExperience;
+    }
+
+    int level() {
+        return level;
+    }
+
+    java.util.List<ItemStack> allItems() {
+        java.util.List<ItemStack> list = new java.util.ArrayList<>();
+        if (contents != null) {
+            for (ItemStack item : contents) {
+                if (item != null && !item.getType().isAir() && item.getAmount() > 0) {
+                    list.add(item);
+                }
+            }
+        }
+        if (armor != null) {
+            for (ItemStack item : armor) {
+                if (item != null && !item.getType().isAir() && item.getAmount() > 0) {
+                    list.add(item);
+                }
+            }
+        }
+        if (offHand != null && !offHand.getType().isAir() && offHand.getAmount() > 0) {
+            list.add(offHand);
+        }
+        return list;
     }
 
     boolean isExpired(long timeoutSeconds) {

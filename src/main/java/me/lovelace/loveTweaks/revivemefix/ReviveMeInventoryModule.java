@@ -3,8 +3,10 @@ package me.lovelace.loveTweaks.revivemefix;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
+import org.bukkit.event.HandlerList;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.plugin.EventExecutor;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -12,16 +14,10 @@ import java.util.UUID;
 import java.util.logging.Level;
 
 /**
- * Lifecycle owner for the ReviveMe inventory-drop fix (see module spec: without it,
- * {@code downed_keep_inventory: false} makes a Downed player's items vanish on final death
- * instead of dropping, because ReviveMe can already have cleared/replaced the inventory by the
- * time {@link PlayerDeathEvent} fires).
+ * Lifecycle manager for the ReviveMe inventory drop fix module.
  * <p>
- * The fix: take an independent snapshot the moment ReviveMe reports the player Downed (not on
- * death), then on final death consume that snapshot and drop it ourselves - see
- * {@link DownedInventoryManager} for why {@code take()} rather than {@code get()} matters, and
- * {@link ReflectiveReviveMeDetector} for how ReviveMe's events are found without a compile-time
- * dependency on a specific ReviveMe build.
+ * Ensures that items reliably drop when a downed player dies (fixing the issue where items vanish
+ * into the void with {@code downed_keep_inventory: false}, or when external plugins clear drops/enforce keepInventory).
  */
 public final class ReviveMeInventoryModule {
 
@@ -29,12 +25,25 @@ public final class ReviveMeInventoryModule {
     private final ReviveMeInventoryFixConfig config = new ReviveMeInventoryFixConfig();
 
     private DownedInventoryManager inventoryManager;
-    private ReviveMeInventoryListener listener;
+    private ReviveMeInventoryListener inventoryListener;
+    private ReviveMeEventListener reviveMeEventListener;
     private ReflectiveReviveMeDetector detector;
     private BukkitTask cleanupTask;
 
     public ReviveMeInventoryModule(JavaPlugin plugin) {
         this.plugin = plugin;
+    }
+
+    public JavaPlugin getPlugin() {
+        return plugin;
+    }
+
+    public DownedInventoryManager getInventoryManager() {
+        return inventoryManager;
+    }
+
+    public ReviveMeInventoryFixConfig getConfig() {
+        return config;
     }
 
     public void enable(ConfigurationSection configSection) {
@@ -44,41 +53,48 @@ public final class ReviveMeInventoryModule {
         }
 
         inventoryManager = new DownedInventoryManager();
-        listener = new ReviveMeInventoryListener(inventoryManager, config, plugin.getLogger());
+        detector = new ReflectiveReviveMeDetector(plugin, config.isDebug());
 
-        // Only PlayerQuitEvent has an @EventHandler annotation on the listener - PlayerDeathEvent
-        // is registered separately below so its priority can come from config instead of being
-        // hardcoded on the annotation.
-        Bukkit.getPluginManager().registerEvents(listener, plugin);
+        Plugin reviveMePlugin = Bukkit.getPluginManager().getPlugin("ReviveMe");
+        boolean reviveMeActive = reviveMePlugin != null && reviveMePlugin.isEnabled();
+
+        if (config.isRequireReviveMe() && !reviveMeActive) {
+            plugin.getLogger().warning("[ReviveMeInventoryFix] ReviveMe plugin was not found or is disabled! "
+                    + "Module will remain dormant (require-reviveme: true in config).");
+            return;
+        }
+
+        // Register inventory listener (handles death event, inventory interactions, quit)
+        inventoryListener = new ReviveMeInventoryListener(this, inventoryManager, config, plugin.getLogger());
+        Bukkit.getPluginManager().registerEvents(inventoryListener, plugin);
 
         EventExecutor deathExecutor = (l, event) -> {
             if (event instanceof PlayerDeathEvent deathEvent) {
-                listener.onPlayerDeath(deathEvent);
+                inventoryListener.onPlayerDeath(deathEvent);
             }
         };
-        Bukkit.getPluginManager().registerEvent(PlayerDeathEvent.class, listener,
+        Bukkit.getPluginManager().registerEvent(PlayerDeathEvent.class, inventoryListener,
                 config.getDeathEventPriority(), deathExecutor, plugin, false);
 
-        detector = new ReflectiveReviveMeDetector(plugin, config.isDebug(),
-                this::onPlayerDowned,
-                this::onPlayerRevived);
-
-        if (config.isRequireReviveMe() && !detector.isAvailable()) {
-            plugin.getLogger().warning("[ReviveMeInventoryFix] ReviveMe hook unavailable - the module "
-                    + "is registered but will never trigger (require-reviveme: true in config.yml).");
+        // Register official ReviveMe API event listener if ReviveMe is loaded
+        if (reviveMeActive) {
+            try {
+                reviveMeEventListener = new ReviveMeEventListener(this, inventoryManager, config, plugin.getLogger());
+                Bukkit.getPluginManager().registerEvents(reviveMeEventListener, plugin);
+                if (config.isDebug()) {
+                    plugin.getLogger().info("[ReviveMeInventoryFix] Registered ReviveMeEventListener successfully.");
+                }
+            } catch (Throwable t) {
+                plugin.getLogger().log(Level.WARNING, "[ReviveMeInventoryFix] Could not register ReviveMeEventListener: "
+                        + t.getMessage(), t);
+            }
         }
 
         startCleanupTask();
+        plugin.getLogger().info("[ReviveMeInventoryFix] Module enabled (DropMode: " + config.getDropMode()
+                + ", Priority: " + config.getDeathEventPriority() + ")");
     }
 
-    /**
-     * Full teardown + rebuild against a freshly-loaded config section. A player who is Downed at
-     * the exact moment of a {@code /lovetweaksadmin reload} loses their pending snapshot (same
-     * trade-off {@code reloadAll()} already makes elsewhere, e.g. cancelling teleport-scroll
-     * tasks) - acceptable since reload during that narrow a window is a rare coincidence, and the
-     * alternative (partial reload that can't safely change death-event-priority without
-     * re-registering) is meaningfully more complex for a corner case this narrow.
-     */
     public void reload(ConfigurationSection configSection) {
         disable();
         enable(configSection);
@@ -88,6 +104,14 @@ public final class ReviveMeInventoryModule {
         if (cleanupTask != null) {
             cleanupTask.cancel();
             cleanupTask = null;
+        }
+        if (reviveMeEventListener != null) {
+            HandlerList.unregisterAll(reviveMeEventListener);
+            reviveMeEventListener = null;
+        }
+        if (inventoryListener != null) {
+            HandlerList.unregisterAll(inventoryListener);
+            inventoryListener = null;
         }
         if (detector != null) {
             detector.shutdown();
@@ -99,8 +123,43 @@ public final class ReviveMeInventoryModule {
         }
     }
 
-    private void onPlayerDowned(Player player) {
-        if (inventoryManager == null) {
+    /**
+     * Atomically executes the death drop for a player who died while downed.
+     * Can be invoked from either {@link net.kokoricraft.reviveme.events.DownedDeathEvent} or {@link PlayerDeathEvent}.
+     */
+    public void handleDownedDeath(Player player, PlayerDeathEvent deathEvent) {
+        if (player == null || inventoryManager == null) {
+            return;
+        }
+
+        UUID uuid = player.getUniqueId();
+        // take() is atomic: removes the snapshot immediately so only one execution drops items
+        InventorySnapshot snapshot = inventoryManager.take(uuid);
+
+        // If snapshot wasn't present (e.g. reload while downed), fallback to current player inventory if downed
+        if (snapshot == null && config.isForceDropOnDownedDeath() && ReviveMeApiBridge.hasDowned(player)) {
+            snapshot = InventorySnapshot.capture(player);
+            if (config.isDebug()) {
+                plugin.getLogger().info("[ReviveMeInventoryFix] Captured fallback snapshot at death for downed player "
+                        + player.getName());
+            }
+        }
+
+        if (snapshot == null) {
+            return;
+        }
+
+        DeathDropHandler.dropSnapshot(player, player.getLocation(), snapshot, deathEvent,
+                config.getDropMode(), config.isClearInventoryOnDeath(), config.isDropExp());
+
+        if (config.isDebug()) {
+            plugin.getLogger().log(Level.INFO, "[ReviveMeInventoryFix] Successfully dropped inventory for "
+                    + player.getName() + " using mode " + config.getDropMode());
+        }
+    }
+
+    public void onPlayerDowned(Player player) {
+        if (inventoryManager == null || player == null) {
             return;
         }
         inventoryManager.save(player);
@@ -109,21 +168,22 @@ public final class ReviveMeInventoryModule {
         }
     }
 
-    private void onPlayerRevived(Player player) {
-        if (inventoryManager == null || !config.isRemoveOnRevive()) {
+    public void onPlayerRevived(Player player) {
+        if (inventoryManager == null || player == null || !config.isRemoveOnRevive()) {
             return;
         }
         UUID uuid = player.getUniqueId();
         if (inventoryManager.contains(uuid)) {
             inventoryManager.remove(uuid);
             if (config.isDebug()) {
-                plugin.getLogger().log(Level.INFO, "[ReviveMeInventoryFix] Snapshot removed after revive for " + player.getName());
+                plugin.getLogger().log(Level.INFO, "[ReviveMeInventoryFix] Snapshot removed after revive for "
+                        + player.getName());
             }
         }
     }
 
     private void startCleanupTask() {
-        long intervalTicks = 20L * 60L; // once a minute - snapshot count is tiny, no need for finer granularity
+        long intervalTicks = 20L * 60L; // once a minute
         cleanupTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             if (inventoryManager == null) {
                 return;
