@@ -24,6 +24,8 @@ class ReviveMeInventoryFixConfigTest {
         assertTrue(config.isClearInventoryOnDeath());
         assertTrue(config.isForceDropOnDownedDeath());
         assertFalse(config.isDropExp());
+        assertTrue(config.isQuitGuardEnabled());
+        assertTrue(config.isKillOnQuitWhileDowned());
         assertEquals(300, config.getSnapshotTimeoutSeconds());
         assertEquals(EventPriority.HIGHEST, config.getDeathEventPriority());
         assertFalse(config.isDebug());
@@ -41,6 +43,8 @@ class ReviveMeInventoryFixConfigTest {
         root.set("revive-inventory-fix.clear-inventory-on-death", false);
         root.set("revive-inventory-fix.force-drop-on-downed-death", false);
         root.set("revive-inventory-fix.drop-exp", true);
+        root.set("revive-inventory-fix.quit-guard.enabled", false);
+        root.set("revive-inventory-fix.quit-guard.kill-on-quit", false);
         root.set("revive-inventory-fix.snapshot-timeout-seconds", 120);
         root.set("revive-inventory-fix.death-event-priority", "monitor");
         root.set("revive-inventory-fix.debug", true);
@@ -56,6 +60,8 @@ class ReviveMeInventoryFixConfigTest {
         assertFalse(config.isClearInventoryOnDeath());
         assertFalse(config.isForceDropOnDownedDeath());
         assertTrue(config.isDropExp());
+        assertFalse(config.isQuitGuardEnabled());
+        assertFalse(config.isKillOnQuitWhileDowned());
         assertEquals(120, config.getSnapshotTimeoutSeconds());
         assertEquals(EventPriority.MONITOR, config.getDeathEventPriority());
         assertTrue(config.isDebug());
