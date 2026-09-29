@@ -74,7 +74,9 @@ public final class HeraldGuiConfig {
             Map.entry("broadcast-format", "&6&l[Голос Королевства] &f<buyer>&7: &e<message>"),
             // Server-declared hunt announcement (LoveBehavior -> LoveHunt auto-bounty bridge),
             // not one of the player-purchased slots above.
-            Map.entry("hunt-announcement-format", "&6&l[Глашатай] &7Внимание! Игрок &c<player> &7замечен на сервере — на его голову объявлена &4охота&7!")
+            Map.entry("hunt-announcement-format", "&6&l[Глашатай] &7Внимание! Игрок &c<player> &7замечен на сервере — на его голову объявлена &4охота&7!"),
+            // Daily contract rotation (LoveContracts), see HeraldManager#announceContractsRotation.
+            Map.entry("contracts-rotation-format", "&6[Глашатай] &eВнимание! Новые контракты доступны на доске объявлений!")
     );
 
     private final Map<String, String> messages = new HashMap<>();
