@@ -175,13 +175,16 @@ public class HeraldManager {
     }
 
     /**
-     * Server-declared announcement that the contract board was refreshed, called via reflection
-     * from LoveContracts' daily rotation. Same one-off broadcast as {@link #announceHuntedPlayer},
-     * using {@code herald.gui.messages.contracts-announcement-format}.
+     * Daily contract rotation announcement, called via reflection from LoveContracts
+     * (HeraldBridge) after each rotation. Like {@link #announceHuntedPlayer} it is not tied to a
+     * purchasable slot and not persisted. Must be called on the main thread.
      */
     public void announceContractsRotation() {
-        String template = plugin.getLoveTweaksConfig().getHeraldGuiConfig().message("contracts-announcement-format");
-        plugin.getServer().broadcast(colorize(template));
+        String text = plugin.getLoveTweaksConfig().getHeraldGuiConfig().message("contracts-rotation-format");
+        if (text == null || text.isBlank()) {
+            return;
+        }
+        plugin.getServer().broadcast(colorize(text));
     }
 
     private void broadcast(HeraldSlot slot) {
