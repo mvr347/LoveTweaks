@@ -27,6 +27,7 @@ public final class ReviveMeInventoryModule {
     private DownedInventoryManager inventoryManager;
     private ReviveMeInventoryListener inventoryListener;
     private ReviveMeEventListener reviveMeEventListener;
+    private DownedQuitGuard quitGuard;
     private ReflectiveReviveMeDetector detector;
     private BukkitTask cleanupTask;
 
@@ -90,6 +91,12 @@ public final class ReviveMeInventoryModule {
             }
         }
 
+        // Needs ReviveMeAPI#hasDowned, so it only makes sense with ReviveMe actually running
+        if (reviveMeActive && config.isQuitGuardEnabled()) {
+            quitGuard = new DownedQuitGuard(plugin, config);
+            Bukkit.getPluginManager().registerEvents(quitGuard, plugin);
+        }
+
         startCleanupTask();
         plugin.getLogger().info("[ReviveMeInventoryFix] Module enabled (DropMode: " + config.getDropMode()
                 + ", Priority: " + config.getDeathEventPriority() + ")");
@@ -112,6 +119,11 @@ public final class ReviveMeInventoryModule {
         if (inventoryListener != null) {
             HandlerList.unregisterAll(inventoryListener);
             inventoryListener = null;
+        }
+        if (quitGuard != null) {
+            HandlerList.unregisterAll(quitGuard);
+            quitGuard.clear();
+            quitGuard = null;
         }
         if (detector != null) {
             detector.shutdown();

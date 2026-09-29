@@ -16,6 +16,8 @@ public final class ReviveMeInventoryFixConfig {
     private boolean clearInventoryOnDeath = true;
     private boolean forceDropOnDownedDeath = true;
     private boolean dropExp = false;
+    private boolean quitGuardEnabled = true;
+    private boolean killOnQuitWhileDowned = true;
     private int snapshotTimeoutSeconds = 300;
     private EventPriority deathEventPriority = EventPriority.HIGHEST;
     private boolean debug = false;
@@ -32,6 +34,8 @@ public final class ReviveMeInventoryFixConfig {
         clearInventoryOnDeath = section.getBoolean("clear-inventory-on-death", true);
         forceDropOnDownedDeath = section.getBoolean("force-drop-on-downed-death", true);
         dropExp = section.getBoolean("drop-exp", false);
+        quitGuardEnabled = section.getBoolean("quit-guard.enabled", true);
+        killOnQuitWhileDowned = section.getBoolean("quit-guard.kill-on-quit", true);
         snapshotTimeoutSeconds = Math.max(0, section.getInt("snapshot-timeout-seconds", 300));
         debug = section.getBoolean("debug", false);
 
@@ -73,6 +77,14 @@ public final class ReviveMeInventoryFixConfig {
 
     public boolean isDropExp() {
         return dropExp;
+    }
+
+    public boolean isQuitGuardEnabled() {
+        return quitGuardEnabled;
+    }
+
+    public boolean isKillOnQuitWhileDowned() {
+        return killOnQuitWhileDowned;
     }
 
     public int getSnapshotTimeoutSeconds() {
