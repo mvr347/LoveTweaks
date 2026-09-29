@@ -121,7 +121,10 @@ public class HeraldManager {
         if (economy.isEmpty() || !economy.get().has(player, cost)) {
             return PurchaseResult.INSUFFICIENT_FUNDS;
         }
-        economy.get().charge(player, cost);
+        // charge() is the authority; has() above is only a pre-check.
+        if (!economy.get().charge(player, cost)) {
+            return PurchaseResult.INSUFFICIENT_FUNDS;
+        }
 
         long durationMillis = TimeUnit.MINUTES.toMillis(durationMinutes);
         slot.activate(player.getUniqueId(), player.getName(), message, durationMillis);
