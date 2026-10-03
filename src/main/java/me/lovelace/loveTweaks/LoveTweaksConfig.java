@@ -195,8 +195,8 @@ public class LoveTweaksConfig {
         heraldMaxDurationMinutes = Math.max(heraldMinDurationMinutes, config.getInt("herald.max-duration-minutes", 60));
         heraldDurationStepMinutes = Math.max(1, config.getInt("herald.duration-step-minutes", 10));
         heraldMaxMessageLength = Math.max(1, config.getInt("herald.max-message-length", 50));
-        heraldMinCost = config.getLong("herald.min-cost", 50);
-        heraldMaxCost = Math.max(heraldMinCost, config.getLong("herald.max-cost", 300));
+        heraldMinCost = readMoney(config, "herald.min-cost", 200L);
+        heraldMaxCost = Math.max(heraldMinCost, readMoney(config, "herald.max-cost", 1_500L));
         heraldGuiConfig.load(config.getConfigurationSection("herald.gui"));
 
         loadFirstJoinItems(config);
@@ -421,4 +421,13 @@ public class LoveTweaksConfig {
     public ScoreboardConfig getScoreboardConfig() { return scoreboardConfig; }
     public boolean isCustomEnchantmentsEnabled() { return customEnchantmentsEnabled; }
     public boolean isCustomEnchantsAllowOnAllSwords() { return customEnchantsAllowOnAllSwords; }
+
+    /** Money key: a number (copper units) or a string like "2i" / "3i 50c", with the LoveCore price index applied. */
+    private long readMoney(org.bukkit.configuration.file.FileConfiguration config, String path, long def) {
+        try {
+            return dev.lovelace.lovecore.api.economy.MoneyConfig.getScaled(config, path, def);
+        } catch (Throwable t) {
+            return config.getLong(path, def); // LoveCore API missing: only plain numbers
+        }
+    }
 }

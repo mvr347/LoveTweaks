@@ -168,10 +168,13 @@ herald:
   max-message-length: 50
   # Цена в единой валюте экосистемы (монеты LoveCore, см. его config.yml) — линейно
   # растёт с длительностью и длиной текста между min-cost (короткое, минимальная
-  # длительность) и max-cost (максимум обоих). 50 = 5 iron_coin, 300 = 3 diamond_coin
-  # при денежных номиналах LoveCore по умолчанию.
-  min-cost: 50
-  max-cost: 300
+  # длительность) и max-cost (максимум обоих). Число (медные единицы) или строка "2i" / "3i 50c"
+  # (c = медная, i = железная, g = золотая, d = алмазная); общий индекс цен LoveCore применяется.
+  # 2026-10-03: 50/300 → "2i"/"15i" (200 / 1 500) при номиналах LoveCore 1/100/2000/20000. Объявление на
+  # весь сервер — реклама: короткое на 10 минут стоит пару железных, длинное на час — ощутимо, но
+  # меньше золотой монеты (2 000), чтобы не превращать глашатая в роскошь.
+  min-cost: "2i"
+  max-cost: "15i"
 
   gui:
     overview-title: '&6⚡ Королевский Глашатай'
@@ -287,27 +290,29 @@ herald:
         - ''
         - '&cНедостаточно монет для покупки'
 
-    # Форматирование цены в физической валюте (монетах)
+    # Форматирование цены в физической валюте (монетах).
+    # 2026-10-03: номиналы (id и стоимость) берутся из LoveCore; здесь — только тексты и цвета по id монеты.
+    # value ниже используется лишь на сервере без LoveCore. Скрытая в LoveCore незеритовая монета не показывается.
     currency:
       separator: '&7, '
       coins:
         netherite_coin:
-          value: 1000
+          value: 100000
           one: '&f%img_netherite_coin% &8<amount> незеритовая монета'
           few: '&f%img_netherite_coin% &8<amount> незеритовые монеты'
           many: '&f%img_netherite_coin% &8<amount> незеритовых монет'
         diamond_coin:
-          value: 100
+          value: 20000
           one: '&f%img_diamond_coin% &b<amount> алмазная монета'
           few: '&f%img_diamond_coin% &b<amount> алмазные монеты'
           many: '&f%img_diamond_coin% &b<amount> алмазных монет'
         gold_coin:
-          value: 50
+          value: 2000
           one: '&f%img_gold_coin% &e<amount> золотая монета'
           few: '&f%img_gold_coin% &e<amount> золотые монеты'
           many: '&f%img_gold_coin% &e<amount> золотых монет'
         iron_coin:
-          value: 10
+          value: 100
           one: '&f%img_iron_coin% &f<amount> железная монета'
           few: '&f%img_iron_coin% &f<amount> железные монеты'
           many: '&f%img_iron_coin% &f<amount> железных монет'

@@ -72,23 +72,24 @@ public class ConfigAndGuiStandardTest {
         me.lovelace.loveTweaks.utils.CurrencyFormatter formatter = new me.lovelace.loveTweaks.utils.CurrencyFormatter();
         formatter.load(null);
 
-        // 75 = 1 gold (50) + 2 iron (20) + 5 copper (5)
-        assertEquals("&f%img_gold_coin% &e1 золотая монета&7, &f%img_iron_coin% &f2 железные монеты&7, &f%img_copper_coin% &65 медных монет", formatter.format(75));
+        // Denominations of the new economy (2026-10-03): copper 1, iron 100, gold 2000, diamond 20000, netherite 100000.
+        // 2250 = 1 gold (2000) + 2 iron (200) + 50 copper
+        assertEquals("&f%img_gold_coin% &e1 золотая монета&7, &f%img_iron_coin% &f2 железные монеты&7, &f%img_copper_coin% &650 медных монет", formatter.format(2250));
 
-        // 1000 = 1 netherite
-        assertEquals("&f%img_netherite_coin% &81 незеритовая монета", formatter.format(1000));
+        // 100000 = 1 netherite (the fallback table still knows it; with LoveCore the hidden coin is not used)
+        assertEquals("&f%img_netherite_coin% &81 незеритовая монета", formatter.format(100_000));
 
-        // 100 = 1 diamond
-        assertEquals("&f%img_diamond_coin% &b1 алмазная монета", formatter.format(100));
+        // 20000 = 1 diamond
+        assertEquals("&f%img_diamond_coin% &b1 алмазная монета", formatter.format(20_000));
 
-        // 300 = 3 diamond
-        assertEquals("&f%img_diamond_coin% &b3 алмазные монеты", formatter.format(300));
+        // 60000 = 3 diamond
+        assertEquals("&f%img_diamond_coin% &b3 алмазные монеты", formatter.format(60_000));
 
-        // 50 = 1 gold
-        assertEquals("&f%img_gold_coin% &e1 золотая монета", formatter.format(50));
+        // 2000 = 1 gold
+        assertEquals("&f%img_gold_coin% &e1 золотая монета", formatter.format(2_000));
 
-        // 10 = 1 iron
-        assertEquals("&f%img_iron_coin% &f1 железная монета", formatter.format(10));
+        // 100 = 1 iron
+        assertEquals("&f%img_iron_coin% &f1 железная монета", formatter.format(100));
 
         // 1 = 1 copper
         assertEquals("&f%img_copper_coin% &61 медная монета", formatter.format(1));
