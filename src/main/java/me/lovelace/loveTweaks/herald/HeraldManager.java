@@ -171,7 +171,7 @@ public class HeraldManager {
     public void announceHuntedPlayer(String targetName) {
         String template = plugin.getLoveTweaksConfig().getHeraldGuiConfig().message("hunt-announcement-format");
         String text = template.replace("<player>", targetName == null ? "" : targetName);
-        plugin.getServer().broadcast(colorize(text));
+        plugin.getServer().broadcast(colorize(withPrefix(text)));
     }
 
     /**
@@ -184,7 +184,28 @@ public class HeraldManager {
         if (text == null || text.isBlank()) {
             return;
         }
-        plugin.getServer().broadcast(colorize(text));
+        plugin.getServer().broadcast(colorize(withPrefix(text)));
+    }
+
+    /**
+     * Announcement from another plugin (LoveShop caravans/wanderer), called via reflection from its
+     * HeraldBridge. The body is already a component; the herald prefix is put in front of it so every
+     * announcement on the server looks the same. Must be called on the main thread.
+     */
+    public void announce(Component body) {
+        if (body == null) {
+            return;
+        }
+        plugin.getServer().broadcast(colorize(prefix()).append(body));
+    }
+
+    private String prefix() {
+        return plugin.getLoveTweaksConfig().getHeraldGuiConfig().message("prefix");
+    }
+
+    /** Substitutes the shared {@code <prefix>} token; a template without it (old config) is left as is. */
+    private String withPrefix(String template) {
+        return template.replace("<prefix>", prefix());
     }
 
     private void broadcast(HeraldSlot slot) {
@@ -192,7 +213,7 @@ public class HeraldManager {
         String text = template
                 .replace("<buyer>", slot.ownerName() == null ? "" : slot.ownerName())
                 .replace("<message>", slot.message() == null ? "" : slot.message());
-        plugin.getServer().broadcast(colorize(text));
+        plugin.getServer().broadcast(colorize(withPrefix(text)));
     }
 
     private static Component colorize(String text) {
