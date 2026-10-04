@@ -25,6 +25,18 @@ public class ConfigAndGuiStandardTest {
     }
 
     @Test
+    @DisplayName("Every herald announcement format starts with the shared prefix")
+    void testHeraldFormatsShareOnePrefix() {
+        HeraldGuiConfig config = new HeraldGuiConfig();
+        config.load(null);
+
+        assertEquals("&7» &6Глашатай &7» ", config.message("prefix"));
+        for (String key : new String[]{"broadcast-format", "hunt-announcement-format", "contracts-rotation-format"}) {
+            org.junit.jupiter.api.Assertions.assertTrue(config.message(key).startsWith("<prefix>"), key);
+        }
+    }
+
+    @Test
     @DisplayName("CoordinateTeleportScrollConfig returns non-empty localized fallback messages")
     void testCoordTeleportScrollConfigDefaults() {
         CoordinateTeleportScrollConfig config = new CoordinateTeleportScrollConfig();
