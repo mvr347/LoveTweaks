@@ -63,10 +63,14 @@ public class CustomEnchantManager {
     }
 
     public void applyEnchantment(@NotNull ItemStack item, @NotNull CustomEnchantType type, int level) {
-        if (!item.hasItemMeta()) {
+        // hasItemMeta() is false for pristine items on modern Paper, so it must not gate writing
+        if (item.getType().isAir()) {
             return;
         }
         ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            return;
+        }
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         int clampedLevel = Math.max(1, Math.min(level, type.getMaxLevel()));
         pdc.set(type.getKey(plugin), PersistentDataType.INTEGER, clampedLevel);
@@ -85,10 +89,13 @@ public class CustomEnchantManager {
     }
 
     public void removeEnchantment(@NotNull ItemStack item, @NotNull CustomEnchantType type) {
-        if (!item.hasItemMeta()) {
+        if (item.getType().isAir()) {
             return;
         }
         ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            return;
+        }
         meta.getPersistentDataContainer().remove(type.getKey(plugin));
         meta.getPersistentDataContainer().remove(new NamespacedKey(plugin, "enchant_" + type.getId()));
         updateItemLore(meta, isBook(item));
@@ -96,10 +103,13 @@ public class CustomEnchantManager {
     }
 
     public void removeAllCustomEnchantments(@NotNull ItemStack item) {
-        if (!item.hasItemMeta()) {
+        if (item.getType().isAir()) {
             return;
         }
         ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            return;
+        }
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         for (CustomEnchantType type : CustomEnchantType.values()) {
             pdc.remove(type.getKey(plugin));
@@ -190,6 +200,7 @@ public class CustomEnchantManager {
         // авто-красится по редкости предмета) на нашу английскую по коду, но всегда русскую и
         // всегда жёлтую строку. Не трогаем displayName вовсе - ваниль сама выберет и текст, и
         // цвет ровно как у настоящей зачарованной книги; свою метку оставляем только в лоре ниже.
+        meta.setEnchantmentGlintOverride(true);
         updateItemLore(meta, true);
         book.setItemMeta(meta);
         return book;

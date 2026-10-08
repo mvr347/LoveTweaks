@@ -1,5 +1,6 @@
 package me.lovelace.loveTweaks;
 
+import me.lovelace.loveTweaks.enchantments.MagnetTask;
 import me.lovelace.loveTweaks.commands.LoveTweaksAdminCommand;
 import me.lovelace.loveTweaks.herald.HeraldManager;
 import me.lovelace.loveTweaks.integration.ChatFilterIntegration;
@@ -55,6 +56,7 @@ public final class LoveTweaks extends JavaPlugin {
     private ChatFilterIntegration chatFilterIntegration;
     private HeraldManager heraldManager;
     private BukkitTask heraldBroadcastTask;
+    private BukkitTask magnetTask;
     private BukkitTask hungerTask;
     private EnderChestListener enderChestListener;
     private MilkListener milkListener;
@@ -125,6 +127,8 @@ public final class LoveTweaks extends JavaPlugin {
         customEnchantManager = new CustomEnchantManager(this);
         getServer().getPluginManager().registerEvents(new CustomEnchantListener(this, customEnchantManager), this);
         getLogger().info("Custom enchantments initialized.");
+        magnetTask = getServer().getScheduler().runTaskTimer(this, new MagnetTask(this, customEnchantManager),
+                MagnetTask.INTERVAL_TICKS, MagnetTask.INTERVAL_TICKS);
 
         ScoreboardListener scoreboardListener = new ScoreboardListener(this, scoreboardDataManager, scoreboardDisplayManager);
         getServer().getPluginManager().registerEvents(scoreboardListener, this);
@@ -210,6 +214,10 @@ public final class LoveTweaks extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (magnetTask != null) {
+            magnetTask.cancel();
+            magnetTask = null;
+        }
         if (hungerTask != null) {
             hungerTask.cancel();
             hungerTask = null;
