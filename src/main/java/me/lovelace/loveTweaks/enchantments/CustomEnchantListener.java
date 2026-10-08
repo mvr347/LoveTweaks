@@ -18,7 +18,6 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
 import org.bukkit.event.inventory.PrepareGrindstoneEvent;
-import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.AnvilInventory;
 import org.bukkit.inventory.ItemStack;
@@ -192,45 +191,6 @@ public class CustomEnchantListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onPlayerMove(PlayerMoveEvent event) {
-        if (!plugin.getLoveTweaksConfig().isCustomEnchantmentsEnabled()) {
-            return;
-        }
-        Location from = event.getFrom();
-        Location to = event.getTo();
-        if (to == null) return;
-        if (from.getBlockX() == to.getBlockX() && from.getBlockY() == to.getBlockY() && from.getBlockZ() == to.getBlockZ()) {
-            return;
-        }
-
-        Player player = event.getPlayer();
-        ItemStack leggings = player.getInventory().getLeggings();
-        if (leggings == null || leggings.getType().isAir()) {
-            return;
-        }
-
-        int prityazhenie = manager.getLevel(leggings, CustomEnchantType.PRITYAZHENIE);
-        if (prityazhenie <= 0) {
-            return;
-        }
-
-        double radius = prityazhenie == 1 ? 3.0 : 5.0;
-        Location playerLoc = player.getLocation();
-
-        for (Entity entity : player.getNearbyEntities(radius, radius, radius)) {
-            if (entity instanceof Item item && item.isValid() && !item.isDead()) {
-                if (item.getPickupDelay() <= 20) {
-                    Vector diff = playerLoc.toVector().subtract(item.getLocation().toVector());
-                    if (diff.lengthSquared() > 0.04) {
-                        Vector direction = diff.normalize().multiply(0.35);
-                        item.setVelocity(direction);
-                    }
-                }
-            }
-        }
-    }
-
     @EventHandler(priority = EventPriority.HIGH)
     @SuppressWarnings("deprecation")
     public void onPrepareAnvil(PrepareAnvilEvent event) {
@@ -271,7 +231,9 @@ public class CustomEnchantListener implements Listener {
             return;
         }
 
-        ItemStack base = event.getResult() != null ? event.getResult().clone() : left.clone();
+        // Paper may hand over null or an AIR stack when vanilla produces no result
+        ItemStack base = (event.getResult() != null && !event.getResult().getType().isAir())
+                ? event.getResult().clone() : left.clone();
         Map<CustomEnchantType, Integer> leftEnchants = manager.getEnchantments(left);
         Map<CustomEnchantType, Integer> combined = new HashMap<>(leftEnchants);
 
