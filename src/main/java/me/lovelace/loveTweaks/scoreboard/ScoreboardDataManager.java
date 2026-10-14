@@ -12,8 +12,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -66,27 +68,46 @@ public class ScoreboardDataManager {
         }
     }
 
+    /**
+     * The schema is created and migrated synchronously: player loads start right after enable, and a
+     * load racing an async ALTER TABLE would hit a missing column and fall back to defaults (and then
+     * overwrite the saved profile). Only the legacy YAML import stays asynchronous.
+     */
     private void initSchemaAndMigrate() {
         HikariDataSource ds = dataSource;
         if (ds == null) return;
-        CompletableFuture.runAsync(() -> {
-            try (Connection connection = ds.getConnection();
-                 Statement st = connection.createStatement()) {
+        try (Connection connection = ds.getConnection();
+             Statement st = connection.createStatement()) {
 
-                // Schema versioning
-                st.execute("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY)");
-                st.execute("CREATE TABLE IF NOT EXISTS scoreboard_players (" +
-                        "uuid TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 1)");
-                st.execute("CREATE TABLE IF NOT EXISTS scoreboard_placeholders (" +
-                        "uuid TEXT NOT NULL, position INTEGER NOT NULL, placeholder_id TEXT NOT NULL, " +
-                        "PRIMARY KEY (uuid, position))");
+            st.execute("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY)");
+            st.execute("CREATE TABLE IF NOT EXISTS scoreboard_players (" +
+                    "uuid TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 1)");
+            st.execute("CREATE TABLE IF NOT EXISTS scoreboard_placeholders (" +
+                    "uuid TEXT NOT NULL, position INTEGER NOT NULL, placeholder_id TEXT NOT NULL, " +
+                    "PRIMARY KEY (uuid, position))");
 
-            } catch (SQLException e) {
-                plugin.getLogger().log(Level.SEVERE, "Failed to initialize scoreboard SQLite tables", e);
+            // Columns added after the first release: view_all (menu view) and variant (line format).
+            addMissingColumns(connection, SchemaMigration.PLAYERS_TABLE, SchemaMigration.PLAYERS_COLUMNS);
+            addMissingColumns(connection, SchemaMigration.PLACEHOLDERS_TABLE, SchemaMigration.PLACEHOLDERS_COLUMNS);
+
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to initialize scoreboard SQLite tables", e);
+        }
+
+        CompletableFuture.runAsync(this::migrateLegacyYaml);
+    }
+
+    private void addMissingColumns(Connection connection, String table, Map<String, String> required) throws SQLException {
+        Set<String> existing = new HashSet<>();
+        try (Statement st = connection.createStatement();
+             ResultSet rs = st.executeQuery("PRAGMA table_info(" + table + ")")) {
+            while (rs.next()) existing.add(rs.getString("name"));
+        }
+        for (String sql : SchemaMigration.missingColumnStatements(table, existing, required)) {
+            try (Statement st = connection.createStatement()) {
+                st.execute(sql);
             }
-
-            migrateLegacyYaml();
-        });
+        }
     }
 
     private void migrateLegacyYaml() {
@@ -108,7 +129,9 @@ public class ScoreboardDataManager {
             if (placeholders.isEmpty()) {
                 placeholders = data.getStringList(key + ".sections");
             }
-            savePlayerSync(uuid, enabled, placeholders);
+            List<ScoreboardEntry> entries = new ArrayList<>();
+            for (String id : placeholders) entries.add(new ScoreboardEntry(id));
+            savePlayerSync(uuid, enabled, false, entries);
             migrated++;
         }
 
@@ -144,45 +167,78 @@ public class ScoreboardDataManager {
     }
 
     private PlayerScoreboardState loadFromDbSync(UUID uuid) {
-        List<String> known = plugin.getScoreboardConfig().getPlaceholderOrder();
+        ScoreboardConfig cfg = plugin.getScoreboardConfig();
         HikariDataSource ds = dataSource;
-        if (ds == null) return defaultState(known);
+        if (ds == null) return defaultState(cfg.getPlaceholderOrder());
 
         try (Connection connection = ds.getConnection()) {
             boolean enabled = true;
+            boolean viewAll = false;
             boolean found = false;
             try (PreparedStatement ps = connection.prepareStatement(
-                    "SELECT enabled FROM scoreboard_players WHERE uuid = ?")) {
+                    "SELECT enabled, view_all FROM scoreboard_players WHERE uuid = ?")) {
                 ps.setString(1, uuid.toString());
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
                         enabled = rs.getInt("enabled") != 0;
+                        viewAll = rs.getInt("view_all") != 0;
                         found = true;
                     }
                 }
             }
-            if (!found) return defaultState(known);
+            if (!found) return defaultState(cfg.getPlaceholderOrder());
 
-            List<String> placeholders = new ArrayList<>();
+            List<ScoreboardEntry> entries = new ArrayList<>();
             try (PreparedStatement ps = connection.prepareStatement(
-                    "SELECT placeholder_id FROM scoreboard_placeholders WHERE uuid = ? ORDER BY position ASC")) {
+                    "SELECT placeholder_id, variant FROM scoreboard_placeholders WHERE uuid = ? ORDER BY position ASC")) {
                 ps.setString(1, uuid.toString());
                 try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) placeholders.add(rs.getString("placeholder_id"));
+                    while (rs.next()) entries.add(new ScoreboardEntry(rs.getString("placeholder_id"), rs.getInt("variant")));
                 }
             }
-            placeholders.retainAll(known);
-            return new PlayerScoreboardState(enabled, placeholders);
+            return new PlayerScoreboardState(enabled, viewAll, sanitize(entries, cfg));
         } catch (SQLException e) {
             plugin.getLogger().log(Level.WARNING, "Failed to load scoreboard state for " + uuid + ": " + e.getMessage(), e);
-            return defaultState(known);
+            return defaultState(cfg.getPlaceholderOrder());
         }
     }
 
+    /**
+     * Brings stored rows up to date: legacy ids renamed (date/time/server_time -> datetime) BEFORE
+     * unknown ids are dropped, variants clamped, lines whose PAPI expansion is not installed removed
+     * and the count cut to the configured limit.
+     */
+    private List<ScoreboardEntry> sanitize(List<ScoreboardEntry> stored, ScoreboardConfig cfg) {
+        List<ScoreboardEntry> out = new ArrayList<>();
+        for (ScoreboardEntry e : LegacyMigration.migrate(stored)) {
+            ScoreboardPlaceholder ph = cfg.getPlaceholder(e.id());
+            if (ph == null || !PlaceholderIntegration.isInstalled(ph)) continue;
+            out.add(new ScoreboardEntry(e.id(), VariantCycler.normalize(e.variant(), ph.variantCount())));
+            if (out.size() >= cfg.getMaxPlaceholders()) break;
+        }
+        return out;
+    }
+
+    /** New players start with the configured default preset (only installed lines count). */
     private PlayerScoreboardState defaultState(List<String> known) {
-        int max = plugin.getScoreboardConfig().getMaxPlaceholders();
-        List<String> defaults = new ArrayList<>(known.subList(0, Math.min(max, known.size())));
-        return new PlayerScoreboardState(true, defaults);
+        ScoreboardConfig cfg = plugin.getScoreboardConfig();
+        ScoreboardPreset preset = cfg.getPresets().get(cfg.getDefaultPreset());
+        List<ScoreboardEntry> entries;
+        if (preset != null) {
+            entries = PresetApplier.resolve(preset.entries(),
+                    id -> cfg.getPlaceholder(id) != null && PlaceholderIntegration.isInstalled(cfg.getPlaceholder(id)),
+                    id -> cfg.getPlaceholder(id) != null ? cfg.getPlaceholder(id).variantCount() : 0,
+                    cfg.getMaxPlaceholders());
+        } else {
+            entries = new ArrayList<>();
+            for (String id : known) {
+                if (entries.size() >= cfg.getMaxPlaceholders()) break;
+                if (cfg.getPlaceholder(id) != null && PlaceholderIntegration.isInstalled(cfg.getPlaceholder(id))) {
+                    entries.add(new ScoreboardEntry(id));
+                }
+            }
+        }
+        return new PlayerScoreboardState(true, false, entries);
     }
 
     /**
@@ -193,26 +249,28 @@ public class ScoreboardDataManager {
         if (state == null) return CompletableFuture.completedFuture(null);
 
         boolean enabled = state.isScoreboardEnabled();
-        List<String> placeholders = new ArrayList<>(state.getActivePlaceholders());
+        boolean viewAll = state.isViewAll();
+        List<ScoreboardEntry> entries = state.entries();
 
-        return CompletableFuture.runAsync(() -> savePlayerSync(uuid, enabled, placeholders));
+        return CompletableFuture.runAsync(() -> savePlayerSync(uuid, enabled, viewAll, entries));
     }
 
     public void savePlayer(UUID uuid) {
         savePlayerAsync(uuid);
     }
 
-    private void savePlayerSync(UUID uuid, boolean enabled, List<String> placeholders) {
+    private void savePlayerSync(UUID uuid, boolean enabled, boolean viewAll, List<ScoreboardEntry> entries) {
         HikariDataSource ds = dataSource;
         if (ds == null) return;
         try (Connection connection = ds.getConnection()) {
             connection.setAutoCommit(false);
             try {
                 try (PreparedStatement ps = connection.prepareStatement(
-                        "INSERT INTO scoreboard_players (uuid, enabled) VALUES (?, ?) " +
-                        "ON CONFLICT(uuid) DO UPDATE SET enabled = excluded.enabled")) {
+                        "INSERT INTO scoreboard_players (uuid, enabled, view_all) VALUES (?, ?, ?) " +
+                        "ON CONFLICT(uuid) DO UPDATE SET enabled = excluded.enabled, view_all = excluded.view_all")) {
                     ps.setString(1, uuid.toString());
                     ps.setInt(2, enabled ? 1 : 0);
+                    ps.setInt(3, viewAll ? 1 : 0);
                     ps.executeUpdate();
                 }
                 try (PreparedStatement del = connection.prepareStatement(
@@ -221,12 +279,13 @@ public class ScoreboardDataManager {
                     del.executeUpdate();
                 }
                 try (PreparedStatement ins = connection.prepareStatement(
-                        "INSERT INTO scoreboard_placeholders (uuid, position, placeholder_id) VALUES (?, ?, ?)")) {
+                        "INSERT INTO scoreboard_placeholders (uuid, position, placeholder_id, variant) VALUES (?, ?, ?, ?)")) {
                     int pos = 0;
-                    for (String id : placeholders) {
+                    for (ScoreboardEntry entry : entries) {
                         ins.setString(1, uuid.toString());
                         ins.setInt(2, pos++);
-                        ins.setString(3, id);
+                        ins.setString(3, entry.id());
+                        ins.setInt(4, entry.variant());
                         ins.addBatch();
                     }
                     ins.executeBatch();
@@ -252,7 +311,7 @@ public class ScoreboardDataManager {
                 PlayerScoreboardState state = entry.getValue();
                 if (uuid != null && state != null) {
                     try {
-                        savePlayerSync(uuid, state.isScoreboardEnabled(), state.getActivePlaceholders());
+                        savePlayerSync(uuid, state.isScoreboardEnabled(), state.isViewAll(), state.entries());
                     } catch (Exception e) {
                         plugin.getLogger().log(Level.WARNING, "Failed saving state for player " + uuid + ": " + e.getMessage(), e);
                     }
@@ -266,7 +325,7 @@ public class ScoreboardDataManager {
     public void unload(UUID uuid) {
         PlayerScoreboardState state = cache.remove(uuid);
         if (state != null) {
-            CompletableFuture.runAsync(() -> savePlayerSync(uuid, state.isScoreboardEnabled(), state.getActivePlaceholders()));
+            CompletableFuture.runAsync(() -> savePlayerSync(uuid, state.isScoreboardEnabled(), state.isViewAll(), state.entries()));
         }
     }
 

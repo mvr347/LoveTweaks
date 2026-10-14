@@ -22,6 +22,13 @@ public class ConfigAndGuiStandardTest {
         assertEquals("&eВведите текст объявления в чат (до <max> символов), или \"отмена\":", config.message("chat-prompt"));
         assertEquals("&aОбъявление опубликовано на <minutes> мин.!", config.message("published"));
         assertEquals("&cОбъявление отклонено фильтром чата.", config.message("rejected-profanity"));
+        assertEquals("&cЭтот слот уже занят объявлением.", config.message("slot-occupied"));
+        assertEquals("&cУ вас уже есть активное объявление - дождитесь его окончания.", config.message("already-owns-slot"));
+        assertEquals("Экономика недоступна", config.message("reason-no-economy"));
+        assertTrue(config.message("reason-slot-locked").contains("<prev>"));
+        // The inactive slot button must always carry a reason and the "unavailable" marker, even unconfigured.
+        assertTrue(config.slotUnavailableLore().stream().anyMatch(l -> l.contains("<reason>")));
+        assertTrue(config.slotUnavailableLore().stream().anyMatch(l -> l.contains("Недоступно сейчас")));
     }
 
     @Test

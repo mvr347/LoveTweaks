@@ -53,6 +53,11 @@ public final class HeraldGuiConfig {
     private String confirmDisabledName = "&8Опубликовать объявление";
     private List<String> confirmDisabledLore = List.of();
 
+    private String slotUnavailableName = "";
+    private List<String> slotUnavailableLore = List.of(
+            "&7Купить объявление в этом слоте", "", "&c✘ Недоступно сейчас", "&7<reason>", "", "&eКлик &7— узнать причину");
+    private List<String> durationUnaffordableLore = List.of("", "&c✘ Не хватает монет на этот срок");
+
     private String confirmNoFundsName = "&cОпубликовать объявление";
     private String confirmNoFundsMaterial = "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYzYxODczMWUwNjMzNzlhZWJmODJmMWQ2NGM0MTljOTBkN2YwYzE2NDhjNTQ4ZTliNjE1MWIxYmFiYTY2ZDcyMyJ9fX0=";
     private List<String> confirmNoFundsLore = List.of();
@@ -71,6 +76,15 @@ public final class HeraldGuiConfig {
             Map.entry("no-permission", "&cУ вас нет прав для этой команды."),
             Map.entry("wrong-book", "&cСюда можно вложить только подписанную книгу."),
             Map.entry("no-free-slots", "&cСейчас все слоты Глашатая заняты."),
+            Map.entry("slot-occupied", "&cЭтот слот уже занят объявлением."),
+            Map.entry("slot-locked", "&cСлот откроется, когда будет занят слот <prev>."),
+            Map.entry("already-owns-slot", "&cУ вас уже есть активное объявление - дождитесь его окончания."),
+            // Reason lines of inactive buttons (also shown on the action bar when such a button is clicked).
+            Map.entry("reason-slot-locked", "Сначала должен быть занят слот <prev>"),
+            Map.entry("reason-already-owns-slot", "У вас уже есть активное объявление"),
+            Map.entry("reason-no-funds", "Недостаточно монет · нужно от <min>"),
+            Map.entry("reason-confirm-no-funds", "Недостаточно монет · нужно <cost>"),
+            Map.entry("reason-no-economy", "Экономика недоступна"),
             // One shared look for every herald announcement: <prefix> is substituted in every *-format below.
             Map.entry("prefix", "&7» &6Глашатай &7» "),
             Map.entry("broadcast-format", "<prefix>&e<message>   &7« &f<buyer>"),
@@ -131,6 +145,10 @@ public final class HeraldGuiConfig {
         confirmDisabledName = section.getString("confirm-disabled.name", confirmDisabledName);
         confirmDisabledLore = stringList(section, "confirm-disabled.lore");
 
+        slotUnavailableName = section.getString("slot-unavailable.name", slotUnavailableName);
+        slotUnavailableLore = stringListOr(section, "slot-unavailable.lore", slotUnavailableLore);
+        durationUnaffordableLore = stringListOr(section, "duration-button.unaffordable-lore", durationUnaffordableLore);
+
         confirmNoFundsName = section.getString("confirm-no-funds.name", confirmNoFundsName);
         confirmNoFundsMaterial = section.getString("confirm-no-funds.material", confirmNoFundsMaterial);
         confirmNoFundsLore = stringList(section, "confirm-no-funds.lore");
@@ -143,6 +161,11 @@ public final class HeraldGuiConfig {
                 messages.put(key, messagesSection.getString(key, DEFAULT_MESSAGES.getOrDefault(key, "")));
             }
         }
+    }
+
+    private static List<String> stringListOr(ConfigurationSection section, String path, List<String> fallback) {
+        List<String> list = section.getStringList(path);
+        return list.isEmpty() ? fallback : list;
     }
 
     private static List<String> stringList(ConfigurationSection section, String path) {
@@ -176,6 +199,10 @@ public final class HeraldGuiConfig {
     public List<String> confirmLore() { return confirmLore; }
     public String confirmDisabledName() { return confirmDisabledName; }
     public List<String> confirmDisabledLore() { return confirmDisabledLore; }
+    /** Empty means "reuse the free-slot name" (the inactive button keeps its name). */
+    public String slotUnavailableName() { return slotUnavailableName.isBlank() ? slotFreeName : slotUnavailableName; }
+    public List<String> slotUnavailableLore() { return slotUnavailableLore; }
+    public List<String> durationUnaffordableLore() { return durationUnaffordableLore; }
     public String confirmNoFundsName() { return confirmNoFundsName; }
     public String confirmNoFundsMaterial() { return confirmNoFundsMaterial; }
     public List<String> confirmNoFundsLore() { return confirmNoFundsLore; }

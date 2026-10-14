@@ -4,6 +4,7 @@ import me.lovelace.loveTweaks.LoveTweaks;
 import me.lovelace.loveTweaks.items.CoordinateTeleportScroll;
 import me.lovelace.loveTweaks.utils.CombatUtil;
 import me.lovelace.loveTweaks.utils.GuiItemUtil;
+import me.lovelace.loveTweaks.utils.Notify;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.HeightMap;
@@ -69,15 +70,6 @@ public class CoordinateTeleportScrollManager {
         return GuiItemUtil.colorize(cfg().message(key).replace(placeholder, value));
     }
 
-    private void sendActionBar(Player player, Component component) {
-        boolean allowed = dev.lovelace.lovecore.api.LoveCore.service(dev.lovelace.lovecore.api.notify.LoveNotify.class)
-                .map(n -> n.isChannelEnabled(player.getUniqueId(), dev.lovelace.lovecore.api.notify.LoveNotify.Channel.ACTION_BAR))
-                .orElse(true);
-        if (allowed) {
-            player.sendActionBar(component);
-        }
-    }
-
     // ─────────────────────────────────────────────────────────────────────────
     // Публичный API
     // ─────────────────────────────────────────────────────────────────────────
@@ -102,23 +94,20 @@ public class CoordinateTeleportScrollManager {
 
         if (isInCombat(player)) {
             Component c = GuiItemUtil.colorize(config.message("cancelled").replace("<reason>", config.message("reason-pvp")));
-            player.sendMessage(c);
-            sendActionBar(player, c);
+            Notify.event(player, c);
             return;
         }
 
         if (player.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
             Component c = GuiItemUtil.colorize(config.message("cancelled").replace("<reason>", config.message("reason-invisible")));
-            player.sendMessage(c);
-            sendActionBar(player, c);
+            Notify.event(player, c);
             return;
         }
 
         long remainingCooldown = remainingCooldownSeconds(player.getUniqueId(), config.getCooldownSeconds());
         if (remainingCooldown > 0) {
             Component c = msg("on-cooldown", "<seconds>", String.valueOf(remainingCooldown));
-            player.sendMessage(c);
-            sendActionBar(player, c);
+            Notify.event(player, c);
             return;
         }
 
@@ -127,8 +116,7 @@ public class CoordinateTeleportScrollManager {
         CoordTeleportSession session = new CoordTeleportSession(player.getUniqueId());
         sessions.put(player.getUniqueId(), session);
 
-        sendActionBar(player, msg("prompt"));
-        player.sendMessage(msg("prompt"));
+        Notify.event(player, msg("prompt"));
         try {
             player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.5f);
         } catch (Throwable ignored) {}
@@ -139,8 +127,7 @@ public class CoordinateTeleportScrollManager {
                 sessions.remove(player.getUniqueId());
                 Player p = Bukkit.getPlayer(player.getUniqueId());
                 if (p != null) {
-                    p.sendMessage(msg("timeout"));
-                    sendActionBar(p, msg("timeout"));
+                    Notify.event(p, msg("timeout"));
                 }
             }
         }, CHAT_TIMEOUT_TICKS);
@@ -162,7 +149,7 @@ public class CoordinateTeleportScrollManager {
 
         if (input.equalsIgnoreCase("отмена") || input.equalsIgnoreCase("cancel")) {
             sessions.remove(player.getUniqueId());
-            sendActionBar(player, msg("chat-cancelled"));
+            Notify.event(player, msg("chat-cancelled"));
             return true;
         }
 
@@ -195,8 +182,7 @@ public class CoordinateTeleportScrollManager {
             Player player = Bukkit.getPlayer(uuid);
             if (player != null) {
                 Component c = GuiItemUtil.colorize(cfg().message("cancelled").replace("<reason>", cfg().message(reasonKey)));
-                sendActionBar(player, c);
-                player.sendMessage(c);
+                Notify.event(player, c);
                 try {
                     player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.8f);
                 } catch (Throwable ignored) {}
@@ -223,7 +209,7 @@ public class CoordinateTeleportScrollManager {
         }
 
         if (numbers.size() != 2 && numbers.size() != 3) {
-            sendActionBar(player, msg("invalid-format"));
+            Notify.event(player, msg("invalid-format"));
             return null;
         }
 
@@ -237,7 +223,7 @@ public class CoordinateTeleportScrollManager {
         }
 
         if (targetWorld == null || (!config.getAllowedWorlds().isEmpty() && !config.getAllowedWorlds().contains(targetWorld.getName()))) {
-            sendActionBar(player, msg("world-not-allowed"));
+            Notify.event(player, msg("world-not-allowed"));
             return null;
         }
 
@@ -251,7 +237,7 @@ public class CoordinateTeleportScrollManager {
             WorldBorder border = targetWorld.getWorldBorder();
             Location testLoc = new Location(targetWorld, destX, 100, destZ);
             if (!border.isInside(testLoc)) {
-                sendActionBar(player, msg("destination-blocked"));
+                Notify.event(player, msg("destination-blocked"));
                 return null;
             }
         }
@@ -262,7 +248,7 @@ public class CoordinateTeleportScrollManager {
             double dz = destZ - spawn.getZ();
             double distance = Math.sqrt(dx * dx + dz * dz);
             if (distance > config.getMaxDistanceFromSpawn()) {
-                sendActionBar(player, msg("destination-blocked"));
+                Notify.event(player, msg("destination-blocked"));
                 return null;
             }
         }
@@ -270,7 +256,7 @@ public class CoordinateTeleportScrollManager {
         // Находим верхний блок поверхности мира (WORLD_SURFACE)
         int highestY = targetWorld.getHighestBlockYAt(blockX, blockZ, HeightMap.WORLD_SURFACE);
         if (highestY < config.getMinY() || highestY > config.getMaxY()) {
-            sendActionBar(player, msg("destination-blocked"));
+            Notify.event(player, msg("destination-blocked"));
             return null;
         }
 
@@ -282,13 +268,13 @@ public class CoordinateTeleportScrollManager {
 
             // Если на поверхности вода / водоем
             if (isWaterOrFluid(b)) {
-                sendActionBar(player, msg("destination-water"));
+                Notify.event(player, msg("destination-water"));
                 return null;
             }
 
             // Если на поверхности лава или опасности
             if (isLavaOrHazard(mat)) {
-                sendActionBar(player, msg("destination-unsafe"));
+                Notify.event(player, msg("destination-unsafe"));
                 return null;
             }
 
@@ -300,7 +286,7 @@ public class CoordinateTeleportScrollManager {
         }
 
         if (groundBlock == null) {
-            sendActionBar(player, msg("destination-blocked"));
+            Notify.event(player, msg("destination-blocked"));
             return null;
         }
 
@@ -310,11 +296,11 @@ public class CoordinateTeleportScrollManager {
         if (numbers.size() == 3) {
             double requestedY = numbers.get(1);
             if (requestedY < groundY - 1) {
-                sendActionBar(player, msg("destination-underground"));
+                Notify.event(player, msg("destination-underground"));
                 return null;
             }
             if (requestedY > groundY + 4) {
-                sendActionBar(player, msg("destination-blocked"));
+                Notify.event(player, msg("destination-blocked"));
                 return null;
             }
         }
@@ -322,7 +308,7 @@ public class CoordinateTeleportScrollManager {
         double destY = groundY + 1.0;
 
         if (destY < config.getMinY() || destY > config.getMaxY()) {
-            sendActionBar(player, msg("destination-blocked"));
+            Notify.event(player, msg("destination-blocked"));
             return null;
         }
 
@@ -331,17 +317,17 @@ public class CoordinateTeleportScrollManager {
         org.bukkit.block.Block headBlock = targetWorld.getBlockAt(blockX, (int) destY + 1, blockZ);
 
         if (isWaterOrFluid(feetBlock) || isWaterOrFluid(headBlock)) {
-            sendActionBar(player, msg("destination-water"));
+            Notify.event(player, msg("destination-water"));
             return null;
         }
 
         if (isLavaOrHazard(feetBlock.getType()) || isLavaOrHazard(headBlock.getType())) {
-            sendActionBar(player, msg("destination-unsafe"));
+            Notify.event(player, msg("destination-unsafe"));
             return null;
         }
 
         if (feetBlock.getType().isSolid() || headBlock.getType().isSolid()) {
-            sendActionBar(player, msg("destination-blocked"));
+            Notify.event(player, msg("destination-blocked"));
             return null;
         }
 
@@ -404,7 +390,7 @@ public class CoordinateTeleportScrollManager {
             return;
         }
 
-        sendActionBar(player, msg("countdown", "<seconds>", String.valueOf(secondsLeft)));
+        Notify.hud(player, msg("countdown", "<seconds>", String.valueOf(secondsLeft)));
         try {
             player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_HAT, 0.7f, 1.6f);
         } catch (Throwable ignored) {}
@@ -424,7 +410,7 @@ public class CoordinateTeleportScrollManager {
         Location dest = session.getDestination();
         if (dest == null || dest.getWorld() == null) {
             cancelSession(uuid, null);
-            sendActionBar(player, msg("destination-blocked"));
+            Notify.event(player, msg("destination-blocked"));
             return;
         }
 
@@ -449,8 +435,7 @@ public class CoordinateTeleportScrollManager {
         } catch (Throwable ignored) {}
 
         Component succ = msg("success");
-        sendActionBar(player, succ);
-        player.sendMessage(succ);
+        Notify.event(player, succ);
     }
 
     private void spawnCountdownParticles(Location loc) {

@@ -8,15 +8,6 @@ import java.util.*;
 
 public class ScoreboardConfig {
 
-    /**
-     * First usable (non-border) column slot of each placeholder row in the /scoreboard GUI.
-     * Slots 9-17 are the gui-gen-5 Row1 separator (always glass, part of the Header) and are
-     * never used for content — the work zone starts at row 18-26.
-     */
-    private static final int[] PLACEHOLDER_ROW_START = {19, 28, 37};
-    private static final int PLACEHOLDER_ROW_WIDTH = 7;
-    public static final int MAX_PLACEHOLDER_SLOTS = PLACEHOLDER_ROW_START.length * PLACEHOLDER_ROW_WIDTH;
-
     private String title;
     private String top;
     private String bottom;
@@ -27,7 +18,10 @@ public class ScoreboardConfig {
 
     private final Map<String, ScoreboardPlaceholder> placeholders = new LinkedHashMap<>();
     private final List<String> placeholderOrder = new ArrayList<>();
-    private final Map<String, Integer> placeholderSlots = new LinkedHashMap<>();
+    private final Map<String, ScoreboardCategory> categories = new LinkedHashMap<>();
+    private final Map<String, ScoreboardPreset> presets = new LinkedHashMap<>();
+    private String defaultPreset;
+    private final ScoreboardMessages messages = new ScoreboardMessages();
 
     // GUI
     private String guiTitle;
@@ -53,6 +47,11 @@ public class ScoreboardConfig {
     private String toggleOffMaterial;
     private String toggleOffName;
     private List<String> toggleOffLore;
+    private String categoryButtonMaterial;
+    private String presetButtonMaterial;
+    private String viewButtonMaterial;
+    private String pagePrevMaterial;
+    private String pageNextMaterial;
     private String toggleEmptyMaterial;
     private String toggleEmptyName;
     private List<String> toggleEmptyLore;
@@ -68,44 +67,19 @@ public class ScoreboardConfig {
         // Bukkit's runTaskTimer() throws IllegalArgumentException for period < 1, which would
         // otherwise crash the whole plugin's onEnable() (and reloadAll()) on a 0/negative typo.
         updateInterval = Math.max(1, sb.getInt("update-interval", 20));
-        maxPlaceholders = sb.getInt("max-placeholders", 8);
+        // Hard cap 8: more does not fit the 2x4 slot cards nor the 15-line scoreboard body.
+        maxPlaceholders = ScoreboardLayout.clampMaxLines(sb.getInt("max-placeholders", ScoreboardLayout.MAX_LINES));
         disabledWorlds = sb.getStringList("disabled-worlds");
 
         placeholders.clear();
         placeholderOrder.clear();
+        categories.clear();
+        presets.clear();
 
-        ConfigurationSection phSection = sb.getConfigurationSection("placeholders");
-        if (phSection != null) {
-            for (String id : phSection.getKeys(false)) {
-                ConfigurationSection p = phSection.getConfigurationSection(id);
-                if (p == null) continue;
-
-                ScoreboardRequirement requirement = null;
-                ConfigurationSection req = p.getConfigurationSection("requirement");
-                if (req != null) {
-                    String phExpr = req.getString("placeholder");
-                    if (phExpr != null && !phExpr.isBlank()) {
-                        requirement = new ScoreboardRequirement(
-                                phExpr,
-                                req.getString("equals", null),
-                                req.getString("reason", "")
-                        );
-                    }
-                }
-
-                ScoreboardPlaceholder placeholder = new ScoreboardPlaceholder(
-                        id,
-                        p.getString("display-name", id),
-                        p.getString("template", ""),
-                        p.getStringList("lore"),
-                        requirement,
-                        p.getInt("sort-group", 0)
-                );
-                placeholders.put(id, placeholder);
-                placeholderOrder.add(id);
-            }
-        }
-        assignPlaceholderSlots();
+        loadCategories(sb.getConfigurationSection("categories"));
+        loadPlaceholders(sb.getConfigurationSection("placeholders"));
+        loadPresets(sb.getConfigurationSection("presets"));
+        defaultPreset = sb.getString("default-preset", "");
 
         ConfigurationSection gui = sb.getConfigurationSection("gui");
         if (gui == null) {
@@ -155,26 +129,89 @@ public class ScoreboardConfig {
         toggleOffName = get(togOff, "display-name", "&7Скорборд выключен");
         toggleOffLore = getLore(togOff, List.of("", "&7Скорборд скрыт с экрана.", "&aЛКМ &7— включить"));
 
+        categoryButtonMaterial = get(gui.getConfigurationSection("category-button"), "material", basehead(HeadTextures.SCOREBOARD_PROFILE));
+        presetButtonMaterial = get(gui.getConfigurationSection("preset-button"), "material", basehead(HeadTextures.SCOREBOARD_PLACEHOLDER_OFF));
+        viewButtonMaterial = get(gui.getConfigurationSection("view-button"), "material", basehead(HeadTextures.SCOREBOARD_TOGGLE_ON));
+        pagePrevMaterial = get(gui.getConfigurationSection("page-prev"), "material", basehead(HeadTextures.SCOREBOARD_PAGE_PREV));
+        pageNextMaterial = get(gui.getConfigurationSection("page-next"), "material", basehead(HeadTextures.SCOREBOARD_PAGE_NEXT));
+        messages.load(gui.getConfigurationSection("messages"));
+
         ConfigurationSection togEmpty = gui.getConfigurationSection("toggle-empty");
         toggleEmptyMaterial = get(togEmpty, "material", basehead(HeadTextures.SCOREBOARD_TOGGLE_EMPTY));
         toggleEmptyName = get(togEmpty, "display-name", "&7Скорборд");
         toggleEmptyLore = getLore(togEmpty, List.of("", "&7Нет ни одного включённого плейсхолдера.", "&7Выберите плейсхолдеры ниже &8(СКМ)"));
     }
 
-    private void assignPlaceholderSlots() {
-        placeholderSlots.clear();
-        List<ScoreboardPlaceholder> ordered = new ArrayList<>(placeholders.values());
-        ordered.sort(Comparator.comparingInt(ScoreboardPlaceholder::sortGroup));
-
-        int i = 0;
-        for (ScoreboardPlaceholder ph : ordered) {
-            if (i >= MAX_PLACEHOLDER_SLOTS) break;
-            int row = i / PLACEHOLDER_ROW_WIDTH;
-            int col = i % PLACEHOLDER_ROW_WIDTH;
-            placeholderSlots.put(ph.id(), PLACEHOLDER_ROW_START[row] + col);
-            i++;
+    private void loadCategories(ConfigurationSection section) {
+        if (section != null) {
+            for (String id : section.getKeys(false)) {
+                ConfigurationSection c = section.getConfigurationSection(id);
+                if (c == null) continue;
+                categories.put(id, new ScoreboardCategory(id, c.getString("display-name", id),
+                        c.getString("icon", null), c.getStringList("lore")));
+            }
+        }
+        if (categories.isEmpty()) {
+            categories.put("general", new ScoreboardCategory("general", "&bОбщее", null, List.of()));
         }
     }
+
+    private void loadPlaceholders(ConfigurationSection section) {
+        if (section == null) return;
+        String firstCategory = categories.keySet().iterator().next();
+        for (String id : section.getKeys(false)) {
+            ConfigurationSection p = section.getConfigurationSection(id);
+            if (p == null) continue;
+
+            ScoreboardRequirement requirement = null;
+            ConfigurationSection req = p.getConfigurationSection("requirement");
+            if (req != null) {
+                String phExpr = req.getString("placeholder");
+                if (phExpr != null && !phExpr.isBlank()) {
+                    requirement = new ScoreboardRequirement(
+                            phExpr,
+                            req.getString("equals", null),
+                            req.getString("reason", "")
+                    );
+                }
+            }
+
+            List<ScoreboardPlaceholder.Variant> variants = new ArrayList<>();
+            for (Map<?, ?> raw : p.getMapList("variants")) {
+                Object tpl = raw.get("template");
+                if (tpl == null) continue;
+                Object name = raw.get("name");
+                variants.add(new ScoreboardPlaceholder.Variant(name != null ? name.toString() : "", tpl.toString()));
+            }
+            if (variants.isEmpty()) {
+                variants.add(new ScoreboardPlaceholder.Variant("", p.getString("template", "")));
+            }
+
+            // `category` replaced the numeric `sort-group`; an old config still maps through the table.
+            String category = p.getString("category");
+            if (category == null) category = LegacyMigration.categoryForSortGroup(p.getInt("sort-group", 0));
+            if (!categories.containsKey(category)) category = firstCategory;
+
+            placeholders.put(id, ScoreboardPlaceholder.create(id, p.getString("display-name", id), variants,
+                    p.getStringList("lore"), requirement, category));
+            placeholderOrder.add(id);
+        }
+    }
+
+    private void loadPresets(ConfigurationSection section) {
+        if (section == null) return;
+        for (String id : section.getKeys(false)) {
+            ConfigurationSection p = section.getConfigurationSection(id);
+            if (p == null) continue;
+            // The header holds 6 control buttons; one of them is the view toggle.
+            if (presets.size() >= MAX_PRESETS) break;
+            presets.put(id, new ScoreboardPreset(id, p.getString("name", id), p.getString("icon", null),
+                    p.getStringList("lore"), PresetApplier.parse(p.getStringList("placeholders"))));
+        }
+    }
+
+    /** Header slots 2-7 minus the view toggle. */
+    public static final int MAX_PRESETS = 5;
 
     private void setGuiDefaults() {
         guiTitle = "&8⚙ &lСкорборд";
@@ -200,6 +237,12 @@ public class ScoreboardConfig {
         toggleOffMaterial = basehead(HeadTextures.SCOREBOARD_TOGGLE_OFF);
         toggleOffName = "&7Скорборд выключен";
         toggleOffLore = List.of("", "&7Скорборд скрыт с экрана.", "&aЛКМ &7— включить");
+        categoryButtonMaterial = basehead(HeadTextures.SCOREBOARD_PROFILE);
+        presetButtonMaterial = basehead(HeadTextures.SCOREBOARD_PLACEHOLDER_OFF);
+        viewButtonMaterial = basehead(HeadTextures.SCOREBOARD_TOGGLE_ON);
+        pagePrevMaterial = basehead(HeadTextures.SCOREBOARD_PAGE_PREV);
+        pageNextMaterial = basehead(HeadTextures.SCOREBOARD_PAGE_NEXT);
+        messages.load(null);
         toggleEmptyMaterial = basehead(HeadTextures.SCOREBOARD_TOGGLE_EMPTY);
         toggleEmptyName = "&7Скорборд";
         toggleEmptyLore = List.of("", "&7Нет ни одного включённого плейсхолдера.", "&7Выберите плейсхолдеры ниже &8(СКМ)");
@@ -230,7 +273,25 @@ public class ScoreboardConfig {
     public Map<String, ScoreboardPlaceholder> getPlaceholders() { return placeholders; }
     public ScoreboardPlaceholder getPlaceholder(String id) { return placeholders.get(id); }
     public List<String> getPlaceholderOrder() { return placeholderOrder; }
-    public Map<String, Integer> getPlaceholderSlots() { return placeholderSlots; }
+    public Map<String, ScoreboardCategory> getCategories() { return categories; }
+    public Map<String, ScoreboardPreset> getPresets() { return presets; }
+    public String getDefaultPreset() { return defaultPreset; }
+    public ScoreboardMessages messages() { return messages; }
+
+    /** Ids of the placeholders of one category, in config order. */
+    public List<ScoreboardPlaceholder> placeholdersOf(String categoryId) {
+        List<ScoreboardPlaceholder> out = new ArrayList<>();
+        for (ScoreboardPlaceholder ph : placeholders.values()) {
+            if (ph.category().equals(categoryId)) out.add(ph);
+        }
+        return out;
+    }
+
+    public String getCategoryButtonMaterial() { return categoryButtonMaterial; }
+    public String getPresetButtonMaterial() { return presetButtonMaterial; }
+    public String getViewButtonMaterial() { return viewButtonMaterial; }
+    public String getPagePrevMaterial() { return pagePrevMaterial; }
+    public String getPageNextMaterial() { return pageNextMaterial; }
 
     public String getGuiTitle() { return guiTitle; }
     public String getFillerMaterial() { return fillerMaterial; }
