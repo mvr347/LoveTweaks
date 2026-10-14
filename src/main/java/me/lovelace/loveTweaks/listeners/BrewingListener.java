@@ -2,6 +2,7 @@ package me.lovelace.loveTweaks.listeners;
 
 import me.lovelace.loveTweaks.LoveTweaks;
 import me.lovelace.loveTweaks.utils.GuiItemUtil;
+import me.lovelace.loveTweaks.utils.Notify;
 import org.bukkit.Bukkit;
 import org.bukkit.Keyed;
 import org.bukkit.Material;
@@ -254,7 +255,7 @@ public class BrewingListener implements Listener {
         if (plugin.getLoveTweaksConfig().isDisableBrewing() || plugin.getLoveTweaksConfig().isDisableBrewingStandWorld()) {
             event.setCancelled(true);
             if (event.getPlayer() instanceof Player player && !isLoveBrewPresent()) {
-                player.sendMessage(GuiItemUtil.colorize(player, plugin.getLoveTweaksConfig().getDisabledBrewingMessage()));
+                Notify.event(player, GuiItemUtil.colorize(player, plugin.getLoveTweaksConfig().getDisabledBrewingMessage()));
             }
         }
     }
@@ -327,7 +328,7 @@ public class BrewingListener implements Listener {
         if (result.getType() == Material.BREWING_STAND && !isLoveBrewItem(result)) {
             event.setCancelled(true);
             if (event.getWhoClicked() instanceof Player player) {
-                player.sendMessage(GuiItemUtil.colorize(player, plugin.getLoveTweaksConfig().getDisabledBrewingMessage()));
+                Notify.event(player, GuiItemUtil.colorize(player, plugin.getLoveTweaksConfig().getDisabledBrewingMessage()));
             }
         }
     }
@@ -348,7 +349,7 @@ public class BrewingListener implements Listener {
                 return; // Разрешаем установку варочного аппарата LoveBrew
             }
             event.setCancelled(true);
-            event.getPlayer().sendMessage(GuiItemUtil.colorize(event.getPlayer(), plugin.getLoveTweaksConfig().getDisabledBrewingMessage()));
+            Notify.event(event.getPlayer(), GuiItemUtil.colorize(event.getPlayer(), plugin.getLoveTweaksConfig().getDisabledBrewingMessage()));
         }
     }
 
@@ -387,7 +388,7 @@ public class BrewingListener implements Listener {
         // Блокируем взаимодействие с ванильной стойкой
         if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
             event.setCancelled(true);
-            event.getPlayer().sendMessage(GuiItemUtil.colorize(event.getPlayer(), plugin.getLoveTweaksConfig().getDisabledBrewingMessage()));
+            Notify.event(event.getPlayer(), GuiItemUtil.colorize(event.getPlayer(), plugin.getLoveTweaksConfig().getDisabledBrewingMessage()));
         }
     }
 

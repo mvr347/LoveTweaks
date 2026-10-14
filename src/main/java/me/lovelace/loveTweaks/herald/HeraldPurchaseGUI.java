@@ -151,6 +151,11 @@ public final class HeraldPurchaseGUI {
                     .replace("<min>", String.valueOf(cfg.getHeraldMinDurationMinutes()))
                     .replace("<max>", String.valueOf(cfg.getHeraldMaxDurationMinutes())));
         }
+        var economy = LoveCore.service(LoveEconomy.class);
+        if (economy.isPresent() && !economy.get().has(player, cost)) {
+            // Clickable cycler (a cheaper duration may fit), so only add the reason, keep the texture.
+            lore.addAll(heraldGui.durationUnaffordableLore());
+        }
         String name = heraldGui.durationName().replace("<minutes>", String.valueOf(holder.durationMinutes()));
         return GuiItemUtil.buildItem(player, sbConfig.getToggleOnMaterial(), name, lore);
     }
@@ -165,12 +170,18 @@ public final class HeraldPurchaseGUI {
         String formattedCost = heraldGui.formatCost(cost);
 
         var economy = LoveCore.service(LoveEconomy.class);
-        boolean hasFunds = economy.isEmpty() || economy.get().has(player, cost);
+        // Without LoveCore there is no economy and purchase() can never succeed, so the button must
+        // not look clickable (it used to assume "has funds" here and then fail on click).
+        boolean hasFunds = economy.isPresent() && economy.get().has(player, cost);
 
         if (!hasFunds) {
+            String reason = economy.isPresent()
+                    ? heraldGui.message("reason-confirm-no-funds").replace("<cost>", formattedCost)
+                    : heraldGui.message("reason-no-economy");
             List<String> lore = new ArrayList<>();
             for (String line : heraldGui.confirmNoFundsLore()) {
                 lore.add(line
+                        .replace("<reason>", reason)
                         .replace("<message>", message)
                         .replace("<minutes>", String.valueOf(holder.durationMinutes()))
                         .replace("<cost>", formattedCost));

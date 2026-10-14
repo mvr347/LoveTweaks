@@ -48,7 +48,7 @@ public final class HeraldGUI {
         // Рабочая зона: слоты 9-17 (боковые стенки и незанятые слоты — пусто/null, стекло запрещено)
         int slotCount = Math.min(manager.slotCount(), SLOT_POSITIONS.length);
         for (int i = 0; i < slotCount; i++) {
-            inv.setItem(SLOT_POSITIONS[i], buildSlotItem(player, manager, i, sbConfig, heraldGui));
+            inv.setItem(SLOT_POSITIONS[i], buildSlotItem(player, plugin, manager, i, sbConfig, heraldGui));
         }
 
         // Footer: слоты 18-26 (18-25 — стекло, 26 — Close)
@@ -68,7 +68,7 @@ public final class HeraldGUI {
         return GuiItemUtil.buildItem(player, sbConfig.getPlaceholderOnMaterial(), heraldGui.infoName(), lore);
     }
 
-    private static ItemStack buildSlotItem(Player player, HeraldManager manager, int index, ScoreboardConfig sbConfig, HeraldGuiConfig heraldGui) {
+    private static ItemStack buildSlotItem(Player player, LoveTweaks plugin, HeraldManager manager, int index, ScoreboardConfig sbConfig, HeraldGuiConfig heraldGui) {
         HeraldSlot slot = manager.getSlot(index);
         String indexLabel = String.valueOf(index + 1);
 
@@ -86,11 +86,36 @@ public final class HeraldGUI {
             return GuiItemUtil.buildItem(player, sbConfig.getPlaceholderOffMaterial(), name, lore);
         }
 
+        HeraldManager.Unavailability blocked = manager.unavailability(player, index);
+        if (blocked != HeraldManager.Unavailability.NONE) {
+            // HEAD_INACTIVE-style button: same name, reason in the lore, one shared "blocked" texture.
+            String reason = reasonText(heraldGui, plugin, blocked, index);
+            List<String> inactiveLore = new ArrayList<>();
+            for (String line : heraldGui.slotUnavailableLore()) {
+                inactiveLore.add(line.replace("<index>", indexLabel).replace("<reason>", reason));
+            }
+            String inactiveName = heraldGui.slotUnavailableName().replace("<index>", indexLabel);
+            return GuiItemUtil.buildItem(player, heraldGui.confirmNoFundsMaterial(), inactiveName, inactiveLore);
+        }
+
         List<String> lore = new ArrayList<>();
         for (String line : heraldGui.slotFreeLore()) {
             lore.add(line.replace("<index>", indexLabel));
         }
         String name = heraldGui.slotFreeName().replace("<index>", indexLabel);
         return GuiItemUtil.buildItem(player, sbConfig.getPlaceholderOnMaterial(), name, lore);
+    }
+
+    /** Plain (uncolored) reason line for an unavailable free slot; empty for {@link HeraldManager.Unavailability#NONE}. */
+    public static String reasonText(HeraldGuiConfig heraldGui, LoveTweaks plugin,
+                                    HeraldManager.Unavailability reason, int slotIndex) {
+        return switch (reason) {
+            case SLOT_LOCKED -> heraldGui.message("reason-slot-locked").replace("<prev>", String.valueOf(slotIndex));
+            case OWNS_SLOT -> heraldGui.message("reason-already-owns-slot");
+            case NO_FUNDS -> heraldGui.message("reason-no-funds")
+                    .replace("<min>", heraldGui.formatCost(plugin.getLoveTweaksConfig().getHeraldMinCost()));
+            case NO_ECONOMY -> heraldGui.message("reason-no-economy");
+            case NONE -> "";
+        };
     }
 }

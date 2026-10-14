@@ -91,10 +91,11 @@ public final class LoveTweaks extends JavaPlugin {
         scoreboardDisplayManager = new ScoreboardDisplayManager(this, scoreboardDataManager, getScoreboardConfig());
         getLogger().info("Scoreboard system initialized.");
 
-        // Плейсхолдеры времени игры (%playtime_since_join% и др.) — их использует скорборд.
+        // Плейсхолдеры времени игры (%playtime_formatted% и др.) и %lovetweaks_*% — их использует скорборд.
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             new PlaytimeExpansion(this).register();
-            getLogger().info("Playtime placeholders registered.");
+            new me.lovelace.loveTweaks.placeholder.LoveTweaksExpansion(this).register();
+            getLogger().info("Playtime and lovetweaks placeholders registered.");
         } else {
             getLogger().warning("PlaceholderAPI не найден — плейсхолдеры %playtime_*% работать не будут.");
         }

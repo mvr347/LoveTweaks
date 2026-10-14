@@ -50,6 +50,19 @@ public class PlaceholderIntegration {
         }
     }
 
+    /**
+     * True when every PAPI expansion the line needs is registered. Without PlaceholderAPI at all
+     * nothing can be checked, so the line is not blocked (the board simply shows raw text then,
+     * as it always did) — blocking everything would wipe players' saved layouts for no reason.
+     */
+    public static boolean isInstalled(ScoreboardPlaceholder placeholder) {
+        if (!Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) return true;
+        for (String id : placeholder.papiIds()) {
+            if (!PlaceholderAPI.isRegistered(id)) return false;
+        }
+        return true;
+    }
+
     public static boolean has(Player player, String placeholder) {
         String test = "%" + placeholder + "%";
         String expanded = resolve(player, test);

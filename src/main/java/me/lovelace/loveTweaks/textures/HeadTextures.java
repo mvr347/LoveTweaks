@@ -54,4 +54,12 @@ public final class HeadTextures {
     /** Кнопка «Вкл/Выкл», когда ни один плейсхолдер не включён — скорборду нечего показывать. */
     public static final String SCOREBOARD_TOGGLE_EMPTY =
             HeadsConfig.get("scoreboard-toggle-empty", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjNjMDA1NmI3YjI4MWZlMmQ0ZmRkNjc1NzdiMDI2ZWE3NDIyNmYzNjQ5YTFkNTBkYjI3NDI1YmNmYjRiMGE5YyJ9fX0=");
+
+    /** Pagination arrow "previous page" of the "Все" view (slot 36). Same pair as the other Love* menus. */
+    public static final String SCOREBOARD_PAGE_PREV =
+            HeadsConfig.get("scoreboard-page-prev", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODRkZjJjZWZhZDQ4YzEwMDYzZDczNTM5OWY5MDRmYWE0NjA4ZmQ0NjZkZWYxZGU5ZTU1YjFhMzY2NWUzODYwMyJ9fX0=");
+
+    /** Pagination arrow "next page" of the "Все" view (slot 44). */
+    public static final String SCOREBOARD_PAGE_NEXT =
+            HeadsConfig.get("scoreboard-page-next", "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOWM4YzJhMDExYmU4ZTI2NDk4YjAzNmJjNDA3OTc3NDA4ODczYTYxYTc0MjYxMmM0OTdhMjI1MzU5YTMwYjRjZDMifX19");
 }

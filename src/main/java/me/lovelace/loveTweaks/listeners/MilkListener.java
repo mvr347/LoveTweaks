@@ -6,6 +6,7 @@ import me.lovelace.loveTweaks.LoveTweaks;
 import me.lovelace.loveTweaks.items.PurificationPotion;
 import me.lovelace.loveTweaks.managers.PurificationPotionConfig;
 import me.lovelace.loveTweaks.utils.GuiItemUtil;
+import me.lovelace.loveTweaks.utils.Notify;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
@@ -223,7 +224,7 @@ public class MilkListener implements Listener {
         // 4. Отправляем сообщение об очищении
         String msg = cfg.purificationMessage();
         if (msg != null && !msg.isBlank()) {
-            player.sendMessage(GuiItemUtil.colorize(player, msg));
+            Notify.event(player, GuiItemUtil.colorize(player, msg));
         }
 
         // 5. Визуальные эффекты и звук
@@ -243,7 +244,7 @@ public class MilkListener implements Listener {
         String msg = cfg.cooldownMessage()
                 .replace("<seconds>", formatted)
                 .replace("<time>", formatted);
-        player.sendMessage(GuiItemUtil.colorize(player, msg));
+        Notify.event(player, GuiItemUtil.colorize(player, msg));
 
         try {
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 0.8f, 1.0f);

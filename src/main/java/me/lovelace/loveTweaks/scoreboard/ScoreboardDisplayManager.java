@@ -113,10 +113,13 @@ public class ScoreboardDisplayManager {
     List<String> buildLines(Player player, PlayerScoreboardState state) {
         List<String> valid = new ArrayList<>();
         for (String id : state.getActivePlaceholders()) {
+            if (valid.size() >= config.getMaxPlaceholders()) break;
             ScoreboardPlaceholder ph = config.getPlaceholder(id);
-            if (ph == null || !ph.isUnlocked(player)) continue;
+            // A line whose PAPI expansion is not installed (or whose requirement is unmet) is skipped
+            // instead of printing a raw "%id_param%" on the board.
+            if (ph == null || !ScoreboardAvailability.isAvailable(player, ph)) continue;
 
-            String expanded = applyPAPI(player, ph.template());
+            String expanded = applyPAPI(player, ph.template(state.getVariant(id)));
             if (expanded.isBlank()) continue;
             valid.add(expanded);
         }

@@ -27,7 +27,46 @@ public class HeraldManager {
     private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacySection();
 
     public enum PurchaseResult {
-        SUCCESS, SLOT_TAKEN, EMPTY_MESSAGE, TOO_LONG, INSUFFICIENT_FUNDS, REJECTED_PROFANITY, ALREADY_OWNS_SLOT
+        SUCCESS, SLOT_TAKEN, SLOT_LOCKED, EMPTY_MESSAGE, TOO_LONG, INSUFFICIENT_FUNDS, REJECTED_PROFANITY, ALREADY_OWNS_SLOT
+    }
+
+    /** Why a free slot cannot be bought by a given player right now (drives the inactive-button look). */
+    public enum Unavailability {
+        NONE, SLOT_LOCKED, OWNS_SLOT, NO_ECONOMY, NO_FUNDS
+    }
+
+    /**
+     * Slots open strictly in order: slot {@code index} can be bought only while it is free and either
+     * is the first slot or the slot right before it is occupied. Pure function so the GUI and
+     * {@link #purchase} share one rule.
+     */
+    public static boolean isSlotUnlocked(List<HeraldSlot> slots, int index) {
+        if (index < 0 || index >= slots.size()) {
+            return false;
+        }
+        if (slots.get(index).isActive()) {
+            return false;
+        }
+        return index == 0 || slots.get(index - 1).isActive();
+    }
+
+    /** Picks the single reason to show, by priority: locked, already owns a slot, no economy, no funds. */
+    public static Unavailability resolveUnavailability(boolean unlocked, boolean ownsSlot,
+                                                       boolean economyPresent, boolean canAffordMinimum) {
+        if (!unlocked) return Unavailability.SLOT_LOCKED;
+        if (ownsSlot) return Unavailability.OWNS_SLOT;
+        if (!economyPresent) return Unavailability.NO_ECONOMY;
+        if (!canAffordMinimum) return Unavailability.NO_FUNDS;
+        return Unavailability.NONE;
+    }
+
+    /** Reason why the free slot {@code slotIndex} is unavailable to {@code player}, or {@link Unavailability#NONE}. */
+    public synchronized Unavailability unavailability(Player player, int slotIndex) {
+        var economy = LoveCore.service(LoveEconomy.class);
+        boolean canAfford = economy.isPresent()
+                && economy.get().has(player, plugin.getLoveTweaksConfig().getHeraldMinCost());
+        return resolveUnavailability(isSlotUnlocked(slots, slotIndex),
+                playerOwnsAnySlot(player.getUniqueId()), economy.isPresent(), canAfford);
     }
 
     private final LoveTweaks plugin;
@@ -95,6 +134,11 @@ public class HeraldManager {
         HeraldSlot slot = slots.get(slotIndex);
         if (slot.isActive()) {
             return PurchaseResult.SLOT_TAKEN;
+        }
+        // Slots open sequentially. Checked server-side before any money moves, so a click race or a
+        // stale GUI cannot buy slot N+1 while slot N is still free.
+        if (!isSlotUnlocked(slots, slotIndex)) {
+            return PurchaseResult.SLOT_LOCKED;
         }
         // 2026-09-26: один игрок мог выкупить все 3 слота глашатая сразу - проверялась только
         // занятость КОНКРЕТНОГО слота, но не то, что этот же player.getUniqueId() уже владеет

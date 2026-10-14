@@ -44,7 +44,7 @@ class CurrencyFormatterTest {
         YamlConfiguration cfg = config();
         long min = MoneyParser.parse(String.valueOf(cfg.get("herald.min-cost")), MoneyParser.STANDARD);
         long max = MoneyParser.parse(String.valueOf(cfg.get("herald.max-cost")), MoneyParser.STANDARD);
-        assertEquals(200L, min);
-        assertEquals(1_500L, max);
+        assertEquals(1_500L, min);
+        assertEquals(4_000L, max);
     }
 }

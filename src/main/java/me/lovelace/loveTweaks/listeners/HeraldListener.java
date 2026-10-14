@@ -11,6 +11,7 @@ import me.lovelace.loveTweaks.herald.HeraldPurchaseHolder;
 import me.lovelace.loveTweaks.herald.HeraldSlot;
 import me.lovelace.loveTweaks.integration.CitizensIntegration;
 import me.lovelace.loveTweaks.utils.GuiItemUtil;
+import me.lovelace.loveTweaks.utils.Notify;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Material;
@@ -125,15 +126,18 @@ public class HeraldListener implements Listener {
             }
             HeraldSlot heraldSlot = manager.getSlot(i);
             if (heraldSlot.isActive()) {
-                player.sendMessage(colorize(heraldGui.message("no-free-slots")));
+                deny(player, colorize(player, heraldGui.message("slot-occupied")));
                 return;
             }
-            // 2026-09-26: не даём даже открыть покупку второго слота, если игрок уже владеет
-            // другим активным слотом — иначе он тратит время на ввод текста и только на
-            // подтверждении узнаёт об отказе (manager.purchase всё равно перепроверит это же
-            // на confirm, это доп. защита от гонки, а не единственная проверка).
-            if (manager.playerOwnsAnySlot(player.getUniqueId())) {
-                player.sendMessage(colorize(heraldGui.message("already-owns-slot")));
+            // Every reason a free slot cannot be bought (order lock, 2026-09-26 one-slot-per-player
+            // limit, no economy, cannot afford even the cheapest announcement) is evaluated by the
+            // manager, the same way the GUI draws the inactive button. purchase() re-checks all of it.
+            HeraldManager.Unavailability blocked = manager.unavailability(player, i);
+            if (blocked != HeraldManager.Unavailability.NONE) {
+                String text = blocked == HeraldManager.Unavailability.OWNS_SLOT
+                        ? heraldGui.message("already-owns-slot")
+                        : "&c" + HeraldGUI.reasonText(heraldGui, plugin, blocked, i);
+                deny(player, colorize(player, text));
                 return;
             }
             int initialDuration = plugin.getLoveTweaksConfig().getHeraldMinDurationMinutes();
@@ -166,7 +170,7 @@ public class HeraldListener implements Listener {
         }
         if (slot == HeraldPurchaseGUI.SLOT_BOOK) {
             if (holder.getTextSource() == HeraldPurchaseHolder.TextSource.CHAT) {
-                player.sendMessage(colorize(heraldGui.message("source-chat-active")));
+                Notify.event(player, colorize(heraldGui.message("source-chat-active")));
                 try {
                     player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
                 } catch (Throwable ignored) {}
@@ -175,7 +179,7 @@ public class HeraldListener implements Listener {
             if (holder.getTextSource() == HeraldPurchaseHolder.TextSource.BOOK && event.isRightClick()) {
                 holder.setPendingMessage(null);
                 holder.setTextSource(HeraldPurchaseHolder.TextSource.NONE);
-                player.sendMessage(colorize(heraldGui.message("text-reset")));
+                Notify.event(player, colorize(heraldGui.message("text-reset")));
                 try {
                     player.playSound(player.getLocation(), org.bukkit.Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
                 } catch (Throwable ignored) {}
@@ -187,7 +191,7 @@ public class HeraldListener implements Listener {
         }
         if (slot == HeraldPurchaseGUI.SLOT_WRITE_CHAT) {
             if (holder.getTextSource() == HeraldPurchaseHolder.TextSource.BOOK) {
-                player.sendMessage(colorize(heraldGui.message("source-book-active")));
+                Notify.event(player, colorize(heraldGui.message("source-book-active")));
                 try {
                     player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
                 } catch (Throwable ignored) {}
@@ -196,7 +200,7 @@ public class HeraldListener implements Listener {
             if (holder.getTextSource() == HeraldPurchaseHolder.TextSource.CHAT && event.isRightClick()) {
                 holder.setPendingMessage(null);
                 holder.setTextSource(HeraldPurchaseHolder.TextSource.NONE);
-                player.sendMessage(colorize(heraldGui.message("text-reset")));
+                Notify.event(player, colorize(heraldGui.message("text-reset")));
                 try {
                     player.playSound(player.getLocation(), org.bukkit.Sound.UI_BUTTON_CLICK, 1.0f, 1.0f);
                 } catch (Throwable ignored) {}
@@ -225,12 +229,12 @@ public class HeraldListener implements Listener {
             return;
         }
         if (cursor.getType() != Material.WRITTEN_BOOK) {
-            player.sendMessage(colorize(heraldGui.message("wrong-book")));
+            Notify.event(player, colorize(heraldGui.message("wrong-book")));
             return;
         }
         String text = extractBookText(cursor);
         if (text.isEmpty()) {
-            player.sendMessage(colorize(heraldGui.message("empty-message")));
+            Notify.event(player, colorize(heraldGui.message("empty-message")));
             return;
         }
         holder.setPendingMessage(text);
@@ -265,11 +269,12 @@ public class HeraldListener implements Listener {
         }
         long cost = manager.computeCost(holder.durationMinutes(), message.length());
         var economy = dev.lovelace.lovecore.api.LoveCore.service(dev.lovelace.lovecore.api.economy.LoveEconomy.class);
-        if (economy.isPresent() && !economy.get().has(player, cost)) {
-            player.sendMessage(colorize(player, heraldGui.message("insufficient-funds").replace("<cost>", heraldGui.formatCost(cost))));
-            try {
-                player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
-            } catch (Throwable ignored) {}
+        if (economy.isEmpty()) {
+            deny(player, colorize(player, "&c" + heraldGui.message("reason-no-economy")));
+            return;
+        }
+        if (!economy.get().has(player, cost)) {
+            deny(player, colorize(player, heraldGui.message("insufficient-funds").replace("<cost>", heraldGui.formatCost(cost))));
             return;
         }
         applyPurchase(player, holder.slotIndex(), holder.durationMinutes(), message, heraldGui);
@@ -282,28 +287,41 @@ public class HeraldListener implements Listener {
 
         switch (result) {
             case SUCCESS -> {
-                player.sendMessage(colorize(player, heraldGui.message("published").replace("<minutes>", String.valueOf(durationMinutes))));
+                // Money was just charged: critical, always mirrored to chat.
+                Notify.important(player, colorize(player, heraldGui.message("published").replace("<minutes>", String.valueOf(durationMinutes))));
                 player.closeInventory();
             }
             case SLOT_TAKEN -> {
-                player.sendMessage(colorize(player, heraldGui.message("no-free-slots")));
+                Notify.event(player, colorize(player, heraldGui.message("slot-occupied")));
+                player.closeInventory();
+            }
+            case SLOT_LOCKED -> {
+                Notify.event(player, colorize(player, heraldGui.message("slot-locked").replace("<prev>", String.valueOf(slotIndex))));
                 player.closeInventory();
             }
             case ALREADY_OWNS_SLOT -> {
-                player.sendMessage(colorize(player, heraldGui.message("already-owns-slot")));
+                Notify.event(player, colorize(player, heraldGui.message("already-owns-slot")));
                 player.closeInventory();
             }
-            case EMPTY_MESSAGE -> player.sendMessage(colorize(player, heraldGui.message("empty-message")));
-            case TOO_LONG -> player.sendMessage(colorize(player, heraldGui.message("too-long")
+            case EMPTY_MESSAGE -> Notify.event(player, colorize(player, heraldGui.message("empty-message")));
+            case TOO_LONG -> Notify.event(player, colorize(player, heraldGui.message("too-long")
                     .replace("<max>", String.valueOf(maxLength))
                     .replace("<length>", String.valueOf(message.length()))));
-            case INSUFFICIENT_FUNDS -> player.sendMessage(colorize(player, heraldGui.message("insufficient-funds")
+            case INSUFFICIENT_FUNDS -> Notify.event(player, colorize(player, heraldGui.message("insufficient-funds")
                     .replace("<cost>", heraldGui.formatCost(cost))));
             case REJECTED_PROFANITY -> {
-                player.sendMessage(colorize(player, heraldGui.message("rejected-profanity")));
+                Notify.event(player, colorize(player, heraldGui.message("rejected-profanity")));
                 player.closeInventory();
             }
         }
+    }
+
+    /** Refusal feedback for a click on an unavailable button: denial sound plus the reason on the action bar. */
+    private static void deny(Player player, Component reason) {
+        try {
+            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+        } catch (Throwable ignored) {}
+        Notify.event(player, reason);
     }
 
     private static String extractBookText(ItemStack book) {
@@ -343,7 +361,7 @@ public class HeraldListener implements Listener {
             HeraldGuiConfig heraldGui = plugin.getLoveTweaksConfig().getHeraldGuiConfig();
 
             if (message.equalsIgnoreCase("отмена")) {
-                player.sendMessage(colorize(heraldGui.message("chat-cancelled")));
+                Notify.event(player, colorize(heraldGui.message("chat-cancelled")));
                 return;
             }
 

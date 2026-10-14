@@ -3,6 +3,7 @@ package me.lovelace.loveTweaks.managers;
 import me.lovelace.loveTweaks.LoveTweaks;
 import me.lovelace.loveTweaks.utils.CombatUtil;
 import me.lovelace.loveTweaks.utils.GuiItemUtil;
+import me.lovelace.loveTweaks.utils.Notify;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -79,20 +80,6 @@ public class TeleportScrollManager {
         return GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getTeleportScrollConfig().message(key).replace(placeholder, value));
     }
 
-    /**
-     * Заменяет прямые вызовы player.sendActionBar(...) — уважает переключатель LoveNotify.
-     * Не кэшируем Optional<LoveNotify> — сосед может зарегистрировать реализацию позже,
-     * см. LoveCore.service(...) javadoc в LoveCore.
-     */
-    private void sendActionBar(Player player, Component component) {
-        boolean allowed = dev.lovelace.lovecore.api.LoveCore.service(dev.lovelace.lovecore.api.notify.LoveNotify.class)
-                .map(n -> n.isChannelEnabled(player.getUniqueId(), dev.lovelace.lovecore.api.notify.LoveNotify.Channel.ACTION_BAR))
-                .orElse(true);
-        if (allowed) {
-            player.sendActionBar(component);
-        }
-    }
-
     private boolean isAfk(Player player) {
         Long last = lastMoveTime.getIfPresent(player.getUniqueId());
         if (last == null) return false;
@@ -111,16 +98,14 @@ public class TeleportScrollManager {
         if (isInCombat(initiator)) {
             var cfg = plugin.getLoveTweaksConfig().getTeleportScrollConfig();
             Component c = GuiItemUtil.colorize(cfg.message("cancelled-initiator").replace("<reason>", cfg.message("reason-pvp-self")));
-            initiator.sendMessage(c);
-            sendActionBar(initiator, c);
+            Notify.event(initiator, c);
             return;
         }
 
         if (initiator.hasPotionEffect(PotionEffectType.INVISIBILITY)) {
             var cfg = plugin.getLoveTweaksConfig().getTeleportScrollConfig();
             Component c = GuiItemUtil.colorize(cfg.message("cancelled-initiator").replace("<reason>", cfg.message("reason-invisible-self")));
-            initiator.sendMessage(c);
-            sendActionBar(initiator, c);
+            Notify.event(initiator, c);
             return;
         }
 
@@ -130,8 +115,7 @@ public class TeleportScrollManager {
         TeleportSession session = new TeleportSession(initiator.getUniqueId());
         sessions.put(initiator.getUniqueId(), session);
 
-        sendActionBar(initiator, msg("prompt"));
-        initiator.sendMessage(msg("prompt"));
+        Notify.event(initiator, msg("prompt"));
         try {
             initiator.playSound(initiator.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.5f);
         } catch (Throwable ignored) {}
@@ -144,8 +128,7 @@ public class TeleportScrollManager {
                 sessions.remove(initiator.getUniqueId());
                 Player p = Bukkit.getPlayer(initiator.getUniqueId());
                 if (p != null) {
-                    p.sendMessage(msg("timeout"));
-                    sendActionBar(p, msg("timeout"));
+                    Notify.event(p, msg("timeout"));
                 }
             }
         }, CHAT_TIMEOUT_TICKS);
@@ -171,16 +154,14 @@ public class TeleportScrollManager {
         if (target == null || !target.isOnline()) {
             sessions.remove(initiator.getUniqueId());
             Component c = msg("player-not-found", "<player>", input.trim());
-            initiator.sendMessage(c);
-            sendActionBar(initiator, c);
+            Notify.event(initiator, c);
             return true;
         }
 
         if (target.getUniqueId().equals(initiator.getUniqueId())) {
             sessions.remove(initiator.getUniqueId());
             Component c = msg("cannot-target-self");
-            initiator.sendMessage(c);
-            sendActionBar(initiator, c);
+            Notify.event(initiator, c);
             return true;
         }
 
@@ -188,23 +169,20 @@ public class TeleportScrollManager {
         if (!target.getWorld().getName().equalsIgnoreCase("world")) {
             sessions.remove(initiator.getUniqueId());
             Component c = msg("target-not-in-world", "<player>", target.getName());
-            initiator.sendMessage(c);
-            sendActionBar(initiator, c);
+            Notify.event(initiator, c);
             return true;
         }
 
         if (isAfk(target)) {
             sessions.remove(initiator.getUniqueId());
             Component c = msg("target-afk", "<player>", target.getName());
-            initiator.sendMessage(c);
-            sendActionBar(initiator, c);
+            Notify.event(initiator, c);
             // ОБЯЗАТЕЛЬНОЕ уведомление цели - раньше цель не получала вообще никакого сообщения
             // и не понимала, почему к ней никто не телепортировался. АФК-эвристика (нет
             // движения по блокам 15+ секунд) легко ложно срабатывает именно на игроке, который
             // просто стоит и ждёт телепортации - то есть ведёт себя ровно так, как требуется.
             Component targetMsg = msg("you-afk", "<player>", initiator.getName());
-            target.sendMessage(targetMsg);
-            sendActionBar(target, targetMsg);
+            Notify.event(target, targetMsg);
             return true;
         }
 
@@ -239,8 +217,7 @@ public class TeleportScrollManager {
             Player initiator = Bukkit.getPlayer(initiatorUuid);
             if (initiator != null) {
                 Component comp = GuiItemUtil.colorize(reasonForInitiator);
-                sendActionBar(initiator, comp);
-                initiator.sendMessage(comp);
+                Notify.event(initiator, comp);
                 try {
                     initiator.playSound(initiator.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.8f);
                 } catch (Throwable ignored) {}
@@ -252,8 +229,7 @@ public class TeleportScrollManager {
             Player target = Bukkit.getPlayer(session.getTargetUuid());
             if (target != null) {
                 Component comp = GuiItemUtil.colorize(reasonForTarget);
-                sendActionBar(target, comp);
-                target.sendMessage(comp);
+                Notify.event(target, comp);
                 try {
                     target.playSound(target.getLocation(), org.bukkit.Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.8f);
                 } catch (Throwable ignored) {}
@@ -297,13 +273,11 @@ public class TeleportScrollManager {
 
         // 1. Уведомление инициатора
         Component initMsg = msg("countdown-initiator", "<seconds>", String.valueOf(COUNTDOWN_SECONDS));
-        sendActionBar(initiator, initMsg);
-        initiator.sendMessage(initMsg);
+        Notify.event(initiator, initMsg);
 
         // 2. ОБЯЗАТЕЛЬНОЕ уведомление игрока-цели (в чат и экшнбар)
         Component targetMsg = msg("countdown-target", "<player>", initiatorName);
-        sendActionBar(target, targetMsg);
-        target.sendMessage(targetMsg);
+        Notify.event(target, targetMsg);
 
         // 3. Звуки запуска отсчёта
         try {
@@ -361,8 +335,8 @@ public class TeleportScrollManager {
         }
 
         // Отображаем таймер обоим игрокам
-        sendActionBar(p, msg("countdown-initiator", "<seconds>", String.valueOf(secondsLeft)));
-        sendActionBar(t, msg("countdown-target", "<player>", initiatorName));
+        Notify.hud(p, msg("countdown-initiator", "<seconds>", String.valueOf(secondsLeft)));
+        Notify.hud(t, msg("countdown-target", "<player>", initiatorName));
 
         // Звуки тика и визуальные частицы ауры
         try {
@@ -415,13 +389,11 @@ public class TeleportScrollManager {
         removeScrollFromHand(initiator);
 
         Component succInit = msg("success-initiator");
-        sendActionBar(initiator, succInit);
-        initiator.sendMessage(succInit);
+        Notify.event(initiator, succInit);
 
         // ОБЯЗАТЕЛЬНОЕ уведомление цели телепортации в чат и экшнбар
         Component succTarg = msg("success-target", "<player>", initiator.getName());
-        sendActionBar(target, succTarg);
-        target.sendMessage(succTarg);
+        Notify.event(target, succTarg);
     }
 
     private void spawnCountdownParticles(Location loc) {

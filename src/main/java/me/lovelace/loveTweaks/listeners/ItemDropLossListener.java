@@ -2,6 +2,7 @@ package me.lovelace.loveTweaks.listeners;
 
 import me.lovelace.loveTweaks.LoveTweaks;
 import me.lovelace.loveTweaks.utils.GuiItemUtil;
+import me.lovelace.loveTweaks.utils.Notify;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -79,7 +80,8 @@ public class ItemDropLossListener implements Listener {
 
         String msg = plugin.getLoveTweaksConfig().getItemDropStackPartialLoseMessage()
                 .replace("<count>", String.valueOf(lostCount));
-        player.sendMessage(GuiItemUtil.colorize(msg));
+        // Loss of items is critical: always duplicated to chat by LoveNotify.
+        Notify.important(player, GuiItemUtil.colorize(msg));
     }
 
     private boolean hasDurability(ItemStack stack) {
@@ -141,7 +143,7 @@ public class ItemDropLossListener implements Listener {
         location.getWorld().playSound(location, Sound.ENTITY_ITEM_BREAK, 0.6f, 1.6f);
         location.getWorld().spawnParticle(Particle.CRIT, location, 8, 0.15, 0.15, 0.15, 0.05);
 
-        player.sendMessage(GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getItemDropDamageMessage()));
+        Notify.event(player, GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getItemDropDamageMessage()));
     }
 
     private void breakItem(Player player, Item itemEntity) {
@@ -151,7 +153,7 @@ public class ItemDropLossListener implements Listener {
         location.getWorld().playSound(location, Sound.ENTITY_ITEM_BREAK, 1f, 1f);
         location.getWorld().spawnParticle(Particle.CLOUD, location, 12, 0.2, 0.2, 0.2, 0);
 
-        player.sendMessage(GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getItemDropBreakMessage()));
+        Notify.important(player, GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getItemDropBreakMessage()));
     }
 
     private void loseItem(Player player, Item itemEntity) {
@@ -161,6 +163,6 @@ public class ItemDropLossListener implements Listener {
         location.getWorld().playSound(location, Sound.ENTITY_ITEM_PICKUP, 1f, 0.5f);
         location.getWorld().spawnParticle(Particle.SMOKE, location, 10, 0.2, 0.2, 0.2, 0.02);
 
-        player.sendMessage(GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getItemDropLoseMessage()));
+        Notify.important(player, GuiItemUtil.colorize(plugin.getLoveTweaksConfig().getItemDropLoseMessage()));
     }
 }
