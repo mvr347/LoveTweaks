@@ -19,6 +19,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 
 /**
@@ -33,6 +35,21 @@ public class ScoreboardDataManager {
     // Потокобезопасный кэш активных состояний скорборда игроков
     private final Map<UUID, PlayerScoreboardState> cache = new ConcurrentHashMap<>();
 
+    // Players whose state may live in the cache (joined/authenticated and not yet unloaded).
+    // A load finishing after unload must not re-add its entry (that leaked the state forever).
+    private final Set<UUID> active = ConcurrentHashMap.newKeySet();
+    private final Set<UUID> loading = ConcurrentHashMap.newKeySet();
+
+    // Dedicated single thread: loads and saves of one player stay ordered (load -> save -> unload)
+    // and never compete with the shared ForkJoinPool.commonPool.
+    private final ExecutorService io = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "LoveTweaks-ScoreboardIO");
+        t.setDaemon(true);
+        return t;
+    });
+
+    private volatile List<ScoreboardEntry> defaultEntries;
+
     public ScoreboardDataManager(LoveTweaks plugin) {
         this.plugin = plugin;
         reload();
@@ -40,6 +57,7 @@ public class ScoreboardDataManager {
 
     public synchronized void reload() {
         cache.clear();
+        defaultEntries = null;
         initDataSource();
         initSchemaAndMigrate();
     }
@@ -94,7 +112,7 @@ public class ScoreboardDataManager {
             plugin.getLogger().log(Level.SEVERE, "Failed to initialize scoreboard SQLite tables", e);
         }
 
-        CompletableFuture.runAsync(this::migrateLegacyYaml);
+        CompletableFuture.runAsync(this::migrateLegacyYaml, io);
     }
 
     private void addMissingColumns(Connection connection, String table, Map<String, String> required) throws SQLException {
@@ -149,8 +167,12 @@ public class ScoreboardDataManager {
     public PlayerScoreboardState getState(UUID uuid) {
         PlayerScoreboardState state = cache.get(uuid);
         if (state == null) {
+            // Only (re)load for players that are still tracked; otherwise a stale caller would
+            // re-create a cache entry that nobody ever removes.
+            if (active.contains(uuid) && loading.add(uuid)) {
+                loadPlayerAsync(uuid);
+            }
             state = defaultState(plugin.getScoreboardConfig().getPlaceholderOrder());
-            loadPlayerAsync(uuid);
         }
         return state;
     }
@@ -159,11 +181,18 @@ public class ScoreboardDataManager {
      * Асинхронно предзагружает состояние игрока при входе.
      */
     public CompletableFuture<PlayerScoreboardState> loadPlayerAsync(UUID uuid) {
+        active.add(uuid);
+        loading.add(uuid);
         return CompletableFuture.supplyAsync(() -> {
-            PlayerScoreboardState state = loadFromDbSync(uuid);
-            cache.put(uuid, state);
-            return state;
-        });
+            try {
+                PlayerScoreboardState state = loadFromDbSync(uuid);
+                if (!active.contains(uuid)) return state; // player left while loading: do not cache
+                PlayerScoreboardState prev = cache.putIfAbsent(uuid, state);
+                return prev != null ? prev : state;
+            } finally {
+                loading.remove(uuid);
+            }
+        }, io);
     }
 
     private PlayerScoreboardState loadFromDbSync(UUID uuid) {
@@ -221,6 +250,8 @@ public class ScoreboardDataManager {
 
     /** New players start with the configured default preset (only installed lines count). */
     private PlayerScoreboardState defaultState(List<String> known) {
+        List<ScoreboardEntry> cached = defaultEntries;
+        if (cached != null) return new PlayerScoreboardState(true, false, new ArrayList<>(cached));
         ScoreboardConfig cfg = plugin.getScoreboardConfig();
         ScoreboardPreset preset = cfg.getPresets().get(cfg.getDefaultPreset());
         List<ScoreboardEntry> entries;
@@ -238,6 +269,7 @@ public class ScoreboardDataManager {
                 }
             }
         }
+        defaultEntries = List.copyOf(entries);
         return new PlayerScoreboardState(true, false, entries);
     }
 
@@ -252,7 +284,7 @@ public class ScoreboardDataManager {
         boolean viewAll = state.isViewAll();
         List<ScoreboardEntry> entries = state.entries();
 
-        return CompletableFuture.runAsync(() -> savePlayerSync(uuid, enabled, viewAll, entries));
+        return CompletableFuture.runAsync(() -> savePlayerSync(uuid, enabled, viewAll, entries), io);
     }
 
     public void savePlayer(UUID uuid) {
@@ -323,13 +355,20 @@ public class ScoreboardDataManager {
     }
 
     public void unload(UUID uuid) {
+        active.remove(uuid);
         PlayerScoreboardState state = cache.remove(uuid);
         if (state != null) {
-            CompletableFuture.runAsync(() -> savePlayerSync(uuid, state.isScoreboardEnabled(), state.isViewAll(), state.entries()));
+            CompletableFuture.runAsync(() -> savePlayerSync(uuid, state.isScoreboardEnabled(), state.isViewAll(), state.entries()), io);
         }
     }
 
     public synchronized void close() {
+        io.shutdown(); // queued loads/saves finish first, keeping per-player ordering
+        try {
+            io.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
         try {
             saveAll();
         } catch (Throwable t) {
