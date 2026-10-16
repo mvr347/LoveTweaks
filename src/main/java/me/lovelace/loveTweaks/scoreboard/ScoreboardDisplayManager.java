@@ -34,6 +34,8 @@ public class ScoreboardDisplayManager {
     private final ScoreboardConfig config;
     private final Map<UUID, Scoreboard> boards = new HashMap<>();
     private final Map<UUID, Integer> lineCountCache = new HashMap<>();
+    private final Map<UUID, LinePrefixCache> prefixCaches = new HashMap<>();
+    private final Map<UUID, String> lastTitles = new HashMap<>();
     private PlaceholderIntegration papiIntegration;
 
     public ScoreboardDisplayManager(LoveTweaks plugin, ScoreboardDataManager dataManager, ScoreboardConfig config) {
@@ -52,7 +54,18 @@ public class ScoreboardDisplayManager {
 
     public void refreshPAPI() { initPAPI(); }
 
+    /**
+     * Players still in LoveAuth's limbo must not get a board. Not cached: a neighbour may register
+     * the oracle later. Without LoveAuth the board shows immediately.
+     */
+    private boolean isAuthenticated(Player player) {
+        return dev.lovelace.lovecore.api.LoveCore.service(dev.lovelace.lovecore.api.auth.AuthOracle.class)
+                .map(oracle -> oracle.isAuthenticated(player.getUniqueId()))
+                .orElse(true);
+    }
+
     public void updateScoreboard(Player player) {
+        if (!isAuthenticated(player)) return;
         PlayerScoreboardState state = dataManager.getState(player.getUniqueId());
 
         if (!state.isScoreboardEnabled() || config.getDisabledWorlds().contains(player.getWorld().getName())) {
@@ -60,31 +73,40 @@ public class ScoreboardDisplayManager {
             return;
         }
 
-        List<String> lines = buildLines(player, state);
-        if (lines == null) {
+        Rendered rendered = render(player, state);
+        if (rendered == null) {
             removeScoreboard(player);
             return;
         }
+        List<String> lines = rendered.lines();
 
         UUID uuid = player.getUniqueId();
         Scoreboard board = boards.get(uuid);
         int prevCount = lineCountCache.getOrDefault(uuid, -1);
 
-        if (board == null || prevCount != lines.size()) {
-            board = createBoard(player, lines);
+        if (board == null) {
+            board = createBoard(uuid, rendered);
             boards.put(uuid, board);
             lineCountCache.put(uuid, lines.size());
-        } else {
-            refreshLines(board, player, lines);
+            player.setScoreboard(board);
+            return;
         }
 
-        player.setScoreboard(board);
+        if (prevCount != lines.size()) {
+            // Resize in place instead of rebuilding the whole board (which resends everything).
+            resizeBoard(board, uuid, prevCount, lines.size());
+            lineCountCache.put(uuid, lines.size());
+        }
+        refreshLines(board, uuid, rendered);
+        if (player.getScoreboard() != board) player.setScoreboard(board);
     }
 
     public void removeScoreboard(Player player) {
         UUID uuid = player.getUniqueId();
         boards.remove(uuid);
         lineCountCache.remove(uuid);
+        prefixCaches.remove(uuid);
+        lastTitles.remove(uuid);
         player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
     }
 
@@ -100,6 +122,8 @@ public class ScoreboardDisplayManager {
         }
         boards.clear();
         lineCountCache.clear();
+        prefixCaches.clear();
+        lastTitles.clear();
     }
 
     /**
@@ -111,6 +135,14 @@ public class ScoreboardDisplayManager {
      * scoreboard entirely.
      */
     List<String> buildLines(Player player, PlayerScoreboardState state) {
+        Rendered rendered = render(player, state);
+        return rendered == null ? null : rendered.lines();
+    }
+
+    /** Fully expanded (PAPI applied exactly once) title and lines. */
+    record Rendered(String title, List<String> lines) {}
+
+    Rendered render(Player player, PlayerScoreboardState state) {
         List<String> valid = new ArrayList<>();
         for (String id : state.getActivePlaceholders()) {
             if (valid.size() >= config.getMaxPlaceholders()) break;
@@ -143,9 +175,9 @@ public class ScoreboardDisplayManager {
 
         List<String> lines = new ArrayList<>();
         // Строка-разделитель между названием и плейсхолдерами (вместо top)
-        lines.add(config.getSeparator());
+        String separator = applyPAPI(player, config.getSeparator());
+        lines.add(separator);
 
-        String separator = config.getSeparator();
         for (int i = 0; i < valid.size(); i += 2) {
             lines.add(valid.get(i));
             if (i + 1 < valid.size()) {
@@ -154,7 +186,7 @@ public class ScoreboardDisplayManager {
             lines.add(separator);
         }
         lines.add(bottom);
-        return lines;
+        return new Rendered(rawTitle, lines);
     }
 
     public static final int DEFAULT_MIN_PADDING_SPACES = 3;
@@ -286,42 +318,58 @@ public class ScoreboardDisplayManager {
         return "\u00A0".repeat(leftSpaces) + legacyText + "\u00A0".repeat(rightSpaces);
     }
 
-    private Scoreboard createBoard(Player player, List<String> lines) {
+    private Scoreboard createBoard(UUID uuid, Rendered rendered) {
         Scoreboard board = Bukkit.getScoreboardManager().getNewScoreboard();
 
-        Component titleComp = LEGACY.deserialize(colorize(applyPAPI(player, config.getTitle())));
-        Objective obj = board.registerNewObjective("lt_sb", Criteria.DUMMY, titleComp);
+        Objective obj = board.registerNewObjective("lt_sb", Criteria.DUMMY,
+                LEGACY.deserialize(colorize(rendered.title())));
         obj.setDisplaySlot(DisplaySlot.SIDEBAR);
+        lastTitles.put(uuid, rendered.title());
+        prefixCaches.put(uuid, new LinePrefixCache(INVISIBLE.length));
 
-        for (int i = 0; i < lines.size() && i < INVISIBLE.length; i++) {
-            String entry = INVISIBLE[i];
-            Team team = board.registerNewTeam("lt_" + i);
-            team.addEntry(entry);
-            setTeamPrefix(team, player, lines.get(i));
-            obj.getScore(entry).setScore(lines.size() - i);
-            obj.getScore(entry).numberFormat(NumberFormat.blank());
-        }
-
+        resizeBoard(board, uuid, 0, rendered.lines().size());
+        refreshLines(board, uuid, rendered);
         return board;
     }
 
-    private void refreshLines(Scoreboard board, Player player, List<String> lines) {
+    /** Registers missing line teams, rewrites scores and hides lines that no longer exist. */
+    private void resizeBoard(Scoreboard board, UUID uuid, int prevCount, int newCount) {
         Objective obj = board.getObjective("lt_sb");
-        if (obj != null) {
-            obj.displayName(LEGACY.deserialize(colorize(applyPAPI(player, config.getTitle()))));
+        if (obj == null) return;
+        LinePrefixCache cache = prefixCaches.computeIfAbsent(uuid, k -> new LinePrefixCache(INVISIBLE.length));
+        int count = Math.min(newCount, INVISIBLE.length);
+        for (int i = 0; i < count; i++) {
+            String entry = INVISIBLE[i];
+            if (board.getTeam("lt_" + i) == null) {
+                Team team = board.registerNewTeam("lt_" + i);
+                team.addEntry(entry);
+                // Suffix never changes, so it is set once here instead of on every refresh.
+                team.suffix(Component.empty());
+            }
+            obj.getScore(entry).setScore(newCount - i);
+            obj.getScore(entry).numberFormat(NumberFormat.blank());
         }
-        for (int i = 0; i < lines.size() && i < INVISIBLE.length; i++) {
-            Team team = board.getTeam("lt_" + i);
-            if (team != null) setTeamPrefix(team, player, lines.get(i));
+        for (int i = count; i < Math.min(Math.max(prevCount, 0), INVISIBLE.length); i++) {
+            board.resetScores(INVISIBLE[i]);
+            cache.invalidate(i);
         }
     }
 
-    private void setTeamPrefix(Team team, Player player, String rawLine) {
-        String processed = colorize(applyPAPI(player, rawLine));
-        // Sidebar shows: prefix + entry (invisible) → only prefix is visible
-        team.prefix(LEGACY.deserialize(processed));
-        // Clear suffix so nothing trails after the invisible entry char
-        team.suffix(Component.empty());
+    private void refreshLines(Scoreboard board, UUID uuid, Rendered rendered) {
+        Objective obj = board.getObjective("lt_sb");
+        if (obj != null && !rendered.title().equals(lastTitles.get(uuid))) {
+            obj.displayName(LEGACY.deserialize(colorize(rendered.title())));
+            lastTitles.put(uuid, rendered.title());
+        }
+        LinePrefixCache cache = prefixCaches.computeIfAbsent(uuid, k -> new LinePrefixCache(INVISIBLE.length));
+        List<String> lines = rendered.lines();
+        for (int i = 0; i < lines.size() && i < INVISIBLE.length; i++) {
+            // Lines are already PAPI-expanded; only colorize here.
+            String processed = colorize(lines.get(i));
+            if (!cache.update(i, processed)) continue;
+            Team team = board.getTeam("lt_" + i);
+            if (team != null) team.prefix(LEGACY.deserialize(processed));
+        }
     }
 
     private String applyPAPI(Player player, String text) {
