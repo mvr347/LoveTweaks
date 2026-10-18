@@ -55,8 +55,8 @@ public final class HeraldGuiConfig {
 
     private String slotUnavailableName = "";
     private List<String> slotUnavailableLore = List.of(
-            "&7Купить объявление в этом слоте", "", "&c✘ Недоступно сейчас", "&7<reason>", "", "&eКлик &7— узнать причину");
-    private List<String> durationUnaffordableLore = List.of("", "&c✘ Не хватает монет на этот срок");
+            "&7Купить объявление в этом слоте", "&8&m─────────────────────", "&c✘ Недоступно сейчас", "&7<reason>", "&8&m─────────────────────", "&aЛКМ &8— &7узнать причину");
+    private List<String> durationUnaffordableLore = List.of("&8&m─────────────────────", "&c✘ Не хватает монет на этот срок");
 
     private String confirmNoFundsName = "&cОпубликовать объявление";
     private String confirmNoFundsMaterial = "basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYzYxODczMWUwNjMzNzlhZWJmODJmMWQ2NGM0MTljOTBkN2YwYzE2NDhjNTQ4ZTliNjE1MWIxYmFiYTY2ZDcyMyJ9fX0=";

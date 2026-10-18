@@ -48,7 +48,7 @@ public final class ScoreboardGUI {
         int size = ScoreboardLayout.submenuSize(items.size());
         ScoreboardGUIHolder holder = new ScoreboardGUIHolder(player.getUniqueId(),
                 ScoreboardGUIHolder.Type.CATEGORY, categoryId);
-        Component title = LEGACY.deserialize(colorize(config.getGuiTitle() + "&8 · " + stripColor(category.displayName())));
+        Component title = LEGACY.deserialize(colorize(config.getGuiTitle() + " &8| &e" + stripColor(category.displayName())));
         Inventory inv = Bukkit.createInventory(holder, size, title);
         holder.setInventory(inv);
         populate(inv, holder, player, state, config);

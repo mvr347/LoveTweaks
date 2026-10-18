@@ -181,8 +181,8 @@ herald:
   max-cost: "2g"
 
   gui:
-    overview-title: '&6⚡ Королевский Глашатай'
-    purchase-title: '&6⚡ Новое объявление'
+    overview-title: '&6Королевский Глашатай'
+    purchase-title: '&6Новое объявление'
 
     info:
       name: '&6Голос Королевства'
@@ -194,8 +194,8 @@ herald:
     slot-free:
       name: '&aСлот &f<index> &aсвободен'
       lore:
-        - ''
-        - '&aЛКМ &7— купить'
+        - '&8&m─────────────────────'
+        - '&aЛКМ &8— &7купить'
 
     slot-occupied:
       name: '&7Слот &f<index> &7занят'
@@ -212,11 +212,11 @@ herald:
       name: ''
       lore:
         - '&7Купить объявление в этом слоте'
-        - ''
+        - '&8&m─────────────────────'
         - '&c✘ Недоступно сейчас'
         - '&7<reason>'
-        - ''
-        - '&eКлик &7— узнать причину'
+        - '&8&m─────────────────────'
+        - '&aЛКМ &8— &7узнать причину'
 
     # Слот книги: подсказка (когда текст ещё не задан)
     book-hint:
@@ -231,11 +231,11 @@ herald:
     book-active:
       name: '&aТекст из книги'
       lore:
-        - ''
+        - '&8&m─────────────────────'
         - '&7Текст объявления:'
         - '&f<message>'
-        - ''
-        - '&cПКМ &7— сбросить текст'
+        - '&8&m─────────────────────'
+        - '&6ПКМ &8— &7сбросить текст'
 
     # Слот книги: неактивен, так как текст задан через чат
     book-disabled:
@@ -250,19 +250,19 @@ herald:
     write-chat-button:
       name: '&bНаписать в чат'
       lore:
-        - ''
-        - '&aЛКМ &7— ввести текст в чат'
+        - '&8&m─────────────────────'
+        - '&aЛКМ &8— &7ввести текст в чат'
 
     # Кнопка чата: текст задан через чат
     write-chat-active:
       name: '&aТекст из чата'
       lore:
-        - ''
+        - '&8&m─────────────────────'
         - '&7Введённый текст:'
         - '&f<message>'
-        - ''
-        - '&aЛКМ &7— изменить текст'
-        - '&cПКМ &7— сбросить текст'
+        - '&8&m─────────────────────'
+        - '&aЛКМ &8— &7изменить текст'
+        - '&6ПКМ &8— &7сбросить текст'
 
     # Кнопка чата: неактивна, так как текст задан через книгу
     write-chat-disabled:
@@ -276,24 +276,24 @@ herald:
     duration-button:
       name: '&eДлительность: &f<minutes> мин.'
       lore:
-        - ''
+        - '&8&m─────────────────────'
         - '&7Текущая цена: <cost>'
-        - '&aЛКМ &7— изменить (<min>–<max> мин.)'
+        - '&aЛКМ &8— &7изменить (<min>–<max> мин.)'
       # 2026-10-14: добавляется в лор, если на выбранный срок не хватает монет. Кнопка остаётся
       # кликабельной (на меньший срок денег может хватить), поэтому текстуру не меняем, только причина.
       unaffordable-lore:
-        - ''
+        - '&8&m─────────────────────'
         - '&c✘ Не хватает монет на этот срок'
 
     confirm-button:
       name: '&aОпубликовать объявление'
       lore:
-        - ''
+        - '&8&m─────────────────────'
         - '&7Текст: &f<message>'
         - '&7Длительность: &f<minutes> мин.'
         - '&7Цена: <cost>'
-        - ''
-        - '&aЛКМ &7— подтвердить и оплатить'
+        - '&8&m─────────────────────'
+        - '&aЛКМ &8— &7подтвердить и оплатить'
 
     confirm-disabled:
       name: '&8Опубликовать объявление'
@@ -994,7 +994,7 @@ scoreboard:
 
   # ─── GUI настроек скорборда (/scoreboard) ──────────────────────────────────
   gui:
-    title: '&8⚙ &lСкорборд'
+    title: '&6Скорборд'
 
     filler:
       material: 'GRAY_STAINED_GLASS_PANE'
@@ -1005,8 +1005,8 @@ scoreboard:
       material: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvY2MyNDJiZTA5MjI2YTNhZjlkYTM0YzZkMzA1YTEyMzA2M2FhZjQyMWFlZTAzZDk4M2MxYmY1MjE1YzQyMWU4In19fQ=='
       display-name: '&bПрофиль'
       lore:
-        - ''
-        - '&aЛКМ &7— открыть профиль'
+        - '&8&m─────────────────────'
+        - '&aЛКМ &8— &7открыть профиль'
       command: ''
 
     # Внешний вид плейсхолдера, когда он ВКЛЮЧЁН (отображается на скорборде)
@@ -1027,27 +1027,27 @@ scoreboard:
       material: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvN2FmNmMzY2FjOTRjODk0NGQwNDQxNTBjMWRkNWU0ZTZhYjUzYTAxMzgyZGFlNDYzOTE0ZmIzYmU1YTI3MzE5ZCJ9fX0='
       display-name: '&aСкорборд включён'
       lore:
-        - ''
         - '&7Скорборд отображается на экране.'
-        - '&cЛКМ &7— выключить'
+        - '&8&m─────────────────────'
+        - '&aЛКМ &8— &7выключить'
 
     # Скорборд выключен вручную, но есть включённые плейсхолдеры
     toggle-off:
       material: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZmM1MzQ1MjkwZDdlNDRkZWEzYTg5MGQ0ZDAxNDBmYzEwYTUyYTkwOTc2NzQzOGYwZjViNWQyODc3Y2JhNDg0YyJ9fX0='
       display-name: '&7Скорборд выключен'
       lore:
-        - ''
         - '&7Скорборд скрыт с экрана.'
-        - '&aЛКМ &7— включить'
+        - '&8&m─────────────────────'
+        - '&aЛКМ &8— &7включить'
 
     # Ни один плейсхолдер не включён — скорборду нечего показывать
     toggle-empty:
       material: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYjNjMDA1NmI3YjI4MWZlMmQ0ZmRkNjc1NzdiMDI2ZWE3NDIyNmYzNjQ5YTFkNTBkYjI3NDI1YmNmYjRiMGE5YyJ9fX0='
       display-name: '&7Скорборд'
       lore:
-        - ''
         - '&7Нет ни одного включённого плейсхолдера.'
-        - '&7Выберите плейсхолдеры ниже &8(СКМ)'
+        - '&8&m─────────────────────'
+        - '&7Выберите плейсхолдеры ниже'
 
     # Кнопка категории в главном меню (ряд 37-43), если у категории нет своего icon
     category-button:
@@ -1075,36 +1075,36 @@ scoreboard:
       view-title: '&6Вид меню'
       view-current: '&7Сейчас: &f<current>'
       view-other: '&7Другой вид: &f<other>'
-      view-click: '&aЛКМ &7— переключить'
+      view-click: '&aЛКМ &8— &7переключить'
       preset-header: '&7Заменяет текущий набор строками:'
       preset-line: '&8▸ &f<name>'
       preset-line-skipped: '&8▸ &8<name> &c✘'
       preset-active: '&aАктивна'
-      preset-click: '&aЛКМ &7— применить'
+      preset-click: '&aЛКМ &8— &7применить'
       preset-unavailable: '&cНедоступно сейчас'
       preset-unavailable-reason: '&7Ни одна строка раскладки сейчас недоступна'
-      slot-empty-name: '&7Слот <n> &8· &7пусто'
+      slot-empty-name: '&7Слот <n> &8| &7пусто'
       slot-empty-lore: '&7Выберите строку в категории ниже'
       slot-label: '&7Слот <n>'
-      slot-up: '&aЛКМ &7— выше'
-      slot-down: '&aПКМ &7— ниже'
-      slot-remove: '&cСКМ &7или &cShift+ПКМ &7— убрать'
-      slot-variant: '&eShift+ЛКМ &7— формат: &f<variant>'
+      slot-up: '&aЛКМ &8— &7выше'
+      slot-down: '&6ПКМ &8— &7ниже'
+      slot-remove: '&eСКМ &7или &6Shift + ПКМ &8— &7убрать'
+      slot-variant: '&eShift + ЛКМ &8— &7формат: &f<variant>'
       category-enabled: '&7Включено: &f<on> &7из &f<total>'
-      category-open: '&aЛКМ &7— открыть'
+      category-open: '&aЛКМ &8— &7открыть'
       flat-position: '&7Позиция в скорборде: &f#<pos> &7из &f<total>'
-      flat-enable: '&aСКМ &7или &aShift+ПКМ &7— включить'
-      flat-disable: '&cСКМ &7или &cShift+ПКМ &7— выключить'
-      flat-up: '&aЛКМ &7— выше'
-      flat-down: '&aПКМ &7— ниже'
-      sub-enable: '&aЛКМ &7— включить'
-      sub-disable: '&cЛКМ &7— выключить'
-      sub-variant: '&eShift+ЛКМ &7— формат: &f<variant>'
+      flat-enable: '&eСКМ &7или &6Shift + ПКМ &8— &7включить'
+      flat-disable: '&eСКМ &7или &6Shift + ПКМ &8— &7выключить'
+      flat-up: '&aЛКМ &8— &7выше'
+      flat-down: '&6ПКМ &8— &7ниже'
+      sub-enable: '&aЛКМ &8— &7включить'
+      sub-disable: '&aЛКМ &8— &7выключить'
+      sub-variant: '&eShift + ЛКМ &8— &7формат: &f<variant>'
       sub-slot: '&7Слот скорборда: &f#<n>'
       unavailable: '&cНедоступно'
       reason-plugin: '&7Плагин не установлен'
       reason-full: '&7Все <max> слотов заняты'
-      back-to-main: '&aЛКМ &7— в главное меню'
+      back-to-main: '&aЛКМ &8— &7в главное меню'
       page-prev: '&e« Предыдущая страница'
       page-next: '&eСледующая страница »'
       page-lore: '&7Страница &f<page>&7/&f<pages>'
@@ -1112,10 +1112,10 @@ scoreboard:
     # Кнопка «Назад» (слот 52)
     back-button:
       material: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYmQ2OWUwNmU1ZGFkZmQ4NGU1ZjNkMWMyMTA2M2YyNTUzYjJmYTk0NWVlMWQ0ZDcxNTJmZGM1NDI1YmMxMmE5In19fQ=='
-      display-name: '&7« Назад'
+      display-name: '&cНазад'
       lore:
-        - ''
-        - '&aЛКМ &7— вернуться в настройки'
+        - '&8&m─────────────────────'
+        - '&aЛКМ &8— &7вернуться в настройки'
       command: 'settings'
 
     # Кнопка «Закрыть» (слот 53)
@@ -1123,8 +1123,8 @@ scoreboard:
       material: 'basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvM2VkMWFiYTczZjYzOWY0YmM0MmJkNDgxOTZjNzE1MTk3YmUyNzEyYzNiOTYyYzk3ZWJmOWU5ZWQ4ZWZhMDI1In19fQ=='
       display-name: '&cЗакрыть'
       lore:
-        - ''
-        - '&aЛКМ &7— закрыть меню'
+        - '&8&m─────────────────────'
+        - '&aЛКМ &8— &7закрыть меню'
 
 # ─── Потеря и повреждение предметов при выбрасывании ─────────────────────────
 item-drop-loss:

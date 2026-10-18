@@ -87,7 +87,7 @@ public class ScoreboardConfig {
             return;
         }
 
-        guiTitle = gui.getString("title", "&8⚙ &lСкорборд");
+        guiTitle = gui.getString("title", "&6Скорборд");
 
         ConfigurationSection filler = gui.getConfigurationSection("filler");
         fillerMaterial = get(filler, "material", "GRAY_STAINED_GLASS_PANE");
@@ -96,19 +96,19 @@ public class ScoreboardConfig {
         ConfigurationSection profile = gui.getConfigurationSection("profile-button");
         profileMaterial = get(profile, "material", basehead(HeadTextures.SCOREBOARD_PROFILE));
         profileName = get(profile, "display-name", "&bПрофиль");
-        profileLore = getLore(profile, List.of("", "&aЛКМ &7— открыть профиль"));
+        profileLore = getLore(profile, List.of("&8&m─────────────────────", "&aЛКМ &8— &7открыть профиль"));
         profileCommand = profile != null ? profile.getString("command", "") : "";
 
         ConfigurationSection back = gui.getConfigurationSection("back-button");
         backMaterial = get(back, "material", basehead(HeadTextures.SCOREBOARD_BACK));
-        backName = get(back, "display-name", "&7« Назад");
-        backLore = getLore(back, List.of("", "&aЛКМ &7— вернуться в настройки"));
+        backName = get(back, "display-name", "&cНазад");
+        backLore = getLore(back, List.of("&8&m─────────────────────", "&7Вернуться в настройки"));
         backCommand = back != null ? back.getString("command", "") : "";
 
         ConfigurationSection close = gui.getConfigurationSection("close-button");
         closeMaterial = get(close, "material", basehead(HeadTextures.SCOREBOARD_CLOSE));
         closeName = get(close, "display-name", "&cЗакрыть");
-        closeLore = getLore(close, List.of("", "&aЛКМ &7— закрыть меню"));
+        closeLore = getLore(close, List.of("&8&m─────────────────────", "&7Закрыть текущее окно"));
 
         ConfigurationSection phOn = gui.getConfigurationSection("placeholder-on");
         placeholderOnMaterial = get(phOn, "material", basehead(HeadTextures.SCOREBOARD_PLACEHOLDER_ON));
@@ -122,12 +122,12 @@ public class ScoreboardConfig {
         ConfigurationSection togOn = gui.getConfigurationSection("toggle-on");
         toggleOnMaterial = get(togOn, "material", basehead(HeadTextures.SCOREBOARD_TOGGLE_ON));
         toggleOnName = get(togOn, "display-name", "&aСкорборд включён");
-        toggleOnLore = getLore(togOn, List.of("", "&7Скорборд отображается на экране.", "&cЛКМ &7— выключить"));
+        toggleOnLore = getLore(togOn, List.of("&7Скорборд отображается на экране.", "&8&m─────────────────────", "&cЛКМ &8— &7выключить"));
 
         ConfigurationSection togOff = gui.getConfigurationSection("toggle-off");
         toggleOffMaterial = get(togOff, "material", basehead(HeadTextures.SCOREBOARD_TOGGLE_OFF));
         toggleOffName = get(togOff, "display-name", "&7Скорборд выключен");
-        toggleOffLore = getLore(togOff, List.of("", "&7Скорборд скрыт с экрана.", "&aЛКМ &7— включить"));
+        toggleOffLore = getLore(togOff, List.of("&7Скорборд скрыт с экрана.", "&8&m─────────────────────", "&aЛКМ &8— &7включить"));
 
         categoryButtonMaterial = get(gui.getConfigurationSection("category-button"), "material", basehead(HeadTextures.SCOREBOARD_PROFILE));
         presetButtonMaterial = get(gui.getConfigurationSection("preset-button"), "material", basehead(HeadTextures.SCOREBOARD_PLACEHOLDER_OFF));
@@ -214,29 +214,29 @@ public class ScoreboardConfig {
     public static final int MAX_PRESETS = 5;
 
     private void setGuiDefaults() {
-        guiTitle = "&8⚙ &lСкорборд";
+        guiTitle = "&6Скорборд";
         fillerMaterial = "GRAY_STAINED_GLASS_PANE";
         fillerName = " ";
         profileMaterial = basehead(HeadTextures.SCOREBOARD_PROFILE);
         profileName = "&bПрофиль";
-        profileLore = List.of("", "&aЛКМ &7— открыть профиль");
+        profileLore = List.of("&8&m─────────────────────", "&aЛКМ &8— &7открыть профиль");
         profileCommand = "";
         backMaterial = basehead(HeadTextures.SCOREBOARD_BACK);
-        backName = "&7« Назад";
-        backLore = List.of("", "&aЛКМ &7— вернуться в настройки");
+        backName = "&cНазад";
+        backLore = List.of("&8&m─────────────────────", "&7Вернуться в настройки");
         backCommand = "";
         closeMaterial = basehead(HeadTextures.SCOREBOARD_CLOSE);
         closeName = "&cЗакрыть";
-        closeLore = List.of("", "&aЛКМ &7— закрыть меню");
+        closeLore = List.of("&8&m─────────────────────", "&7Закрыть текущее окно");
         placeholderOnMaterial = basehead(HeadTextures.SCOREBOARD_PLACEHOLDER_ON);
         placeholderOffMaterial = basehead(HeadTextures.SCOREBOARD_PLACEHOLDER_OFF);
         placeholderBlockedMaterial = basehead(HeadTextures.SCOREBOARD_PLACEHOLDER_BLOCKED);
         toggleOnMaterial = basehead(HeadTextures.SCOREBOARD_TOGGLE_ON);
         toggleOnName = "&aСкорборд включён";
-        toggleOnLore = List.of("", "&7Скорборд отображается на экране.", "&cЛКМ &7— выключить");
+        toggleOnLore = List.of("&7Скорборд отображается на экране.", "&8&m─────────────────────", "&cЛКМ &8— &7выключить");
         toggleOffMaterial = basehead(HeadTextures.SCOREBOARD_TOGGLE_OFF);
         toggleOffName = "&7Скорборд выключен";
-        toggleOffLore = List.of("", "&7Скорборд скрыт с экрана.", "&aЛКМ &7— включить");
+        toggleOffLore = List.of("&7Скорборд скрыт с экрана.", "&8&m─────────────────────", "&aЛКМ &8— &7включить");
         categoryButtonMaterial = basehead(HeadTextures.SCOREBOARD_PROFILE);
         presetButtonMaterial = basehead(HeadTextures.SCOREBOARD_PLACEHOLDER_OFF);
         viewButtonMaterial = basehead(HeadTextures.SCOREBOARD_TOGGLE_ON);
@@ -245,7 +245,7 @@ public class ScoreboardConfig {
         messages.load(null);
         toggleEmptyMaterial = basehead(HeadTextures.SCOREBOARD_TOGGLE_EMPTY);
         toggleEmptyName = "&7Скорборд";
-        toggleEmptyLore = List.of("", "&7Нет ни одного включённого плейсхолдера.", "&7Выберите плейсхолдеры ниже &8(СКМ)");
+        toggleEmptyLore = List.of("&7Нет ни одного включённого плейсхолдера.", "&8&m─────────────────────", "&7Выберите плейсхолдеры ниже");
     }
 
     /** {@code basehead-<base64>} — формат, который {@code GuiItemUtil}/{@code ScoreboardGUI} распознают как голову с кастомной текстурой. */
