@@ -3,7 +3,7 @@ package me.lovelace.loveTweaks.commands;
 import me.lovelace.loveTweaks.LoveTweaks;
 import me.lovelace.loveTweaks.enchantments.CustomEnchantType;
 import me.lovelace.loveTweaks.herald.HeraldGUI;
-import me.lovelace.loveTweaks.integration.CitizensIntegration;
+import me.lovelace.loveTweaks.integration.NpcIntegration;
 import me.lovelace.loveTweaks.items.CoordinateTeleportScroll;
 import me.lovelace.loveTweaks.items.TeleportScroll;
 import org.bukkit.NamespacedKey;
@@ -233,7 +233,7 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
         switch (args[1].toLowerCase(Locale.ROOT)) {
             case "bind" -> handleHeraldBind(sender);
             case "unbind" -> {
-                plugin.getLoveTweaksConfig().setHeraldNpc(-1, "");
+                plugin.getLoveTweaksConfig().setHeraldNpc("", "");
                 sender.sendMessage(msg("herald-npc-unbound"));
             }
             case "clear" -> {
@@ -270,18 +270,19 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(msg("players-only"));
             return;
         }
-        CitizensIntegration citizens = plugin.getCitizensIntegration();
-        if (!citizens.isAvailable()) {
-            sender.sendMessage(msg("citizens-missing"));
+        NpcIntegration npcs = plugin.getNpcIntegration();
+        if (npcs.provider().isEmpty()) {
+            sender.sendMessage(msg("npc-provider-missing", "<provider>", npcs.providerId()));
             return;
         }
-        CitizensIntegration.NpcRef npc = citizens.bindTarget(player, 6.0);
-        if (npc == null) {
+        // The provider decides what "targeted" means (selected NPC, then look direction).
+        java.util.Optional<NpcIntegration.NpcRef> npc = npcs.targeted(player);
+        if (npc.isEmpty()) {
             sender.sendMessage(msg("npc-not-selected"));
             return;
         }
-        plugin.getLoveTweaksConfig().setHeraldNpc(npc.id(), npc.name());
-        sender.sendMessage(msg("herald-npc-bound", "<npc>", npc.name()));
+        plugin.getLoveTweaksConfig().setHeraldNpc(npc.get().key(), npc.get().name());
+        sender.sendMessage(msg("herald-npc-bound", "<npc>", npc.get().name()));
     }
 
     private void sendHelp(@NotNull CommandSender sender) {

@@ -9,7 +9,6 @@ import me.lovelace.loveTweaks.herald.HeraldManager;
 import me.lovelace.loveTweaks.herald.HeraldPurchaseGUI;
 import me.lovelace.loveTweaks.herald.HeraldPurchaseHolder;
 import me.lovelace.loveTweaks.herald.HeraldSlot;
-import me.lovelace.loveTweaks.integration.CitizensIntegration;
 import me.lovelace.loveTweaks.utils.GuiItemUtil;
 import me.lovelace.loveTweaks.utils.Notify;
 import net.kyori.adventure.text.Component;
@@ -19,10 +18,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
-import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
@@ -38,53 +35,15 @@ public class HeraldListener implements Listener {
 
     private final LoveTweaks plugin;
     private final HeraldManager manager;
-    private final CitizensIntegration citizens;
     // ConcurrentHashMap обязателен: onPlayerChat читает этот map из асинхронного потока чата
     // (AsyncChatEvent), пока главный поток параллельно пишет в него (put при открытии чат-ввода,
     // remove при обработке ответа/выходе игрока) — обычный HashMap в таких условиях даёт
     // неопределённое поведение, ровно как описано в TeleportScrollManager.sessions.
     private final Map<UUID, ChatSession> pendingChatInput = new ConcurrentHashMap<>();
 
-    public HeraldListener(LoveTweaks plugin, HeraldManager manager, CitizensIntegration citizens) {
+    public HeraldListener(LoveTweaks plugin, HeraldManager manager) {
         this.plugin = plugin;
         this.manager = manager;
-        this.citizens = citizens;
-    }
-
-    @EventHandler
-    public void onNpcInteract(PlayerInteractEntityEvent event) {
-        if (event.getHand() != org.bukkit.inventory.EquipmentSlot.HAND) {
-            return;
-        }
-        if (!plugin.getLoveTweaksConfig().isHeraldEnabled()) {
-            return;
-        }
-        int boundNpcId = plugin.getLoveTweaksConfig().getHeraldNpcId();
-        if (boundNpcId < 0 || !citizens.isAvailable()) {
-            return;
-        }
-        Integer npcId = citizens.npcId(event.getRightClicked());
-        if (npcId == null || npcId != boundNpcId) {
-            return;
-        }
-        event.setCancelled(true);
-        HeraldGUI.open(event.getPlayer(), manager, plugin);
-    }
-
-    /** Гвардируем NPC от урона, чтобы его нельзя было случайно атаковать вместо открытия меню. */
-    @EventHandler(ignoreCancelled = true)
-    public void onNpcDamage(EntityDamageByEntityEvent event) {
-        if (!plugin.getLoveTweaksConfig().isHeraldEnabled()) {
-            return;
-        }
-        int boundNpcId = plugin.getLoveTweaksConfig().getHeraldNpcId();
-        if (boundNpcId < 0 || !citizens.isAvailable()) {
-            return;
-        }
-        Integer npcId = citizens.npcId(event.getEntity());
-        if (npcId != null && npcId == boundNpcId) {
-            event.setCancelled(true);
-        }
     }
 
     @EventHandler

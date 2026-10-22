@@ -107,8 +107,8 @@ coord-teleport-scroll:
 herald:
   enabled: true
 
-  # ID NPC Citizens, привязывается командой /lovetweaks herald bind
-  npc-id: -1
+  # Ключ NPC (id Citizens или ключ LoveEssential), привязывается командой /lovetweaks herald bind
+  npc-key: ''
   npc-name: ''
 
   # Стоимость объявления (в монетах LoveCore)
@@ -234,7 +234,8 @@ scoreboard:
 
 ### Мягкие зависимости
 
-- **Citizens** — NPC для Глашатая и Почтмейстера
+- **Citizens** или **LoveEssential** — NPC для Глашатая и Почтмейстера; выбор: `integrations.npc-provider: citizens|loveessential` (по умолчанию `citizens`), доступ через контракт `NpcProvider` в LoveCore
+- **ReviveMe** или **LoveEssential** — механика «ранен/оживление»; выбор: `revive.provider: reviveme|loveessential` (по умолчанию `reviveme`; при `loveessential` фиксы ReviveMe не регистрируются)
 - **LoveCore** — единая экономика, служба территорий (для риска посылок)
 - **PlaceholderAPI** — интеграция плейсхолдеров для скорборда
 - **ItemsAdder** — кастомные предметы

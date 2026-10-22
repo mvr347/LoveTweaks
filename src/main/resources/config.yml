@@ -30,8 +30,8 @@ messages:
   purification-given-sender: '&aЗелье очищения (<amount> шт.) выдано игроку &e<player>&a.'
   purification-given-target: '&bВы получили &eЗелье очищения&b!'
   coord-scroll-not-found: '&cСвиток с id &e<id>&c не найден в coord-teleport-scroll.scrolls.'
-  citizens-missing: '&cCitizens не установлен или не включён.'
-  npc-not-selected: '&cВыберите NPC (&e/npc select&c) или посмотрите на него и повторите команду.'
+  npc-provider-missing: '&cNPC-провайдер &e<provider>&c недоступен (integrations.npc-provider). Проверьте, что нужный плагин установлен и включён.'
+  npc-not-selected: '&cВыберите NPC (для Citizens &e/npc select&c) или посмотрите на него и повторите команду.'
   herald-npc-bound: '&aNPC Глашатая привязан: &e<npc>'
   herald-npc-unbound: '&aNPC Глашатая отвязан.'
   herald-cleared: '&aГолос Королевства сброшен.'
@@ -143,8 +143,19 @@ vanilla:
     - 'advancement'
     - 'advancements'
 
+# ─── Интеграции ───────────────────────────────────────────────────────────────
+# 2026-10-22: чьё API NPC использовать (через контракт NpcProvider в LoveCore). Раньше плагин
+# напрямую ходил в Citizens рефлексией; теперь выбор вынесен в конфиг, чтобы NPC можно было
+# перевести на LoveEssential без правки кода.
+#   citizens      — NPC Citizens (по умолчанию: на сервере сейчас стоят именно они, поведение не меняется).
+#   loveessential — собственные NPC LoveEssential.
+# После смены значения привяжите NPC заново: /lovetweaksadmin herald bind (ключ Citizens — число,
+# ключ LoveEssential — ext-xxxxxxxx, чужой ключ не сработает).
+integrations:
+  npc-provider: citizens
+
 # ─── Королевский Глашатай ─────────────────────────────────────────────────────
-# NPC (Citizens), у которого любой игрок может купить слот объявления. До
+# NPC (Citizens или LoveEssential, см. integrations.npc-provider), у которого любой игрок может купить слот объявления. До
 # "slots" объявлений активны одновременно; раз в минуту Глашатай зачитывает
 # в общий чат одно из них по очереди (round-robin), так что при трёх занятых
 # слотах каждое конкретное сообщение повторяется примерно раз в 3 минуты.
@@ -154,8 +165,11 @@ vanilla:
 # объявление не публикуется, а деньги не возвращаются.
 herald:
   enabled: true
-  # ID NPC Citizens, привязывается командой /lovetweaksadmin herald bind (нужно смотреть на NPC)
-  npc-id: -1
+  # Ключ привязанного NPC, ставится командой /lovetweaksadmin herald bind (выделенный NPC или тот,
+  # на которого смотрите). 2026-10-22: раньше было числовое npc-id (id Citizens); теперь строка,
+  # потому что у LoveEssential ключи нечисловые. Старое npc-id читается как есть и при загрузке
+  # переносится сюда (число — валидный ключ провайдера citizens). Пусто — NPC не привязан.
+  npc-key: ''
   npc-name: 'Глашатай Роберт'
   # Сколько объявлений может быть активно одновременно.
   slots: 3
@@ -1157,6 +1171,16 @@ auto-respawn:
   # пропадали. 5 тиков (0.25 сек) — небольшой запас, чтобы чужая задача c 1-тиковой
   # задержкой гарантированно отработала первой, respawn при этом всё ещё ощущается мгновенным.
   delay-ticks: 5
+
+# ─── Провайдер механики «ранен / оживление» ───────────────────────────────────
+# 2026-10-22: какой плагин ведёт механику Downed/Revive. Фиксы ниже (revive-inventory-fix: дроп
+# инвентаря при смерти в нокауте и защита от бессмертия после выхода) нужны только из-за багов
+# ReviveMe; собственный модуль revive в LoveEssential этих багов не имеет, поэтому при loveessential
+# слушатели и защиты фикса вообще не регистрируются (в логе одна INFO-строка об этом).
+#   reviveme      — ReviveMe + фиксы LoveTweaks (по умолчанию: сейчас сервер на ReviveMe, ничего не меняется).
+#   loveessential — revive-модуль LoveEssential, фиксы отключены.
+revive:
+  provider: reviveme
 
 # ─── Фикс пропажи инвентаря ReviveMe (Downed → окончательная смерть) ──────────
 # 2026-09-27: при downed_keep_inventory: false у ReviveMe предметы после окончательной смерти

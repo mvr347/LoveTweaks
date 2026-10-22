@@ -1,9 +1,11 @@
 package me.lovelace.loveTweaks;
 
 import me.lovelace.loveTweaks.herald.HeraldGuiConfig;
+import me.lovelace.loveTweaks.integration.NpcBinding;
 import me.lovelace.loveTweaks.items.FirstJoinItem;
 import me.lovelace.loveTweaks.managers.CoordinateTeleportScrollConfig;
 import me.lovelace.loveTweaks.managers.TeleportScrollConfig;
+import me.lovelace.loveTweaks.revivemefix.ReviveProvider;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardConfig;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
@@ -69,6 +71,9 @@ public class LoveTweaksConfig {
     private String itemDropLoseMessage;
     private String itemDropStackPartialLoseMessage;
 
+    // Провайдер механики «ранен / оживление» (revive.provider)
+    private ReviveProvider reviveProvider = ReviveProvider.REVIVEME;
+
     // Автовозрождение
     private boolean autoRespawnEnabled;
     private int autoRespawnDelayTicks;
@@ -81,7 +86,7 @@ public class LoveTweaksConfig {
 
     // Королевский Глашатай
     private boolean heraldEnabled;
-    private int heraldNpcId;
+    private String heraldNpcKey = "";
     private String heraldNpcName;
     private int heraldSlots;
     private int heraldMinDurationMinutes;
@@ -126,8 +131,8 @@ public class LoveTweaksConfig {
             Map.entry("purification-given-sender", "&aЗелье очищения (<amount> шт.) выдано игроку &e<player>&a."),
             Map.entry("purification-given-target", "&bВы получили &eЗелье очищения&b!"),
             Map.entry("coord-scroll-not-found", "&cСвиток с id &e<id>&c не найден в coord-teleport-scroll.scrolls."),
-            Map.entry("citizens-missing", "&cCitizens не установлен или не включён."),
-            Map.entry("npc-not-selected", "&cВыберите NPC (&e/npc select&c) или посмотрите на него и повторите команду."),
+            Map.entry("npc-provider-missing", "&cNPC-провайдер &e<provider>&c недоступен (integrations.npc-provider). Проверьте, что нужный плагин установлен и включён."),
+            Map.entry("npc-not-selected", "&cВыберите NPC (для Citizens &e/npc select&c) или посмотрите на него и повторите команду."),
             Map.entry("herald-npc-bound", "&aNPC Глашатая привязан: &e<npc>"),
             Map.entry("herald-npc-unbound", "&aNPC Глашатая отвязан."),
             Map.entry("herald-cleared", "&aГолос Королевства сброшен."),
@@ -181,6 +186,13 @@ public class LoveTweaksConfig {
         itemDropTerriblePolitenessMultiplier = config.getDouble("item-drop-loss.terrible-politeness-multiplier", 1.6);
         itemDropGoodStandingMultiplier = config.getDouble("item-drop-loss.good-standing-multiplier", 0.5);
 
+        String reviveRaw = config.getString(ReviveProvider.CONFIG_PATH);
+        if (!ReviveProvider.isKnown(reviveRaw)) {
+            plugin.getLogger().warning("Неизвестное значение " + ReviveProvider.CONFIG_PATH + ": '" + reviveRaw
+                    + "' (допустимо reviveme|loveessential). Использую reviveme.");
+        }
+        reviveProvider = ReviveProvider.parse(reviveRaw);
+
         autoRespawnEnabled = config.getBoolean("auto-respawn.enabled", true);
         autoRespawnDelayTicks = Math.max(1, config.getInt("auto-respawn.delay-ticks", 5));
 
@@ -188,7 +200,11 @@ public class LoveTweaksConfig {
         coordTeleportScrollConfig.load(config.getConfigurationSection("coord-teleport-scroll"), plugin.getLogger());
 
         heraldEnabled = config.getBoolean("herald.enabled", true);
-        heraldNpcId = config.getInt("herald.npc-id", -1);
+        // Legacy herald.npc-id (numeric Citizens id) becomes the String herald.npc-key once, on load.
+        if (NpcBinding.migrateLegacy(config.getConfigurationSection("herald"))) {
+            plugin.saveConfig();
+        }
+        heraldNpcKey = NpcBinding.readKey(config.getConfigurationSection("herald"));
         heraldNpcName = config.getString("herald.npc-name", "");
         heraldSlots = Math.max(1, config.getInt("herald.slots", 3));
         heraldMinDurationMinutes = Math.max(1, config.getInt("herald.min-duration-minutes", 10));
@@ -381,13 +397,14 @@ public class LoveTweaksConfig {
     public String getItemDropDamageMessage() { return itemDropDamageMessage; }
     public String getItemDropLoseMessage() { return itemDropLoseMessage; }
     public String getItemDropStackPartialLoseMessage() { return itemDropStackPartialLoseMessage; }
+    public ReviveProvider getReviveProvider() { return reviveProvider; }
     public boolean isAutoRespawnEnabled() { return autoRespawnEnabled; }
     public int getAutoRespawnDelayTicks() { return autoRespawnDelayTicks; }
     public TeleportScrollConfig getTeleportScrollConfig() { return teleportScrollConfig; }
     public CoordinateTeleportScrollConfig getCoordTeleportScrollConfig() { return coordTeleportScrollConfig; }
 
     public boolean isHeraldEnabled() { return heraldEnabled; }
-    public int getHeraldNpcId() { return heraldNpcId; }
+    public String getHeraldNpcKey() { return heraldNpcKey; }
     public String getHeraldNpcName() { return heraldNpcName; }
     public int getHeraldSlots() { return heraldSlots; }
     public int getHeraldMinDurationMinutes() { return heraldMinDurationMinutes; }
@@ -398,11 +415,14 @@ public class LoveTweaksConfig {
     public long getHeraldMaxCost() { return heraldMaxCost; }
     public HeraldGuiConfig getHeraldGuiConfig() { return heraldGuiConfig; }
 
-    public void setHeraldNpc(int npcId, String npcName) {
-        this.heraldNpcId = npcId;
+    public void setHeraldNpc(String npcKey, String npcName) {
+        this.heraldNpcKey = npcKey == null ? "" : npcKey;
         this.heraldNpcName = npcName == null ? "" : npcName;
-        config.set("herald.npc-id", this.heraldNpcId);
-        config.set("herald.npc-name", this.heraldNpcName);
+        ConfigurationSection herald = config.getConfigurationSection("herald");
+        if (herald == null) {
+            herald = config.createSection("herald");
+        }
+        NpcBinding.write(herald, this.heraldNpcKey, this.heraldNpcName);
         plugin.saveConfig();
     }
 
