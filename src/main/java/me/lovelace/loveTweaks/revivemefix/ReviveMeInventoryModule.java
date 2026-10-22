@@ -12,6 +12,7 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.util.UUID;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Lifecycle manager for the ReviveMe inventory drop fix module.
@@ -22,6 +23,7 @@ import java.util.logging.Level;
 public final class ReviveMeInventoryModule {
 
     private final JavaPlugin plugin;
+    private final Logger logger;
     private final ReviveMeInventoryFixConfig config = new ReviveMeInventoryFixConfig();
 
     private DownedInventoryManager inventoryManager;
@@ -32,7 +34,18 @@ public final class ReviveMeInventoryModule {
     private BukkitTask cleanupTask;
 
     public ReviveMeInventoryModule(JavaPlugin plugin) {
+        this(plugin, plugin.getLogger());
+    }
+
+    /** Package-private so the provider switch can be unit-tested without a running server. */
+    ReviveMeInventoryModule(JavaPlugin plugin, Logger logger) {
         this.plugin = plugin;
+        this.logger = logger;
+    }
+
+    /** True while the ReviveMe fix listeners are registered. */
+    public boolean isActive() {
+        return inventoryListener != null;
     }
 
     public JavaPlugin getPlugin() {
@@ -47,7 +60,14 @@ public final class ReviveMeInventoryModule {
         return config;
     }
 
-    public void enable(ConfigurationSection configSection) {
+    public void enable(ConfigurationSection configSection, ReviveProvider provider) {
+        if (!provider.needsReviveMeFixes()) {
+            // LoveEssential's revive module has neither the lost-items nor the immortality bug, so none
+            // of the fix listeners or guards is registered for it.
+            logger.info("[ReviveMeInventoryFix] revive.provider = " + provider.id()
+                    + ": ReviveMe fixes (death-drop snapshot, quit guard) are not registered.");
+            return;
+        }
         config.load(configSection);
         if (!config.isEnabled()) {
             return;
@@ -102,9 +122,9 @@ public final class ReviveMeInventoryModule {
                 + ", Priority: " + config.getDeathEventPriority() + ")");
     }
 
-    public void reload(ConfigurationSection configSection) {
+    public void reload(ConfigurationSection configSection, ReviveProvider provider) {
         disable();
-        enable(configSection);
+        enable(configSection, provider);
     }
 
     public void disable() {

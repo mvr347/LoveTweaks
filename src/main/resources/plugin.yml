@@ -9,6 +9,7 @@ softdepend:
   - LoveCore
   - LoveChatFilter
   - ReviveMe
+  - LoveEssential
 
 commands:
   lovetweaksadmin:

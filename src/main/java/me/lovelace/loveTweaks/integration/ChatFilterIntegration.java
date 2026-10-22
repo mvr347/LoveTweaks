@@ -4,7 +4,7 @@ import org.bukkit.Bukkit;
 
 /**
  * Pure-reflection bridge into LoveChatFilter's optional {@code LoveChatFilterAPI} service (no
- * compile-time dependency), mirroring {@link CitizensIntegration}: if LoveChatFilter isn't
+ * compile-time dependency), in the same style as {@link NpcIntegration}: if LoveChatFilter isn't
  * installed, isn't enabled, or hasn't registered the service yet, {@link #isProfane} just
  * returns {@code false} rather than failing — the Herald keeps working, minus the check.
  */

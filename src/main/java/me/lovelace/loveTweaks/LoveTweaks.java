@@ -4,7 +4,7 @@ import me.lovelace.loveTweaks.enchantments.MagnetTask;
 import me.lovelace.loveTweaks.commands.LoveTweaksAdminCommand;
 import me.lovelace.loveTweaks.herald.HeraldManager;
 import me.lovelace.loveTweaks.integration.ChatFilterIntegration;
-import me.lovelace.loveTweaks.integration.CitizensIntegration;
+import me.lovelace.loveTweaks.integration.NpcIntegration;
 import me.lovelace.loveTweaks.placeholder.PlaytimeExpansion;
 import me.lovelace.loveTweaks.items.CoordinateTeleportScroll;
 import me.lovelace.loveTweaks.items.TeleportScroll;
@@ -24,6 +24,7 @@ import me.lovelace.loveTweaks.listeners.VanillaProtectionListener;
 import me.lovelace.loveTweaks.managers.CoordinateTeleportScrollManager;
 import me.lovelace.loveTweaks.managers.TeleportScrollManager;
 import me.lovelace.loveTweaks.revivemefix.ReviveMeInventoryModule;
+import me.lovelace.loveTweaks.revivemefix.ReviveProvider;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardConfig;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardDataManager;
 import me.lovelace.loveTweaks.scoreboard.ScoreboardDisplayManager;
@@ -52,7 +53,7 @@ public final class LoveTweaks extends JavaPlugin {
     private ScoreboardDisplayManager scoreboardDisplayManager;
     private BukkitTask scoreboardTask;
 
-    private CitizensIntegration citizensIntegration;
+    private NpcIntegration npcIntegration;
     private ChatFilterIntegration chatFilterIntegration;
     private HeraldManager heraldManager;
     private BukkitTask heraldBroadcastTask;
@@ -101,7 +102,7 @@ public final class LoveTweaks extends JavaPlugin {
         }
 
         // Королевский Глашатай
-        citizensIntegration = new CitizensIntegration();
+        npcIntegration = new NpcIntegration(this);
         chatFilterIntegration = new ChatFilterIntegration();
         heraldManager = new HeraldManager(this, chatFilterIntegration);
         getLogger().info("Herald manager initialized.");
@@ -120,8 +121,8 @@ public final class LoveTweaks extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new TeleportScrollListener(this, teleportScrollManager), this);
         getServer().getPluginManager().registerEvents(new CoordinateTeleportScrollListener(this, coordTeleportScrollManager), this);
         getServer().getPluginManager().registerEvents(new FirstJoinItemsListener(this), this);
-        getServer().getPluginManager().registerEvents(
-                new HeraldListener(this, heraldManager, citizensIntegration), this);
+        getServer().getPluginManager().registerEvents(new HeraldListener(this, heraldManager), this);
+        registerHeraldNpcListener();
         vanillaProtectionListener = new VanillaProtectionListener(this);
         getServer().getPluginManager().registerEvents(vanillaProtectionListener, this);
 
@@ -139,7 +140,7 @@ public final class LoveTweaks extends JavaPlugin {
         // инвентаря в момент Downed и дропает его сам при финальной смерти, без гонки по тикам
         // с собственной пост-смертной обработкой ReviveMe (см. revive-inventory-fix в config.yml).
         reviveMeInventoryModule = new ReviveMeInventoryModule(this);
-        reviveMeInventoryModule.enable(getConfig().getConfigurationSection("revive-inventory-fix"));
+        reviveMeInventoryModule.enable(getConfig().getConfigurationSection("revive-inventory-fix"), loveTweaksConfig.getReviveProvider());
 
         // Единая административная команда: /lovetweaksadmin (алиас /lovetweaks — см. plugin.yml)
         LoveTweaksAdminCommand adminCommand = new LoveTweaksAdminCommand(this);
@@ -154,6 +155,27 @@ public final class LoveTweaks extends JavaPlugin {
 
         // Herald broadcast task
         startHeraldBroadcastTask();
+    }
+
+    /**
+     * Registers the Herald NPC click/damage handlers. They use LoveCore's NPC events, so a missing or
+     * incompatible LoveCore API disables only the NPC binding, never the plugin.
+     */
+    private void registerHeraldNpcListener() {
+        try {
+            getServer().getPluginManager().registerEvents(
+                    new me.lovelace.loveTweaks.listeners.HeraldNpcListener(this, heraldManager, npcIntegration), this);
+        } catch (LinkageError error) {
+            getLogger().warning("LoveCore NPC API недоступен — клик по NPC Глашатая отключён: " + error);
+            return;
+        }
+        // Providers register late, so the check runs once the server has finished starting.
+        getServer().getScheduler().runTask(this, () -> {
+            if (loveTweaksConfig.isHeraldEnabled() && !loveTweaksConfig.getHeraldNpcKey().isEmpty()) {
+                npcIntegration.checkBinding(loveTweaksConfig.getHeraldNpcKey());
+                npcIntegration.provider();
+            }
+        });
     }
 
     private void warnAboutLegacyTeleportScrollFolder() {
@@ -248,6 +270,7 @@ public final class LoveTweaks extends JavaPlugin {
      */
     public void reloadAll() {
         loveTweaksConfig.loadConfig();
+        npcIntegration.resetWarnings();
         me.lovelace.loveTweaks.textures.HeadsConfig.reload();
         me.lovelace.loveTweaks.utils.ItemsAdderHook.resetCache();
         if (teleportScrollManager != null) teleportScrollManager.cancelAll();
@@ -259,7 +282,7 @@ public final class LoveTweaks extends JavaPlugin {
         scoreboardDisplayManager.refreshPAPI();
         heraldManager.resize(loveTweaksConfig.getHeraldSlots());
         if (vanillaProtectionListener != null) vanillaProtectionListener.applyGameRules();
-        if (reviveMeInventoryModule != null) reviveMeInventoryModule.reload(getConfig().getConfigurationSection("revive-inventory-fix"));
+        if (reviveMeInventoryModule != null) reviveMeInventoryModule.reload(getConfig().getConfigurationSection("revive-inventory-fix"), loveTweaksConfig.getReviveProvider());
         startHungerTask();
         startScoreboardTask();
         startHeraldBroadcastTask();
@@ -273,7 +296,7 @@ public final class LoveTweaks extends JavaPlugin {
     public NamespacedKey getEnderChestKey() { return enderChestKey; }
     public TeleportScrollManager getTeleportScrollManager() { return teleportScrollManager; }
     public CoordinateTeleportScrollManager getCoordTeleportScrollManager() { return coordTeleportScrollManager; }
-    public CitizensIntegration getCitizensIntegration() { return citizensIntegration; }
+    public NpcIntegration getNpcIntegration() { return npcIntegration; }
     public HeraldManager getHeraldManager() { return heraldManager; }
     public EnderChestListener getEnderChestListener() { return enderChestListener; }
     public MilkListener getMilkListener() { return milkListener; }
