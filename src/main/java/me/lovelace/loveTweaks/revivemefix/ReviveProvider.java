@@ -31,12 +31,18 @@ public enum ReviveProvider {
         return needsReviveMeFixes;
     }
 
-    /** Whether {@code raw} is blank (meaning "default") or names a known provider. */
+    /** Config value that follows {@code integrations.provider} of LoveCore. */
+    public static final String GLOBAL = "global";
+
+    /** Whether {@code raw} is blank or {@code global} (the global choice of LoveCore) or names a known provider. */
     public static boolean isKnown(String raw) {
         if (raw == null || raw.isBlank()) {
             return true;
         }
         String value = raw.trim().toLowerCase(Locale.ROOT);
+        if (value.equals(GLOBAL)) {
+            return true;
+        }
         for (ReviveProvider provider : values()) {
             if (provider.id.equals(value)) {
                 return true;
@@ -45,14 +51,24 @@ public enum ReviveProvider {
         return false;
     }
 
-    /** Parses the config value; blank or unknown values fall back to the default, {@link #REVIVEME}. */
+    /**
+     * Parses the config value. {@code global}, blank or missing follows {@code integrations.provider} of LoveCore
+     * (without LoveCore: {@link #REVIVEME}); unknown values fall back to the default, {@link #REVIVEME}.
+     * Read when the config is loaded, so a change of the global choice needs a reload of LoveTweaks.
+     */
     public static ReviveProvider parse(String raw) {
-        if (raw != null) {
-            String value = raw.trim().toLowerCase(Locale.ROOT);
-            for (ReviveProvider provider : values()) {
-                if (provider.id.equals(value)) {
-                    return provider;
-                }
+        if (raw == null || raw.isBlank() || raw.trim().equalsIgnoreCase(GLOBAL)) {
+            try {
+                raw = dev.lovelace.lovecore.api.LoveCore.providerId(
+                        dev.lovelace.lovecore.api.provider.ProviderKind.REVIVE, GLOBAL);
+            } catch (LinkageError coreMissingOrOld) {
+                return REVIVEME;
+            }
+        }
+        String value = raw.trim().toLowerCase(Locale.ROOT);
+        for (ReviveProvider provider : values()) {
+            if (provider.id.equals(value)) {
+                return provider;
             }
         }
         return REVIVEME;

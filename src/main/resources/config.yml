@@ -147,12 +147,17 @@ vanilla:
 # 2026-10-22: чьё API NPC использовать (через контракт NpcProvider в LoveCore). Раньше плагин
 # напрямую ходил в Citizens рефлексией; теперь выбор вынесен в конфиг, чтобы NPC можно было
 # перевести на LoveEssential без правки кода.
-#   citizens      — NPC Citizens (по умолчанию: на сервере сейчас стоят именно они, поведение не меняется).
+#   citizens      — NPC Citizens (на сервере сейчас стоят именно они, поведение не меняется).
 #   loveessential — собственные NPC LoveEssential.
+#   global        — как решено в integrations.provider в config.yml LoveCore (external - Citizens,
+#                   loveessential - LoveEssential): один выбор сразу для всех плагинов. 2026-10-23: теперь по
+#                   умолчанию; пока в ядре стоит external, поведение прежнее. Явное citizens или loveessential
+#                   перекрывает общий выбор; уже сохранённое на сервере `citizens` остаётся явным, чтобы
+#                   следовать ядру, замените его на `global`.
 # После смены значения привяжите NPC заново: /lovetweaksadmin herald bind (ключ Citizens — число,
 # ключ LoveEssential — ext-xxxxxxxx, чужой ключ не сработает).
 integrations:
-  npc-provider: citizens
+  npc-provider: global
 
 # ─── Королевский Глашатай ─────────────────────────────────────────────────────
 # NPC (Citizens или LoveEssential, см. integrations.npc-provider), у которого любой игрок может купить слот объявления. До
@@ -1177,10 +1182,15 @@ auto-respawn:
 # инвентаря при смерти в нокауте и защита от бессмертия после выхода) нужны только из-за багов
 # ReviveMe; собственный модуль revive в LoveEssential этих багов не имеет, поэтому при loveessential
 # слушатели и защиты фикса вообще не регистрируются (в логе одна INFO-строка об этом).
-#   reviveme      — ReviveMe + фиксы LoveTweaks (по умолчанию: сейчас сервер на ReviveMe, ничего не меняется).
-#   loveessential — revive-модуль LoveEssential, фиксы отключены.
+#   reviveme      — ReviveMe + фиксы LoveTweaks (сейчас сервер на ReviveMe, ничего не меняется).
+#   loveessential — revive-модуль LoveEssential, фиксы отключены. Модуль revive в LoveEssential по умолчанию
+#                   выключен: включите его там, иначе механики «ранен» не будет вовсе.
+#   global        — как решено в integrations.provider в config.yml LoveCore (external - ReviveMe,
+#                   loveessential - LoveEssential). 2026-10-23: теперь по умолчанию; пока в ядре стоит
+#                   external, поведение прежнее. Читается при загрузке конфига: после смены нужен
+#                   /lovetweaksadmin reload. Уже сохранённое `reviveme` остаётся явным.
 revive:
-  provider: reviveme
+  provider: global
 
 # ─── Фикс пропажи инвентаря ReviveMe (Downed → окончательная смерть) ──────────
 # 2026-09-27: при downed_keep_inventory: false у ReviveMe предметы после окончательной смерти

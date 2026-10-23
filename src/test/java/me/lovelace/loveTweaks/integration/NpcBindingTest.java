@@ -13,6 +13,8 @@ class NpcBindingTest {
     void providerDefault() {
         assertEquals("citizens", NpcBinding.normalizeProvider(null));
         assertEquals("citizens", NpcBinding.normalizeProvider("  "));
+        assertEquals("citizens", NpcBinding.normalizeProvider("global"));
+        assertEquals("citizens", NpcBinding.normalizeProvider(" GLOBAL "));
         assertEquals("loveessential", NpcBinding.normalizeProvider(" LoveEssential "));
         assertEquals("citizens", NpcBinding.providerFrom(new YamlConfiguration()));
 
@@ -135,7 +137,8 @@ class NpcBindingTest {
             YamlConfiguration shipped = YamlConfiguration.loadConfiguration(
                     new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8));
             assertEquals("citizens", NpcBinding.providerFrom(shipped));
-            assertEquals("reviveme", shipped.getString("revive.provider"));
+            assertEquals("global", shipped.getString("revive.provider"));
+            assertEquals("global", shipped.getString("integrations.npc-provider"));
             assertTrue(shipped.isSet("herald.npc-key"));
             assertFalse(shipped.isSet("herald.npc-id"));
             assertEquals("", NpcBinding.readKey(shipped.getConfigurationSection("herald")));

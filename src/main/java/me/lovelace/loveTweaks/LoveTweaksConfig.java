@@ -189,7 +189,7 @@ public class LoveTweaksConfig {
         String reviveRaw = config.getString(ReviveProvider.CONFIG_PATH);
         if (!ReviveProvider.isKnown(reviveRaw)) {
             plugin.getLogger().warning("Неизвестное значение " + ReviveProvider.CONFIG_PATH + ": '" + reviveRaw
-                    + "' (допустимо reviveme|loveessential). Использую reviveme.");
+                    + "' (допустимо global|reviveme|loveessential). Использую reviveme.");
         }
         reviveProvider = ReviveProvider.parse(reviveRaw);
 
