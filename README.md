@@ -234,8 +234,8 @@ scoreboard:
 
 ### Мягкие зависимости
 
-- **Citizens** или **LoveEssential** — NPC для Глашатая и Почтмейстера; выбор: `integrations.npc-provider: citizens|loveessential` (по умолчанию `citizens`), доступ через контракт `NpcProvider` в LoveCore
-- **ReviveMe** или **LoveEssential** — механика «ранен/оживление»; выбор: `revive.provider: reviveme|loveessential` (по умолчанию `reviveme`; при `loveessential` фиксы ReviveMe не регистрируются)
+- **Citizens** или **LoveEssential** — NPC для Глашатая и Почтмейстера; выбор: `integrations.npc-provider: global|citizens|loveessential` (по умолчанию `global`: как решено в `integrations.provider` LoveCore), доступ через контракт `NpcProvider` в LoveCore
+- **ReviveMe** или **LoveEssential** — механика «ранен/оживление»; выбор: `revive.provider: global|reviveme|loveessential` (по умолчанию `global`: как в `integrations.provider` LoveCore; при `loveessential` фиксы ReviveMe не регистрируются)
 - **LoveCore** — единая экономика, служба территорий (для риска посылок)
 - **PlaceholderAPI** — интеграция плейсхолдеров для скорборда
 - **ItemsAdder** — кастомные предметы

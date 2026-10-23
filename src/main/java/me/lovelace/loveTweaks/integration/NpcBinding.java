@@ -21,13 +21,24 @@ public final class NpcBinding {
     private NpcBinding() {
     }
 
-    /** Normalises the configured provider id: blank or missing means the default ({@code citizens}). */
+    /** Config value that follows {@code integrations.provider} of LoveCore. */
+    public static final String GLOBAL = "global";
+
+    /**
+     * Normalises the configured provider id. {@code global}, blank or missing follows {@code integrations.provider}
+     * of LoveCore (without LoveCore: {@code citizens}); an explicit id is trimmed and lower-cased.
+     */
     public static String normalizeProvider(String raw) {
-        if (raw == null) {
-            return DEFAULT_PROVIDER;
+        String value = raw == null ? "" : raw.trim().toLowerCase(java.util.Locale.ROOT);
+        if (value.isEmpty() || value.equals(GLOBAL)) {
+            try {
+                return dev.lovelace.lovecore.api.LoveCore.providerId(
+                        dev.lovelace.lovecore.api.provider.ProviderKind.NPC, GLOBAL);
+            } catch (LinkageError coreMissingOrOld) {
+                return DEFAULT_PROVIDER;
+            }
         }
-        String value = raw.trim().toLowerCase(java.util.Locale.ROOT);
-        return value.isEmpty() ? DEFAULT_PROVIDER : value;
+        return value;
     }
 
     /** Reads {@code integrations.npc-provider} from the root config. */

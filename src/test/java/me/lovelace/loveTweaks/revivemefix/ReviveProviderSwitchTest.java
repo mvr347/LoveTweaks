@@ -22,6 +22,9 @@ class ReviveProviderSwitchTest {
         assertEquals(ReviveProvider.REVIVEME, ReviveProvider.parse("typo"));
         assertEquals(ReviveProvider.REVIVEME, ReviveProvider.parse("reviveme"));
         assertEquals(ReviveProvider.LOVEESSENTIAL, ReviveProvider.parse(" LoveEssential "));
+        assertEquals(ReviveProvider.REVIVEME, ReviveProvider.parse("global"), "without a core 'global' means reviveme");
+        assertEquals(ReviveProvider.REVIVEME, ReviveProvider.parse(" GLOBAL "));
+        assertTrue(ReviveProvider.isKnown("global"));
         assertTrue(ReviveProvider.isKnown(null));
         assertTrue(ReviveProvider.isKnown("loveessential"));
         assertFalse(ReviveProvider.isKnown("typo"));
