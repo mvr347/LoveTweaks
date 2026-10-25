@@ -4,7 +4,6 @@ import me.lovelace.loveTweaks.herald.HeraldGUI;
 import me.lovelace.loveTweaks.herald.HeraldGuiConfig;
 import me.lovelace.loveTweaks.herald.HeraldPurchaseGUI;
 import me.lovelace.loveTweaks.managers.CoordinateTeleportScrollConfig;
-import me.lovelace.loveTweaks.scoreboard.ScoreboardGUI;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -76,16 +75,6 @@ public class ConfigAndGuiStandardTest {
     }
 
     @Test
-    @DisplayName("Scoreboard 54-slot GUI conforms to gui-gen-5 slot standards")
-    void testScoreboardGuiSlotStandards() {
-        assertEquals(54, ScoreboardGUI.GUI_SIZE);
-        assertEquals(0, ScoreboardGUI.SLOT_PROFILE);
-        assertEquals(51, ScoreboardGUI.SLOT_TOGGLE);
-        assertEquals(52, ScoreboardGUI.SLOT_BACK);
-        assertEquals(53, ScoreboardGUI.SLOT_CLOSE);
-    }
-
-    @Test
     @DisplayName("CurrencyFormatter accurately converts numeric cost to physical coins breakdown")
     void testCurrencyFormatter() {
         me.lovelace.loveTweaks.utils.CurrencyFormatter formatter = new me.lovelace.loveTweaks.utils.CurrencyFormatter();
@@ -142,16 +131,6 @@ public class ConfigAndGuiStandardTest {
         holder.setTextSource(me.lovelace.loveTweaks.herald.HeraldPurchaseHolder.TextSource.NONE);
         assertEquals(me.lovelace.loveTweaks.herald.HeraldPurchaseHolder.TextSource.NONE, holder.getTextSource());
         assertNull(holder.pendingMessage());
-    }
-
-    @Test
-    @DisplayName("ScoreboardConfig protects update interval from values less than 1")
-    void testScoreboardConfigIntervalProtection() {
-        me.lovelace.loveTweaks.scoreboard.ScoreboardConfig config = new me.lovelace.loveTweaks.scoreboard.ScoreboardConfig();
-        org.bukkit.configuration.file.YamlConfiguration yaml = new org.bukkit.configuration.file.YamlConfiguration();
-        yaml.set("scoreboard.update-interval", -5);
-        config.load(yaml);
-        assertEquals(1, config.getUpdateInterval());
     }
 
     @Test
@@ -229,27 +208,6 @@ public class ConfigAndGuiStandardTest {
 
         assertFalse(config.isEffectIgnored("BAD_OMEN"));
         assertFalse(config.isEffectIgnored("POISON"));
-    }
-
-    @Test
-    @DisplayName("ScoreboardDisplayManager accurately calculates pixel widths and centers text with padding")
-    void testScoreboardPixelWidthAndCentering() {
-        String bottom = "&c✌ &7V O I D C O R E &c✌";
-        int bottomWidth = me.lovelace.loveTweaks.scoreboard.ScoreboardDisplayManager.getPixelWidth(bottom);
-        assertTrue(bottomWidth > 85 && bottomWidth < 105, "Bottom width should be around 94-98px");
-
-        // When content is wider by 40px (e.g. 138px), it should add exactly (40/2)/4 = 5 spaces on each side
-        String centered = me.lovelace.loveTweaks.scoreboard.ScoreboardDisplayManager.center(bottom, bottomWidth + 40);
-        assertEquals("\u00A0".repeat(5) + bottom + "\u00A0".repeat(5), centered);
-
-        // When content is smaller than bottom width, safe minimum padding (3 spaces left, 5 spaces right) expands scoreboard
-        String padded = me.lovelace.loveTweaks.scoreboard.ScoreboardDisplayManager.center(bottom, bottomWidth - 20);
-        assertEquals("\u00A0\u00A0\u00A0" + bottom + "\u00A0\u00A0\u00A0\u00A0\u00A0", padded);
-
-        // Test with font_image tag and placeholder
-        String coinText = "%img_copper_coin% &6Баланс";
-        int coinWidth = me.lovelace.loveTweaks.scoreboard.ScoreboardDisplayManager.getPixelWidth(coinText);
-        assertTrue(coinWidth > 40, "Coin text pixel width should account for font image");
     }
 
     @Test

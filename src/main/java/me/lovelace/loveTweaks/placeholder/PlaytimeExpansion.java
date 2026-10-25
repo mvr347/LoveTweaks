@@ -11,7 +11,7 @@ import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Плейсхолдеры времени игры. Скорборд использует %playtime_formatted% и
+ * Плейсхолдеры времени игры для других плагинов; доступны %playtime_formatted% и
  * %playtime_session_formatted% (а не since_join: он отдаёт все часы целиком, и у новичков
  * строка «0 часов» висела первый час). Сторонние playertime/playerstats на сервере не
  * грузились из-за отсутствующих плагинов, поэтому расширение своё.
@@ -61,7 +61,7 @@ public final class PlaytimeExpansion extends PlaceholderExpansion {
         }
 
         return switch (params.toLowerCase()) {
-            // Историческое имя из конфига скорборда: часы, проведённые на сервере.
+            // Исторический совместимый идентификатор: часы, проведённые на сервере.
             case "since_join", "hours" -> String.valueOf(playedSeconds(player) / 3600);
             case "minutes" -> String.valueOf(playedSeconds(player) / 60);
             case "seconds" -> String.valueOf(playedSeconds(player));

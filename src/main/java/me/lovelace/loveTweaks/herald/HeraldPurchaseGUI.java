@@ -3,7 +3,6 @@ package me.lovelace.loveTweaks.herald;
 import dev.lovelace.lovecore.api.LoveCore;
 import dev.lovelace.lovecore.api.economy.LoveEconomy;
 import me.lovelace.loveTweaks.LoveTweaks;
-import me.lovelace.loveTweaks.scoreboard.ScoreboardConfig;
 import me.lovelace.loveTweaks.utils.GuiItemUtil;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -34,59 +33,57 @@ public final class HeraldPurchaseGUI {
     private HeraldPurchaseGUI() {}
 
     public static void open(Player player, LoveTweaks plugin, HeraldPurchaseHolder holder) {
-        ScoreboardConfig sbConfig = plugin.getScoreboardConfig();
         HeraldGuiConfig heraldGui = plugin.getLoveTweaksConfig().getHeraldGuiConfig();
 
         Component title = GuiItemUtil.colorize(heraldGui.purchaseTitle());
         Inventory inv = Bukkit.createInventory(holder, GUI_SIZE, title);
         holder.setInventory(inv);
 
-        ItemStack filler = GuiItemUtil.buildItem(sbConfig.getFillerMaterial(), sbConfig.getFillerName(), List.of());
+        ItemStack filler = GuiItemUtil.buildItem(heraldGui.fillerMaterial(), heraldGui.fillerName(), List.of());
 
         // Header: слоты 0-8 (слот 0 — инфо о покупке слота, слоты 1-8 — стекло)
-        inv.setItem(SLOT_INFO, buildPurchaseInfoItem(player, plugin, sbConfig, heraldGui, holder));
+        inv.setItem(SLOT_INFO, buildPurchaseInfoItem(player, plugin, heraldGui, holder));
         for (int slot = 1; slot <= 8; slot++) {
             inv.setItem(slot, filler);
         }
 
         // Рабочая зона: слоты 9-17 (боковые стенки и разделители — пусто/null, стекло запрещено)
-        inv.setItem(SLOT_BOOK, buildBookItem(player, plugin, sbConfig, heraldGui, holder));
-        inv.setItem(SLOT_WRITE_CHAT, buildWriteChatItem(player, plugin, sbConfig, heraldGui, holder));
-        inv.setItem(SLOT_DURATION, buildDurationItem(player, plugin, sbConfig, heraldGui, holder));
-        inv.setItem(SLOT_CONFIRM, buildConfirmItem(player, plugin, sbConfig, heraldGui, holder));
+        inv.setItem(SLOT_BOOK, buildBookItem(player, plugin, heraldGui, holder));
+        inv.setItem(SLOT_WRITE_CHAT, buildWriteChatItem(player, plugin, heraldGui, holder));
+        inv.setItem(SLOT_DURATION, buildDurationItem(player, plugin, heraldGui, holder));
+        inv.setItem(SLOT_CONFIRM, buildConfirmItem(player, plugin, heraldGui, holder));
 
         // Footer: слоты 18-26 (18-24 — стекло, 25 — Back, 26 — Close)
         for (int slot = 18; slot <= 24; slot++) {
             inv.setItem(slot, filler);
         }
-        inv.setItem(SLOT_BACK, GuiItemUtil.buildItem(player, sbConfig.getBackMaterial(), sbConfig.getBackName(), sbConfig.getBackLore()));
-        inv.setItem(SLOT_CLOSE, GuiItemUtil.buildItem(player, sbConfig.getCloseMaterial(), sbConfig.getCloseName(), sbConfig.getCloseLore()));
+        inv.setItem(SLOT_BACK, GuiItemUtil.buildItem(player, heraldGui.backMaterial(), heraldGui.backName(), heraldGui.backLore()));
+        inv.setItem(SLOT_CLOSE, GuiItemUtil.buildItem(player, heraldGui.closeMaterial(), heraldGui.closeName(), heraldGui.closeLore()));
 
         player.openInventory(inv);
     }
 
-    private static ItemStack buildPurchaseInfoItem(Player player, LoveTweaks plugin, ScoreboardConfig sbConfig, HeraldGuiConfig heraldGui, HeraldPurchaseHolder holder) {
+    private static ItemStack buildPurchaseInfoItem(Player player, LoveTweaks plugin, HeraldGuiConfig heraldGui, HeraldPurchaseHolder holder) {
         String indexLabel = String.valueOf(holder.slotIndex() + 1);
         List<String> lore = new ArrayList<>();
         for (String line : heraldGui.slotFreeLore()) {
             lore.add(line.replace("<index>", indexLabel));
         }
         String name = heraldGui.slotFreeName().replace("<index>", indexLabel);
-        return GuiItemUtil.buildItem(player, sbConfig.getPlaceholderOnMaterial(), name, lore);
+        return GuiItemUtil.buildItem(player, heraldGui.slotFreeMaterial(), name, lore);
     }
 
     /** Rebuilds the dynamic items in-place after a state change, without reopening the inventory. */
     public static void refresh(Player player, Inventory inv, LoveTweaks plugin, HeraldPurchaseHolder holder) {
-        ScoreboardConfig sbConfig = plugin.getScoreboardConfig();
         HeraldGuiConfig heraldGui = plugin.getLoveTweaksConfig().getHeraldGuiConfig();
 
-        inv.setItem(SLOT_BOOK, buildBookItem(player, plugin, sbConfig, heraldGui, holder));
-        inv.setItem(SLOT_WRITE_CHAT, buildWriteChatItem(player, plugin, sbConfig, heraldGui, holder));
-        inv.setItem(SLOT_DURATION, buildDurationItem(player, plugin, sbConfig, heraldGui, holder));
-        inv.setItem(SLOT_CONFIRM, buildConfirmItem(player, plugin, sbConfig, heraldGui, holder));
+        inv.setItem(SLOT_BOOK, buildBookItem(player, plugin, heraldGui, holder));
+        inv.setItem(SLOT_WRITE_CHAT, buildWriteChatItem(player, plugin, heraldGui, holder));
+        inv.setItem(SLOT_DURATION, buildDurationItem(player, plugin, heraldGui, holder));
+        inv.setItem(SLOT_CONFIRM, buildConfirmItem(player, plugin, heraldGui, holder));
     }
 
-    private static ItemStack buildBookItem(Player player, LoveTweaks plugin, ScoreboardConfig sbConfig, HeraldGuiConfig heraldGui, HeraldPurchaseHolder holder) {
+    private static ItemStack buildBookItem(Player player, LoveTweaks plugin, HeraldGuiConfig heraldGui, HeraldPurchaseHolder holder) {
         String message = holder.pendingMessage();
         String safeMsg = message == null ? "" : message;
 
@@ -95,7 +92,7 @@ public final class HeraldPurchaseGUI {
             for (String line : heraldGui.bookDisabledLore()) {
                 lore.add(line.replace("<message>", safeMsg));
             }
-            return GuiItemUtil.buildItem(player, sbConfig.getPlaceholderBlockedMaterial(), heraldGui.bookDisabledName(), lore);
+            return GuiItemUtil.buildItem(player, heraldGui.blockedMaterial(), heraldGui.bookDisabledName(), lore);
         }
 
         if (holder.getTextSource() == HeraldPurchaseHolder.TextSource.BOOK) {
@@ -103,7 +100,7 @@ public final class HeraldPurchaseGUI {
             for (String line : heraldGui.bookActiveLore()) {
                 lore.add(line.replace("<message>", safeMsg));
             }
-            return GuiItemUtil.buildItem(player, sbConfig.getToggleOnMaterial(), heraldGui.bookActiveName(), lore);
+            return GuiItemUtil.buildItem(player, heraldGui.activeMaterial(), heraldGui.bookActiveName(), lore);
         }
 
         List<String> lore = new ArrayList<>();
@@ -111,10 +108,10 @@ public final class HeraldPurchaseGUI {
         for (String line : heraldGui.bookHintLore()) {
             lore.add(line.replace("<max>", String.valueOf(maxLength)));
         }
-        return GuiItemUtil.buildItem(player, sbConfig.getToggleOffMaterial(), heraldGui.bookHintName(), lore);
+        return GuiItemUtil.buildItem(player, heraldGui.inactiveMaterial(), heraldGui.bookHintName(), lore);
     }
 
-    private static ItemStack buildWriteChatItem(Player player, LoveTweaks plugin, ScoreboardConfig sbConfig, HeraldGuiConfig heraldGui, HeraldPurchaseHolder holder) {
+    private static ItemStack buildWriteChatItem(Player player, LoveTweaks plugin, HeraldGuiConfig heraldGui, HeraldPurchaseHolder holder) {
         String message = holder.pendingMessage();
         String safeMsg = message == null ? "" : message;
 
@@ -123,7 +120,7 @@ public final class HeraldPurchaseGUI {
             for (String line : heraldGui.writeChatDisabledLore()) {
                 lore.add(line.replace("<message>", safeMsg));
             }
-            return GuiItemUtil.buildItem(player, sbConfig.getPlaceholderBlockedMaterial(), heraldGui.writeChatDisabledName(), lore);
+            return GuiItemUtil.buildItem(player, heraldGui.blockedMaterial(), heraldGui.writeChatDisabledName(), lore);
         }
 
         if (holder.getTextSource() == HeraldPurchaseHolder.TextSource.CHAT) {
@@ -131,13 +128,13 @@ public final class HeraldPurchaseGUI {
             for (String line : heraldGui.writeChatActiveLore()) {
                 lore.add(line.replace("<message>", safeMsg));
             }
-            return GuiItemUtil.buildItem(player, sbConfig.getToggleOnMaterial(), heraldGui.writeChatActiveName(), lore);
+            return GuiItemUtil.buildItem(player, heraldGui.activeMaterial(), heraldGui.writeChatActiveName(), lore);
         }
 
-        return GuiItemUtil.buildItem(player, sbConfig.getToggleOnMaterial(), heraldGui.writeChatName(), heraldGui.writeChatLore());
+        return GuiItemUtil.buildItem(player, heraldGui.activeMaterial(), heraldGui.writeChatName(), heraldGui.writeChatLore());
     }
 
-    private static ItemStack buildDurationItem(Player player, LoveTweaks plugin, ScoreboardConfig sbConfig, HeraldGuiConfig heraldGui, HeraldPurchaseHolder holder) {
+    private static ItemStack buildDurationItem(Player player, LoveTweaks plugin, HeraldGuiConfig heraldGui, HeraldPurchaseHolder holder) {
         var cfg = plugin.getLoveTweaksConfig();
         String message = holder.pendingMessage();
         int messageLength = message == null ? 0 : message.length();
@@ -157,13 +154,13 @@ public final class HeraldPurchaseGUI {
             lore.addAll(heraldGui.durationUnaffordableLore());
         }
         String name = heraldGui.durationName().replace("<minutes>", String.valueOf(holder.durationMinutes()));
-        return GuiItemUtil.buildItem(player, sbConfig.getToggleOnMaterial(), name, lore);
+        return GuiItemUtil.buildItem(player, heraldGui.activeMaterial(), name, lore);
     }
 
-    private static ItemStack buildConfirmItem(Player player, LoveTweaks plugin, ScoreboardConfig sbConfig, HeraldGuiConfig heraldGui, HeraldPurchaseHolder holder) {
+    private static ItemStack buildConfirmItem(Player player, LoveTweaks plugin, HeraldGuiConfig heraldGui, HeraldPurchaseHolder holder) {
         String message = holder.pendingMessage();
         if (message == null || message.isEmpty()) {
-            return GuiItemUtil.buildItem(player, sbConfig.getPlaceholderBlockedMaterial(), heraldGui.confirmDisabledName(), heraldGui.confirmDisabledLore());
+            return GuiItemUtil.buildItem(player, heraldGui.blockedMaterial(), heraldGui.confirmDisabledName(), heraldGui.confirmDisabledLore());
         }
 
         long cost = plugin.getHeraldManager().computeCost(holder.durationMinutes(), message.length());
@@ -196,6 +193,6 @@ public final class HeraldPurchaseGUI {
                     .replace("<minutes>", String.valueOf(holder.durationMinutes()))
                     .replace("<cost>", formattedCost));
         }
-        return GuiItemUtil.buildItem(player, sbConfig.getPlaceholderOnMaterial(), heraldGui.confirmName(), lore);
+        return GuiItemUtil.buildItem(player, heraldGui.activeMaterial(), heraldGui.confirmName(), lore);
     }
 }

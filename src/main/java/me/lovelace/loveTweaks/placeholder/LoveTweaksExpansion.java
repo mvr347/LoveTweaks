@@ -8,7 +8,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Own expansion {@code %lovetweaks_*%} for the scoreboard: combat statistics, ping, coordinates, world.
+ * Own PlaceholderAPI expansion {@code %lovetweaks_*%} for player statistics and current location.
  *
  * <p>It replaces {@code %kd_ratio%} (no such expansion exists on the server, so the line stayed raw)
  * and the dependency on the third-party Statistic/Player expansions. Every value is read from the

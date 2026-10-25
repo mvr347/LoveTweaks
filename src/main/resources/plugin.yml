@@ -18,7 +18,3 @@ commands:
     usage: /lovetweaksadmin <reload|givescroll|givecoordscroll|herald bind/unbind/clear>
     permission: lovetweaks.admin
     permission-message: У вас нет прав для этой команды.
-  scoreboard:
-    description: Открыть настройки скорборда
-    aliases: [sb, скорборд]
-    usage: /scoreboard
