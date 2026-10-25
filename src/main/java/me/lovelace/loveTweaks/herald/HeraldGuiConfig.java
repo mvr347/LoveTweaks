@@ -9,10 +9,24 @@ import java.util.Map;
 
 /**
  * All Herald GUI text — titles, item name/lore, player-facing messages — loaded from
- * {@code herald.gui.*}. Mirrors {@code ScoreboardConfig}'s split: a dedicated config holder
- * per menu instead of piling every string getter onto {@link me.lovelace.loveTweaks.LoveTweaksConfig}.
+ * {@code herald.gui.*}, including item materials, text, and player-facing messages.
  */
 public final class HeraldGuiConfig {
+
+    private String fillerMaterial = "GRAY_STAINED_GLASS_PANE";
+    private String fillerName = " ";
+    private String backMaterial = "ARROW";
+    private String backName = "&eНазад";
+    private List<String> backLore = List.of();
+    private String closeMaterial = "BARRIER";
+    private String closeName = "&cЗакрыть";
+    private List<String> closeLore = List.of();
+    private String infoMaterial = "BOOK";
+    private String slotFreeMaterial = "LIME_DYE";
+    private String slotOccupiedMaterial = "GRAY_DYE";
+    private String activeMaterial = "LIME_DYE";
+    private String inactiveMaterial = "PAPER";
+    private String blockedMaterial = "BARRIER";
 
     private String overviewTitle = "&6Королевский Глашатай";
     private String purchaseTitle = "&6Новое объявление";
@@ -106,6 +120,21 @@ public final class HeraldGuiConfig {
             return;
         }
 
+        fillerMaterial = section.getString("filler.material", fillerMaterial);
+        fillerName = section.getString("filler.name", fillerName);
+        backMaterial = section.getString("back.material", backMaterial);
+        backName = section.getString("back.name", backName);
+        backLore = stringList(section, "back.lore");
+        closeMaterial = section.getString("close.material", closeMaterial);
+        closeName = section.getString("close.name", closeName);
+        closeLore = stringList(section, "close.lore");
+        infoMaterial = section.getString("info.material", infoMaterial);
+        slotFreeMaterial = section.getString("slot-free.material", slotFreeMaterial);
+        slotOccupiedMaterial = section.getString("slot-occupied.material", slotOccupiedMaterial);
+        activeMaterial = section.getString("active.material", activeMaterial);
+        inactiveMaterial = section.getString("inactive.material", inactiveMaterial);
+        blockedMaterial = section.getString("blocked.material", blockedMaterial);
+
         overviewTitle = section.getString("overview-title", overviewTitle);
         purchaseTitle = section.getString("purchase-title", purchaseTitle);
 
@@ -172,6 +201,21 @@ public final class HeraldGuiConfig {
         List<String> list = section.getStringList(path);
         return list.isEmpty() ? new ArrayList<>() : list;
     }
+
+    public String fillerMaterial() { return fillerMaterial; }
+    public String fillerName() { return fillerName; }
+    public String backMaterial() { return backMaterial; }
+    public String backName() { return backName; }
+    public List<String> backLore() { return backLore; }
+    public String closeMaterial() { return closeMaterial; }
+    public String closeName() { return closeName; }
+    public List<String> closeLore() { return closeLore; }
+    public String infoMaterial() { return infoMaterial; }
+    public String slotFreeMaterial() { return slotFreeMaterial; }
+    public String slotOccupiedMaterial() { return slotOccupiedMaterial; }
+    public String activeMaterial() { return activeMaterial; }
+    public String inactiveMaterial() { return inactiveMaterial; }
+    public String blockedMaterial() { return blockedMaterial; }
 
     public String overviewTitle() { return overviewTitle; }
     public String purchaseTitle() { return purchaseTitle; }

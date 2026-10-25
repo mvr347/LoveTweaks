@@ -6,7 +6,6 @@ import me.lovelace.loveTweaks.items.FirstJoinItem;
 import me.lovelace.loveTweaks.managers.CoordinateTeleportScrollConfig;
 import me.lovelace.loveTweaks.managers.TeleportScrollConfig;
 import me.lovelace.loveTweaks.revivemefix.ReviveProvider;
-import me.lovelace.loveTweaks.scoreboard.ScoreboardConfig;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -17,6 +16,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -107,9 +108,6 @@ public class LoveTweaksConfig {
     private boolean disableFriendsAndReports;
     private String disabledVanillaCommandMessage;
     private List<String> blockedVanillaCommands = new ArrayList<>();
-
-    // Scoreboard (delegated to ScoreboardConfig)
-    private final ScoreboardConfig scoreboardConfig = new ScoreboardConfig();
 
     private static final Map<String, String> DEFAULT_MESSAGES = Map.ofEntries(
             Map.entry("no-permission", "&cНедостаточно прав."),
@@ -226,7 +224,6 @@ public class LoveTweaksConfig {
             blockedVanillaCommands = List.of("report", "chatreport", "wreport", "friend", "friends", "f", "advancement", "advancements");
         }
 
-        scoreboardConfig.load(config);
     }
 
     /**
@@ -240,6 +237,16 @@ public class LoveTweaksConfig {
             config.setDefaults(defaults);
 
             boolean changed = false;
+
+      // The sidebar moved to LoveEssential. Preserve the old complete config once, then remove
+      // the obsolete section from the active LoveTweaks config.
+      if (config.getValues(false).containsKey("scoreboard")) {
+        Path configFile = plugin.getDataFolder().toPath().resolve("config.yml");
+        Path backup = plugin.getDataFolder().toPath().resolve("config.yml.pre-scoreboard.bak");
+        if (!Files.exists(backup)) Files.copy(configFile, backup);
+        config.set("scoreboard", null);
+        changed = true;
+      }
 
             // Миграция секции messages
             ConfigurationSection defMessages = defaults.getConfigurationSection("messages");
@@ -438,7 +445,6 @@ public class LoveTweaksConfig {
     public boolean isDisableBrewingStandWorld() { return disableBrewingStandWorld; }
     public boolean isDisablePotionNaturalDrops() { return disablePotionNaturalDrops; }
     public String getDisabledBrewingMessage() { return disabledBrewingMessage; }
-    public ScoreboardConfig getScoreboardConfig() { return scoreboardConfig; }
     public boolean isCustomEnchantmentsEnabled() { return customEnchantmentsEnabled; }
     public boolean isCustomEnchantsAllowOnAllSwords() { return customEnchantsAllowOnAllSwords; }
 

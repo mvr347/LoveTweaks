@@ -18,16 +18,12 @@ import me.lovelace.loveTweaks.listeners.HungerListener;
 import me.lovelace.loveTweaks.listeners.ItemDropLossListener;
 import me.lovelace.loveTweaks.listeners.MilkListener;
 import me.lovelace.loveTweaks.listeners.BrewingListener;
-import me.lovelace.loveTweaks.listeners.ScoreboardListener;
 import me.lovelace.loveTweaks.listeners.TeleportScrollListener;
 import me.lovelace.loveTweaks.listeners.VanillaProtectionListener;
 import me.lovelace.loveTweaks.managers.CoordinateTeleportScrollManager;
 import me.lovelace.loveTweaks.managers.TeleportScrollManager;
 import me.lovelace.loveTweaks.revivemefix.ReviveMeInventoryModule;
 import me.lovelace.loveTweaks.revivemefix.ReviveProvider;
-import me.lovelace.loveTweaks.scoreboard.ScoreboardConfig;
-import me.lovelace.loveTweaks.scoreboard.ScoreboardDataManager;
-import me.lovelace.loveTweaks.scoreboard.ScoreboardDisplayManager;
 import org.bukkit.GameMode;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
@@ -48,10 +44,6 @@ public final class LoveTweaks extends JavaPlugin {
     private TeleportScrollManager teleportScrollManager;
     private CoordinateTeleportScrollManager coordTeleportScrollManager;
     private CustomEnchantManager customEnchantManager;
-
-    private ScoreboardDataManager scoreboardDataManager;
-    private ScoreboardDisplayManager scoreboardDisplayManager;
-    private BukkitTask scoreboardTask;
 
     private NpcIntegration npcIntegration;
     private ChatFilterIntegration chatFilterIntegration;
@@ -87,12 +79,7 @@ public final class LoveTweaks extends JavaPlugin {
         me.lovelace.loveTweaks.items.PurificationPotion.init(this);
         getLogger().info("PurificationPotion initialized.");
 
-        // Scoreboard
-        scoreboardDataManager = new ScoreboardDataManager(this);
-        scoreboardDisplayManager = new ScoreboardDisplayManager(this, scoreboardDataManager, getScoreboardConfig());
-        getLogger().info("Scoreboard system initialized.");
-
-        // Плейсхолдеры времени игры (%playtime_formatted% и др.) и %lovetweaks_*% — их использует скорборд.
+        // Плейсхолдеры времени игры и статистики доступны другим плагинам через PlaceholderAPI.
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             new PlaytimeExpansion(this).register();
             new me.lovelace.loveTweaks.placeholder.LoveTweaksExpansion(this).register();
@@ -132,10 +119,6 @@ public final class LoveTweaks extends JavaPlugin {
         magnetTask = getServer().getScheduler().runTaskTimer(this, new MagnetTask(this, customEnchantManager),
                 MagnetTask.INTERVAL_TICKS, MagnetTask.INTERVAL_TICKS);
 
-        ScoreboardListener scoreboardListener = new ScoreboardListener(this, scoreboardDataManager, scoreboardDisplayManager);
-        getServer().getPluginManager().registerEvents(scoreboardListener, this);
-        getCommand("scoreboard").setExecutor(scoreboardListener);
-
         // Фикс пропажи инвентаря ReviveMe при downed_keep_inventory: false — снимает снимок
         // инвентаря в момент Downed и дропает его сам при финальной смерти, без гонки по тикам
         // с собственной пост-смертной обработкой ReviveMe (см. revive-inventory-fix в config.yml).
@@ -149,9 +132,6 @@ public final class LoveTweaks extends JavaPlugin {
 
         // Hunger exhaustion task
         startHungerTask();
-
-        // Scoreboard update task
-        startScoreboardTask();
 
         // Herald broadcast task
         startHeraldBroadcastTask();
@@ -211,17 +191,6 @@ public final class LoveTweaks extends JavaPlugin {
         }
     }
 
-    private void startScoreboardTask() {
-        if (scoreboardTask != null) scoreboardTask.cancel();
-        int interval = Math.max(1, getScoreboardConfig().getUpdateInterval());
-        scoreboardTask = new BukkitRunnable() {
-            @Override
-            public void run() {
-                scoreboardDisplayManager.updateAll();
-            }
-        }.runTaskTimer(this, interval, interval);
-    }
-
     private void startHeraldBroadcastTask() {
         if (heraldBroadcastTask != null) heraldBroadcastTask.cancel();
         long intervalTicks = 20L * 60L;
@@ -245,10 +214,6 @@ public final class LoveTweaks extends JavaPlugin {
             hungerTask.cancel();
             hungerTask = null;
         }
-        if (scoreboardTask != null) {
-            scoreboardTask.cancel();
-            scoreboardTask = null;
-        }
         if (heraldBroadcastTask != null) {
             heraldBroadcastTask.cancel();
             heraldBroadcastTask = null;
@@ -257,42 +222,32 @@ public final class LoveTweaks extends JavaPlugin {
         if (coordTeleportScrollManager != null) coordTeleportScrollManager.cancelAll();
         if (milkListener != null) milkListener.clearAll();
         if (enderChestListener != null) enderChestListener.closeAll();
-        if (scoreboardDisplayManager != null) scoreboardDisplayManager.removeAll();
-        if (scoreboardDataManager != null) scoreboardDataManager.close();
         if (reviveMeInventoryModule != null) reviveMeInventoryModule.disable();
         getLogger().info("LoveTweaks disabled.");
     }
 
     /**
-     * Полная перезагрузка плагина: конфиг, состояние скорборда, PAPI-плейсхолдеры скорборда,
-     * число слотов Глашатая и повторяющиеся таски. Используется командой
+     * Полная перезагрузка плагина: конфиг, число слотов Глашатая и повторяющиеся таски. Используется командой
      * {@code /lovetweaksadmin reload} — см. {@link me.lovelace.loveTweaks.commands.LoveTweaksAdminCommand}.
      */
     public void reloadAll() {
         loveTweaksConfig.loadConfig();
         npcIntegration.resetWarnings();
-        me.lovelace.loveTweaks.textures.HeadsConfig.reload();
         me.lovelace.loveTweaks.utils.ItemsAdderHook.resetCache();
         if (teleportScrollManager != null) teleportScrollManager.cancelAll();
         if (coordTeleportScrollManager != null) coordTeleportScrollManager.cancelAll();
         if (milkListener != null) milkListener.reload();
         if (brewingListener != null) brewingListener.removeBrewingStandRecipes();
         if (enderChestListener != null) enderChestListener.closeAll();
-        scoreboardDataManager.reload();
-        scoreboardDisplayManager.refreshPAPI();
         heraldManager.resize(loveTweaksConfig.getHeraldSlots());
         if (vanillaProtectionListener != null) vanillaProtectionListener.applyGameRules();
         if (reviveMeInventoryModule != null) reviveMeInventoryModule.reload(getConfig().getConfigurationSection("revive-inventory-fix"), loveTweaksConfig.getReviveProvider());
         startHungerTask();
-        startScoreboardTask();
         startHeraldBroadcastTask();
     }
 
     public static LoveTweaks getInstance() { return instance; }
     public LoveTweaksConfig getLoveTweaksConfig() { return loveTweaksConfig; }
-    public ScoreboardConfig getScoreboardConfig() { return loveTweaksConfig.getScoreboardConfig(); }
-    public ScoreboardDataManager getScoreboardDataManager() { return scoreboardDataManager; }
-    public ScoreboardDisplayManager getScoreboardDisplayManager() { return scoreboardDisplayManager; }
     public NamespacedKey getEnderChestKey() { return enderChestKey; }
     public TeleportScrollManager getTeleportScrollManager() { return teleportScrollManager; }
     public CoordinateTeleportScrollManager getCoordTeleportScrollManager() { return coordTeleportScrollManager; }
