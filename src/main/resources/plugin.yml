@@ -2,14 +2,8 @@ name: LoveTweaks
 version: '${project.version}'
 main: me.lovelace.loveTweaks.LoveTweaks
 api-version: '26.2'
-softdepend:
-  - PlaceholderAPI
-  - Citizens
-  - ItemsAdder
-  - LoveCore
-  - LoveChatFilter
-  - ReviveMe
-  - LoveEssential
+depend: [LoveCore, LoveEssential]
+softdepend: [PlaceholderAPI, Citizens, ItemsAdder, LoveChatFilter, ReviveMe]
 
 commands:
   lovetweaksadmin:
