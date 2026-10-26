@@ -150,12 +150,12 @@ public final class LoveTweaks extends JavaPlugin {
             return;
         }
         // Providers register late, so the check runs once the server has finished starting.
-        getServer().getScheduler().runTask(this, () -> {
+        getServer().getScheduler().runTaskLater(this, () -> {
             if (loveTweaksConfig.isHeraldEnabled() && !loveTweaksConfig.getHeraldNpcKey().isEmpty()) {
                 npcIntegration.checkBinding(loveTweaksConfig.getHeraldNpcKey());
                 npcIntegration.provider();
             }
-        });
+        }, 200L);
     }
 
     private void warnAboutLegacyTeleportScrollFolder() {

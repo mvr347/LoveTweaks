@@ -111,8 +111,8 @@ public final class NpcBinding {
     }
 
     /**
-     * True when the stored key cannot belong to the configured provider (e.g. a numeric Citizens id
-     * while {@code loveessential} is selected, or an {@code ext-} key while {@code citizens} is).
+     * Citizens requires a numeric key. LoveEssential accepts its stable keys and visible-number
+     * aliases, so a numeric key alone does not establish that its provider is wrong.
      * Used only for a warning: the key is never rewritten.
      */
     public static boolean keyLooksForeign(String provider, String key) {
@@ -120,7 +120,7 @@ public final class NpcBinding {
             return false;
         }
         boolean numeric = isNumericKey(key);
-        return CITIZENS.equals(provider) ? !numeric : numeric;
+        return CITIZENS.equals(provider) && !numeric;
     }
 
     /**
