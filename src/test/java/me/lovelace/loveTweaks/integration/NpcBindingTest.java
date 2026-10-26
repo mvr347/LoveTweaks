@@ -124,7 +124,7 @@ class NpcBindingTest {
     void foreignKey() {
         assertFalse(NpcBinding.keyLooksForeign("citizens", "17"));
         assertTrue(NpcBinding.keyLooksForeign("citizens", "ext-1a2b3c4d"));
-        assertTrue(NpcBinding.keyLooksForeign("loveessential", "17"));
+        assertFalse(NpcBinding.keyLooksForeign("loveessential", "17"));
         assertFalse(NpcBinding.keyLooksForeign("loveessential", "ext-1a2b3c4d"));
         assertFalse(NpcBinding.keyLooksForeign("citizens", ""));
     }

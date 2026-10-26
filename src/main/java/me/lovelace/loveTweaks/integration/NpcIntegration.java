@@ -22,15 +22,35 @@ public final class NpcIntegration {
     /** Identification of an NPC for binding: provider key and display name. */
     public record NpcRef(String key, String name) {}
 
-    private final LoveTweaks plugin;
+    private final java.util.function.Supplier<String> configured;
+    private final java.util.function.Function<String, Optional<NpcProvider>> resolver;
+    private final java.util.function.Consumer<String> warn;
+    private final java.util.function.BooleanSupplier warningsReady;
+    private volatile boolean seenReady;
     private final Set<String> warned = new HashSet<>();
 
     public NpcIntegration(LoveTweaks plugin) {
-        this.plugin = plugin;
+        this(() -> NpcBinding.providerFrom(plugin.getConfig()),
+                id -> LoveCore.provider(NpcProvider.class, id), plugin.getLogger()::warning, startupGrace());
+    }
+
+    public NpcIntegration(java.util.function.Supplier<String> configured,
+                          java.util.function.Function<String, Optional<NpcProvider>> resolver,
+                          java.util.function.Consumer<String> warn,
+                          java.util.function.BooleanSupplier warningsReady) {
+        this.configured = configured;
+        this.resolver = resolver;
+        this.warn = warn;
+        this.warningsReady = warningsReady;
+    }
+
+    private static java.util.function.BooleanSupplier startupGrace() {
+        int started = org.bukkit.Bukkit.getServer() == null ? 0 : org.bukkit.Bukkit.getCurrentTick();
+        return () -> org.bukkit.Bukkit.getServer() == null || org.bukkit.Bukkit.getCurrentTick() - started >= 200;
     }
 
     public String providerId() {
-        return NpcBinding.providerFrom(plugin.getConfig());
+        return configured.get();
     }
 
     /** Forgets which missing providers were already reported (after a config reload). */
@@ -43,12 +63,15 @@ public final class NpcIntegration {
         String id = providerId();
         Optional<NpcProvider> found = Optional.empty();
         try {
-            found = LoveCore.provider(NpcProvider.class, id);
+            found = resolver.apply(id);
         } catch (LinkageError | RuntimeException exception) {
             // LoveCore absent or incompatible: treated the same as a missing provider.
         }
         if (found.isEmpty()) {
-            warnMissing(id);
+            if (seenReady || warningsReady.getAsBoolean()) warnMissing(id);
+        } else {
+            seenReady = true;
+            synchronized (this) { warned.remove(id); }
         }
         return found;
     }
@@ -59,7 +82,7 @@ public final class NpcIntegration {
                 return;
             }
         }
-        plugin.getLogger().warning("NPC-провайдер '" + id + "' (integrations.npc-provider) недоступен: "
+        warn.accept("NPC-провайдер '" + id + "' (integrations.npc-provider) недоступен: "
                 + "он не зарегистрирован в LoveCore. Привязка NPC Глашатая не работает, пока провайдер не появится.");
     }
 
@@ -76,7 +99,7 @@ public final class NpcIntegration {
 
     /** Provider id and key comparison for an NPC coming from an event (events fire for every provider). */
     public boolean matches(String boundKey, NpcHandle handle) {
-        return NpcBinding.matches(providerId(), boundKey, handle.providerId(), handle.key());
+        return handle != null && NpcBinding.matches(providerId(), boundKey, handle.providerId(), handle.key());
     }
 
     /** The NPC an admin is targeting (the provider's own notion: selected NPC or look direction). */
@@ -89,7 +112,7 @@ public final class NpcIntegration {
     /** One-time diagnostic: warns when the stored key obviously belongs to another provider. */
     public void checkBinding(String boundKey) {
         if (NpcBinding.keyLooksForeign(providerId(), boundKey)) {
-            plugin.getLogger().warning("herald.npc-key '" + boundKey + "' не похож на ключ NPC провайдера '"
+            warn.accept("herald.npc-key '" + boundKey + "' не похож на ключ NPC провайдера '"
                     + providerId() + "'. После смены integrations.npc-provider привяжите NPC заново: "
                     + "/lovetweaksadmin herald bind.");
         }
