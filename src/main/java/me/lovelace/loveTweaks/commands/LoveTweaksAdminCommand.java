@@ -49,10 +49,9 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
     @SuppressWarnings("NullableProblems")
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         // Команда в plugin.yml уже объявлена с permission: lovetweaks.admin, так что Bukkit
-        // отсеет посторонних раньше, чем сюда дойдёт вызов — проверка здесь только для
-        // единообразия с остальными Love*-плагинами и на случай прямого вызова executor'а.
+        // отсеет посторонних раньше, чем сюда дойдёт вызов — проверка здесь только на случай
+        // прямого вызова executor'а. Молчим: недоступная команда игроку просто не нужна.
         if (!sender.hasPermission("lovetweaks.admin")) {
-            sender.sendMessage(msg("no-permission"));
             return true;
         }
 
