@@ -11,4 +11,4 @@ commands:
     aliases: [lovetweaks]
     usage: /lovetweaksadmin <reload|givescroll|givecoordscroll|herald bind/unbind/clear>
     permission: lovetweaks.admin
-    permission-message: У вас нет прав для этой команды.
+    permission-message: ""
