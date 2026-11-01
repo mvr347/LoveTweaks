@@ -86,7 +86,15 @@ public final class HeraldGUI {
                 var profile = owner != null ? owner.getPlayerProfile() : Bukkit.getOfflinePlayer(slot.ownerId()).getPlayerProfile();
                 var texture = profile.getProperties().stream().filter(property -> property.getName().equals("textures")).findFirst();
                 if (texture.isPresent()) {
-                    var copied = Bukkit.createProfile(java.util.UUID.randomUUID());
+                    var copied =
+                            Bukkit.createProfile(
+                                    java.util.UUID.nameUUIDFromBytes(
+                                            texture.get()
+                                                    .getValue()
+                                                    .getBytes(
+                                                            java.nio.charset.StandardCharsets
+                                                                    .UTF_8)),
+                                    "LoveTexture");
                     copied.setProperty(texture.get());
                     meta.setPlayerProfile(copied);
                     item.setItemMeta(meta);
