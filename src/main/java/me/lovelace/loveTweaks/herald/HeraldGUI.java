@@ -80,7 +80,19 @@ public final class HeraldGUI {
                         .replace("<remaining>", String.valueOf(Math.max(0, remainingMinutes))));
             }
             String name = heraldGui.slotOccupiedName().replace("<index>", indexLabel);
-            return GuiItemUtil.buildItem(player, heraldGui.slotOccupiedMaterial(), name, lore);
+            ItemStack item = GuiItemUtil.buildItem(player, heraldGui.slotOccupiedMaterial(), name, lore);
+            if (item.getItemMeta() instanceof org.bukkit.inventory.meta.SkullMeta meta) {
+                var owner = Bukkit.getPlayer(slot.ownerId());
+                var profile = owner != null ? owner.getPlayerProfile() : Bukkit.getOfflinePlayer(slot.ownerId()).getPlayerProfile();
+                var texture = profile.getProperties().stream().filter(property -> property.getName().equals("textures")).findFirst();
+                if (texture.isPresent()) {
+                    var copied = Bukkit.createProfile(java.util.UUID.randomUUID());
+                    copied.setProperty(texture.get());
+                    meta.setPlayerProfile(copied);
+                    item.setItemMeta(meta);
+                }
+            }
+            return item;
         }
 
         HeraldManager.Unavailability blocked = manager.unavailability(player, index);

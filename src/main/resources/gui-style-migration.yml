@@ -1,0 +1,39 @@
+# Однократное обновление оформления; исходные файлы сохраняются рядом как .pre-style-20261101.bak.
+version: 20261101
+updates:
+- file: config.yml
+  path: herald.gui.messages.prefix
+  before: '&7» &6Глашатай &7» '
+  value: '&6[Глашатай] &f» '
+- file: config.yml
+  path: herald.gui.info.material
+  before: BOOK
+  value: basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYmFkYzA0OGE3Y2U3OGY3ZGFkNzJhMDdkYTI3ZDg1YzA5MTY4ODFlNTUyMmVlZWQxZTNkYWYyMTdhMzhjMWEifX19
+- file: config.yml
+  path: herald.gui.slot-free.material
+  before: LIME_DYE
+  value: basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMjhkZGY4M2VhN2YwOGE3MmE1MmFjMjFkYzc0MDBhMDYxN2FjMmNiZTIxYTMxNzA0OGY0MmU3ZjI0OTk0NDgwZSJ9fX0=
+- file: config.yml
+  path: herald.gui.slot-occupied.material
+  before: GRAY_DYE
+  value: basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOGE2ZDJmNDcxYjU0MDQ3MTQ4YjM1NTI1NWM3ZjU1NmUyMTg3ZmQ0ZTgzMzhiMTExZGJmM2FkY2QyODUwYzQ5OCJ9fX0=
+- file: config.yml
+  path: herald.gui.back.material
+  before: ARROW
+  value: basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMjhkZGY4M2VhN2YwOGE3MmE1MmFjMjFkYzc0MDBhMDYxN2FjMmNiZTIxYTMxNzA0OGY0MmU3ZjI0OTk0NDgwZSJ9fX0=
+- file: config.yml
+  path: herald.gui.close.material
+  before: BARRIER
+  value: basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTNhNWMzMzY3OTRmMzNlNTUxYmI5Njc3YzExMjBhNTFkM2MwMTMxZjAwNTg5MGNlYjAyMDhkMGE2OTlhOTkzZCJ9fX0=
+- file: config.yml
+  path: herald.gui.active.material
+  before: LIME_DYE
+  value: basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMjM2OTZlNjYwZDMxMWFlOWQwYzQ1Nzc1ZTk3MjBkYWUzYjMxMGZlZjYzNjBmNTMzMTBjOWJjOTcwYmI3ZjI1In19fQ==
+- file: config.yml
+  path: herald.gui.inactive.material
+  before: PAPER
+  value: basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZmExN2NlZDNmOTI2NjNjZGFhY2VkYThiOWFlZDY3YTNjOTQ3MTAwNGYxYTA5MTgzZWFkYjAwOTIzMWZmNzI3OSJ9fX0=
+- file: config.yml
+  path: herald.gui.blocked.material
+  before: BARRIER
+  value: basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTNhNWMzMzY3OTRmMzNlNTUxYmI5Njc3YzExMjBhNTFkM2MwMTMxZjAwNTg5MGNlYjAyMDhkMGE2OTlhOTkzZCJ9fX0=

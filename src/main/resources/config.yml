@@ -205,24 +205,24 @@ herald:
       material: GRAY_STAINED_GLASS_PANE
       name: ' '
     back:
-      material: ARROW
+      material: basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMjhkZGY4M2VhN2YwOGE3MmE1MmFjMjFkYzc0MDBhMDYxN2FjMmNiZTIxYTMxNzA0OGY0MmU3ZjI0OTk0NDgwZSJ9fX0=
       name: '&eНазад'
       lore: []
     close:
-      material: BARRIER
+      material: basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTNhNWMzMzY3OTRmMzNlNTUxYmI5Njc3YzExMjBhNTFkM2MwMTMxZjAwNTg5MGNlYjAyMDhkMGE2OTlhOTkzZCJ9fX0=
       name: '&cЗакрыть'
       lore: []
     active:
-      material: LIME_DYE
+      material: basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMjM2OTZlNjYwZDMxMWFlOWQwYzQ1Nzc1ZTk3MjBkYWUzYjMxMGZlZjYzNjBmNTMzMTBjOWJjOTcwYmI3ZjI1In19fQ==
     inactive:
-      material: PAPER
+      material: basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZmExN2NlZDNmOTI2NjNjZGFhY2VkYThiOWFlZDY3YTNjOTQ3MTAwNGYxYTA5MTgzZWFkYjAwOTIzMWZmNzI3OSJ9fX0=
     blocked:
-      material: BARRIER
+      material: basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOTNhNWMzMzY3OTRmMzNlNTUxYmI5Njc3YzExMjBhNTFkM2MwMTMxZjAwNTg5MGNlYjAyMDhkMGE2OTlhOTkzZCJ9fX0=
     overview-title: '&6Королевский Глашатай'
     purchase-title: '&6Новое объявление'
 
     info:
-      material: BOOK
+      material: basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvYmFkYzA0OGE3Y2U3OGY3ZGFkNzJhMDdkYTI3ZDg1YzA5MTY4ODFlNTUyMmVlZWQxZTNkYWYyMTdhMzhjMWEifX19
       name: '&6Голос Королевства'
       lore:
         - '&7Оплаченное объявление транслируется'
@@ -230,14 +230,14 @@ herald:
         - '&7До &f<max> &7слотов одновременно.'
 
     slot-free:
-      material: LIME_DYE
+      material: basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMjhkZGY4M2VhN2YwOGE3MmE1MmFjMjFkYzc0MDBhMDYxN2FjMmNiZTIxYTMxNzA0OGY0MmU3ZjI0OTk0NDgwZSJ9fX0=
       name: '&aСлот &f<index> &aсвободен'
       lore:
         - '&8&m─────────────────────'
         - '&aЛКМ &8— &7купить'
 
     slot-occupied:
-      material: GRAY_DYE
+      material: basehead-eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvOGE2ZDJmNDcxYjU0MDQ3MTQ4YjM1NTI1NWM3ZjU1NmUyMTg3ZmQ0ZTgzMzhiMTExZGJmM2FkY2QyODUwYzQ5OCJ9fX0=
       name: '&7Слот &f<index> &7занят'
       lore:
         - '&7Автор: &f<buyer>'
@@ -418,7 +418,7 @@ herald:
       # ещё LoveShop рассылал караван/странника мимо него. Теперь общий префикс <prefix> стоит в
       # начале КАЖДОГО формата, а чужие плагины (LoveShop, LoveContracts) объявляют через
       # HeraldManager#announce — вид меняется в одном месте.
-      prefix: '&7» &6Глашатай &7» '
+      prefix: '&6[Глашатай] &f» '
       broadcast-format: '<prefix>&e<message>   &7« &f<buyer>'
       # 2026-09-29: смену дневных контрактов (LoveContracts) объявляет глашатай, а не строка в общем
       # чате; текст намеренно без команды /contracts — контракты берутся у NPC доски.
