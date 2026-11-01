@@ -101,7 +101,7 @@ public final class ReviveMeInventoryModule {
         if (reviveMeActive) {
             try {
                 reviveMeEventListener = new ReviveMeEventListener(this, inventoryManager, config, plugin.getLogger());
-                Bukkit.getPluginManager().registerEvents(reviveMeEventListener, plugin);
+                reviveMeEventListener.register(plugin, Bukkit.getPluginManager().getPlugin("ReviveMe"));
                 if (config.isDebug()) {
                     plugin.getLogger().info("[ReviveMeInventoryFix] Registered ReviveMeEventListener successfully.");
                 }
