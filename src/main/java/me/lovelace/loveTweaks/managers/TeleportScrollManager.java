@@ -206,6 +206,16 @@ public class TeleportScrollManager {
      * Отменяет все активные задачи и удаляет сессию.
      * @param reason  null — тихая отмена (например, при логауте)
      */
+    /** Player pressed the chat cancel button: cancels the countdown they started. */
+    public boolean cancelByPlayer(Player player) {
+        if (!sessions.containsKey(player.getUniqueId())) return false;
+        var cfg = plugin.getLoveTweaksConfig().getTeleportScrollConfig();
+        cancelSession(player.getUniqueId(),
+                cfg.message("cancelled-initiator").replace("<reason>", "(вы отменили перемещение)"),
+                cfg.message("cancelled-target"));
+        return true;
+    }
+
     public void cancelSession(UUID initiatorUuid, String reasonForInitiator, String reasonForTarget) {
         TeleportSession session = sessions.remove(initiatorUuid);
         if (session == null) {
@@ -274,6 +284,7 @@ public class TeleportScrollManager {
         // 1. Уведомление инициатора
         Component initMsg = msg("countdown-initiator", "<seconds>", String.valueOf(COUNTDOWN_SECONDS));
         Notify.event(initiator, initMsg);
+        me.lovelace.loveTweaks.utils.ScrollCancelButton.send(initiator);
 
         // 2. ОБЯЗАТЕЛЬНОЕ уведомление игрока-цели (в чат и экшнбар)
         Component targetMsg = msg("countdown-target", "<player>", initiatorName);

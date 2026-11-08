@@ -167,7 +167,19 @@ public class CoordinateTeleportScrollManager {
             return true;
         }
 
+        me.lovelace.loveTweaks.utils.ScrollCancelButton.send(player);
         scheduleCountdownStep(player.getUniqueId(), session, config.getCastTimeSeconds());
+        return true;
+    }
+
+    /** Player pressed the chat cancel button. */
+    public boolean cancelByPlayer(Player player) {
+        if (!sessions.containsKey(player.getUniqueId())) return false;
+        CoordTeleportSession session = sessions.remove(player.getUniqueId());
+        session.cancelAllTasks();
+        Notify.event(player, GuiItemUtil.colorize(cfg().message("cancelled")
+                .replace("<reason>", "(вы отменили перемещение)")));
+        spawnCancelParticles(player.getLocation());
         return true;
     }
 
