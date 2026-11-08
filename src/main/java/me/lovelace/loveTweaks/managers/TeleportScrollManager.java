@@ -420,7 +420,7 @@ public class TeleportScrollManager {
             w.spawnParticle(org.bukkit.Particle.PORTAL, center, 45, 0.5, 0.7, 0.5, 0.8);
             w.spawnParticle(org.bukkit.Particle.REVERSE_PORTAL, center, 25, 0.4, 0.6, 0.4, 0.1);
             w.spawnParticle(org.bukkit.Particle.ENCHANT, center, 35, 0.6, 0.8, 0.6, 0.3);
-            w.spawnParticle(org.bukkit.Particle.FLASH, center, 1, 0, 0, 0, 0);
+            w.spawnParticle(org.bukkit.Particle.FLASH, center, 1, 0, 0, 0, 0, org.bukkit.Color.WHITE);
         } catch (Throwable t) {
             // Particle failures must not abort teleport (e.g. missing Color data on older jars / API mismatch)
             plugin.getLogger().warning("spawnTeleportBurst failed: " + t.getMessage());
