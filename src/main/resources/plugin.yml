@@ -6,6 +6,9 @@ depend: [LoveCore, LoveEssential]
 softdepend: [PlaceholderAPI, Citizens, ItemsAdder, LoveChatFilter, ReviveMe]
 
 commands:
+  scrollcancel:
+    description: Отменить перемещение по свитку
+    usage: /scrollcancel
   lovetweaksadmin:
     description: Команды администратора LoveTweaks
     aliases: [lovetweaks]

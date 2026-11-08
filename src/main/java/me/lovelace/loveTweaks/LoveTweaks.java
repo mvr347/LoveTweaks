@@ -140,6 +140,9 @@ public final class LoveTweaks extends JavaPlugin {
         getCommand("lovetweaksadmin").setExecutor(adminCommand);
         getCommand("lovetweaksadmin").setTabCompleter(adminCommand);
 
+        getCommand("scrollcancel").setExecutor(
+                new me.lovelace.loveTweaks.commands.ScrollCancelCommand(teleportScrollManager, coordTeleportScrollManager));
+
         // Hunger exhaustion task
         startHungerTask();
 
