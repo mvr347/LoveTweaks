@@ -22,6 +22,11 @@ public class HungerListener implements Listener {
             return;
         }
 
+        // Outside the hunger event food works as in vanilla.
+        if (!plugin.getLoveTweaksConfig().isHungerEventActive()) {
+            return;
+        }
+
         Player player = event.getPlayer();
         float saturationBefore = player.getSaturation();
 

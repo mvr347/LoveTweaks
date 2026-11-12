@@ -195,6 +195,9 @@ public final class LoveTweaks extends JavaPlugin {
                 @Override
                 public void run() {
                     for (Player player : getServer().getOnlinePlayers()) {
+                        if (!loveTweaksConfig.isHungerEventActive()) {
+                            return;
+                        }
                         if (player.getGameMode() == GameMode.SURVIVAL || player.getGameMode() == GameMode.ADVENTURE) {
                             player.setExhaustion((float) (player.getExhaustion() + loveTweaksConfig.getExtraExhaustionPerSecond()));
                         }

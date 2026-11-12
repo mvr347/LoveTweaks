@@ -44,6 +44,7 @@ public class LoveTweaksConfig {
 
     // Hunger
     private float extraExhaustionPerSecond;
+    private volatile boolean hungerEventActive;
     private float saturationMultiplier;
 
     // Milk & Purification Potion
@@ -66,7 +67,6 @@ public class LoveTweaksConfig {
     private double itemDropCompleteStackLossChance;
     private double itemDropBreakChance;
     private double itemDropTerriblePolitenessMultiplier;
-    private double itemDropGoodStandingMultiplier;
     private String itemDropBreakMessage;
     private String itemDropDamageMessage;
     private String itemDropLoseMessage;
@@ -123,6 +123,12 @@ public class LoveTweaksConfig {
             Map.entry("usage-givecoordscroll", "&eИспользование: &f/lovetweaksadmin givecoordscroll <игрок>"),
             Map.entry("usage-givepurification", "&eИспользование: &f/lovetweaksadmin givepurification <игрок> [количество]"),
             Map.entry("reload-done", "&aLoveTweaks конфиг перезагружен!"),
+            Map.entry("help-hunger", "&b/lovetweaksadmin hunger <on|off|status> &7— Ивент голода (повышенный расход и пониженное насыщение)"),
+            Map.entry("usage-hunger", "&eИспользование: &f/lovetweaksadmin hunger <on|off|status>"),
+            Map.entry("hunger-event-on", "&aИвент голода включён."),
+            Map.entry("hunger-event-off", "&aИвент голода выключен."),
+            Map.entry("hunger-event-status-on", "&7Ивент голода: &aактивен"),
+            Map.entry("hunger-event-status-off", "&7Ивент голода: &cвыключен"),
             Map.entry("player-not-found", "&cИгрок &e<player>&c не найден или не в сети."),
             Map.entry("scroll-given-sender", "&aСвиток телепортации выдан игроку &e<player>&a."),
             Map.entry("scroll-given-target", "&6Вы получили &eСвиток телепортации&6!"),
@@ -158,6 +164,7 @@ public class LoveTweaksConfig {
         customEnchantsAllowOnAllSwords = config.getBoolean("custom-enchantments.allow-on-all-swords", false);
         extraExhaustionPerSecond = (float) config.getDouble("hunger.extra-exhaustion-per-second", 0.25);
         saturationMultiplier = (float) config.getDouble("hunger.saturation-multiplier", 0.5);
+        hungerEventActive = config.getBoolean("hunger.event-active", false);
         disableMilk = config.getBoolean("milk.disable-milk", true);
 
         // Загрузка настроек зелья очищения
@@ -182,7 +189,6 @@ public class LoveTweaksConfig {
         itemDropLoseMessage = config.getString("item-drop-loss.lose-message", "&7Ваш предмет потерялся при падении!");
         itemDropStackPartialLoseMessage = config.getString("item-drop-loss.stack-partial-lose-message", "&7Часть предметов (<count> шт.) потерялась при падении!");
         itemDropTerriblePolitenessMultiplier = config.getDouble("item-drop-loss.terrible-politeness-multiplier", 1.6);
-        itemDropGoodStandingMultiplier = config.getDouble("item-drop-loss.good-standing-multiplier", 0.5);
 
         String reviveRaw = config.getString(ReviveProvider.CONFIG_PATH);
         if (!ReviveProvider.isKnown(reviveRaw)) {
@@ -389,6 +395,8 @@ public class LoveTweaksConfig {
     public boolean isDisableAllEnchantments() { return disableAllEnchantments; }
     public float getExtraExhaustionPerSecond() { return extraExhaustionPerSecond; }
     public float getSaturationMultiplier() { return saturationMultiplier; }
+    public boolean isHungerEventActive() { return hungerEventActive; }
+    public void setHungerEventActive(boolean active) { this.hungerEventActive = active; }
     public boolean isDisableMilk() { return disableMilk; }
     public me.lovelace.loveTweaks.managers.PurificationPotionConfig getPurificationPotionConfig() { return purificationPotionConfig; }
     public String getPurificationPotionName() { return purificationPotionName; }
@@ -399,7 +407,6 @@ public class LoveTweaksConfig {
     public double getItemDropCompleteStackLossChance() { return itemDropCompleteStackLossChance; }
     public double getItemDropBreakChance() { return itemDropBreakChance; }
     public double getItemDropTerriblePolitenessMultiplier() { return itemDropTerriblePolitenessMultiplier; }
-    public double getItemDropGoodStandingMultiplier() { return itemDropGoodStandingMultiplier; }
     public String getItemDropBreakMessage() { return itemDropBreakMessage; }
     public String getItemDropDamageMessage() { return itemDropDamageMessage; }
     public String getItemDropLoseMessage() { return itemDropLoseMessage; }

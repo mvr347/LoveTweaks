@@ -23,6 +23,9 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public class ItemDropLossListener implements Listener {
 
+    /** Politeness scale step "Нейтральный"; loss applies strictly below it. */
+    static final int NEUTRAL_LEVEL = 3;
+
     private final LoveTweaks plugin;
 
     public ItemDropLossListener(LoveTweaks plugin) {
@@ -39,6 +42,9 @@ public class ItemDropLossListener implements Listener {
         ItemStack stack = itemEntity.getItemStack();
         Player player = event.getPlayer();
         double multiplier = behaviorLossMultiplier(player);
+        if (multiplier <= 0.0) {
+            return;
+        }
 
         if (hasDurability(stack)) {
             if (roll(plugin.getLoveTweaksConfig().getItemDropBreakChance() * multiplier)) {
@@ -93,25 +99,24 @@ public class ItemDropLossListener implements Listener {
     }
 
     /**
-     * Множитель шанса потери/поломки по вежливости/стилю игры (LoveCore.BehaviorLevels, из
-     * LoveBehavior): ступень "Ужасно" (0) — повышенный шанс, высокая вежливость (&gt;=5) или
-     * добрый стиль игры (топ-ступень) — пониженный. 1.0 (без изменений), если LoveBehavior не
-     * установлен или игрок нейтрален.
+     * Множитель шанса потери/поломки по вежливости (LoveCore.BehaviorLevels, из LoveBehavior).
+     * Потеря действует только НИЖЕ нейтральной ступени ({@link #NEUTRAL_LEVEL}): на нейтральной и
+     * выше предметы не теряются. Ступень "Ужасно" (0) — повышенный шанс. Если LoveBehavior не
+     * установлен, игрок считается нейтральным, то есть потери нет (0.0).
      */
     private double behaviorLossMultiplier(Player player) {
         return dev.lovelace.lovecore.api.LoveCore.service(dev.lovelace.lovecore.api.social.BehaviorLevels.class)
-                .map(levels -> {
-                    UUID playerId = player.getUniqueId();
-                    if (levels.politenessLevel(playerId) == 0) {
-                        return plugin.getLoveTweaksConfig().getItemDropTerriblePolitenessMultiplier();
-                    }
-                    if (levels.politenessLevel(playerId) >= 5
-                            || levels.playstyleLevel(playerId) >= dev.lovelace.lovecore.api.social.BehaviorLevels.MAX_LEVEL) {
-                        return plugin.getLoveTweaksConfig().getItemDropGoodStandingMultiplier();
-                    }
-                    return 1.0;
-                })
-                .orElse(1.0);
+                .map(levels -> lossMultiplier(levels.politenessLevel(player.getUniqueId()),
+                        plugin.getLoveTweaksConfig().getItemDropTerriblePolitenessMultiplier()))
+                .orElse(0.0);
+    }
+
+    /** Pure rule, kept separate for unit tests. */
+    static double lossMultiplier(int politenessLevel, double terribleMultiplier) {
+        if (politenessLevel >= NEUTRAL_LEVEL) {
+            return 0.0;
+        }
+        return politenessLevel == 0 ? terribleMultiplier : 1.0;
     }
 
     private void damageOrBreakItem(Player player, Item itemEntity, ItemStack stack) {
