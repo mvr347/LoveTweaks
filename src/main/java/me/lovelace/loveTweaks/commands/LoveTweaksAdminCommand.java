@@ -36,7 +36,7 @@ import java.util.Locale;
  */
 public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
 
-    private static final List<String> SUBCOMMANDS = List.of("reload", "givescroll", "givecoordscroll", "givepurification", "givebook", "herald", "help");
+    private static final List<String> SUBCOMMANDS = List.of("reload", "givescroll", "givecoordscroll", "givepurification", "givebook", "herald", "hunger", "help");
     private static final List<String> HERALD_SUBCOMMANDS = List.of("bind", "unbind", "clear", "open");
 
     private final LoveTweaks plugin;
@@ -67,9 +67,27 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
             case "givepurification", "givepurificationpotion" -> handleGivePurification(sender, args);
             case "givebook" -> handleGiveBook(sender, args);
             case "herald" -> handleHerald(sender, args);
+            case "hunger" -> handleHunger(sender, args);
             default -> sendHelp(sender);
         }
         return true;
+    }
+
+    private void handleHunger(@NotNull CommandSender sender, @NotNull String[] args) {
+        String mode = args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : "";
+        switch (mode) {
+            case "on" -> {
+                plugin.getLoveTweaksConfig().setHungerEventActive(true);
+                sender.sendMessage(msg("hunger-event-on"));
+            }
+            case "off" -> {
+                plugin.getLoveTweaksConfig().setHungerEventActive(false);
+                sender.sendMessage(msg("hunger-event-off"));
+            }
+            case "status" -> sender.sendMessage(msg(plugin.getLoveTweaksConfig().isHungerEventActive()
+                    ? "hunger-event-status-on" : "hunger-event-status-off"));
+            default -> sender.sendMessage(msg("usage-hunger"));
+        }
     }
 
     private void handleReload(@NotNull CommandSender sender) {
@@ -286,6 +304,7 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
 
     private void sendHelp(@NotNull CommandSender sender) {
         sender.sendMessage(msg("help-header"));
+        sender.sendMessage(msg("help-hunger"));
         sender.sendMessage(msg("help-reload"));
         sender.sendMessage(msg("help-givescroll"));
         sender.sendMessage(msg("help-givecoordscroll"));
@@ -313,6 +332,9 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
             return StringUtil.copyPartialMatches(args[0], SUBCOMMANDS, new ArrayList<>());
         }
 
+        if (args.length == 2 && args[0].equalsIgnoreCase("hunger")) {
+            return StringUtil.copyPartialMatches(args[1], List.of("on", "off", "status"), new ArrayList<>());
+        }
         if (args.length == 2 && args[0].equalsIgnoreCase("herald")) {
             return StringUtil.copyPartialMatches(args[1], HERALD_SUBCOMMANDS, new ArrayList<>());
         }
