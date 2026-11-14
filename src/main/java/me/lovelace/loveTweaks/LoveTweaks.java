@@ -43,6 +43,8 @@ public final class LoveTweaks extends JavaPlugin {
     private NamespacedKey enderChestKey;
     private TeleportScrollManager teleportScrollManager;
     private CoordinateTeleportScrollManager coordTeleportScrollManager;
+    private me.lovelace.loveTweaks.diagnostics.LungeTrace lungeTrace;
+    public me.lovelace.loveTweaks.diagnostics.LungeTrace getLungeTrace(){return lungeTrace;}
     private CustomEnchantManager customEnchantManager;
 
     private NpcIntegration npcIntegration;
@@ -103,6 +105,8 @@ public final class LoveTweaks extends JavaPlugin {
         chatFilterIntegration = new ChatFilterIntegration();
         heraldManager = new HeraldManager(this, chatFilterIntegration);
         getLogger().info("Herald manager initialized.");
+
+        lungeTrace=new me.lovelace.loveTweaks.diagnostics.LungeTrace(this);
 
         // Listeners
         enderChestListener = new EnderChestListener(this);
@@ -222,6 +226,7 @@ public final class LoveTweaks extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if(lungeTrace!=null)lungeTrace.close();
         if (magnetTask != null) {
             magnetTask.cancel();
             magnetTask = null;

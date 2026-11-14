@@ -12,6 +12,6 @@ commands:
   lovetweaksadmin:
     description: Команды администратора LoveTweaks
     aliases: [lovetweaks]
-    usage: /lovetweaksadmin <reload|givescroll|givecoordscroll|herald bind/unbind/clear>
+    usage: /lovetweaksadmin <reload|givescroll|givecoordscroll|herald bind/unbind/clear|lunge [ник]>
     permission: lovetweaks.admin
     permission-message: ""

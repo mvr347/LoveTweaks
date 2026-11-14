@@ -36,7 +36,7 @@ import java.util.Locale;
  */
 public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
 
-    private static final List<String> SUBCOMMANDS = List.of("reload", "givescroll", "givecoordscroll", "givepurification", "givebook", "herald", "hunger", "help");
+    private static final List<String> SUBCOMMANDS = List.of("reload", "givescroll", "givecoordscroll", "givepurification", "givebook", "herald", "hunger", "lunge", "help");
     private static final List<String> HERALD_SUBCOMMANDS = List.of("bind", "unbind", "clear", "open");
 
     private final LoveTweaks plugin;
@@ -61,6 +61,11 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
         }
 
         switch (args[0].toLowerCase(Locale.ROOT)) {
+            case "lunge" -> {
+                Player target=args.length>1?plugin.getServer().getPlayerExact(args[1]):sender instanceof Player p?p:null;
+                if(target==null)sender.sendMessage(msg("usage-lunge"));
+                else plugin.getLungeTrace().start(sender,target);
+            }
             case "reload" -> handleReload(sender);
             case "givescroll" -> handleGiveScroll(sender, args);
             case "givecoordscroll" -> handleGiveCoordScroll(sender, args);
@@ -305,6 +310,7 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
     private void sendHelp(@NotNull CommandSender sender) {
         sender.sendMessage(msg("help-header"));
         sender.sendMessage(msg("help-hunger"));
+        sender.sendMessage(msg("help-lunge"));
         sender.sendMessage(msg("help-reload"));
         sender.sendMessage(msg("help-givescroll"));
         sender.sendMessage(msg("help-givecoordscroll"));
@@ -348,6 +354,7 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 2 && (args[0].equalsIgnoreCase("givescroll")
+                || args[0].equalsIgnoreCase("lunge")
                 || args[0].equalsIgnoreCase("givecoordscroll")
                 || args[0].equalsIgnoreCase("givepurification")
                 || args[0].equalsIgnoreCase("givepurificationpotion")
