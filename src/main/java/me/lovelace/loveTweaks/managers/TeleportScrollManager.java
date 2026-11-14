@@ -86,6 +86,19 @@ public class TeleportScrollManager {
         return (System.currentTimeMillis() - last) >= AFK_THRESHOLD_MS;
     }
 
+    private boolean isDowned(Player player) {
+        var provider = plugin.getLoveTweaksConfig().getReviveProvider();
+        try {
+            var oracle = dev.lovelace.lovecore.api.LoveCore.provider(
+                    dev.lovelace.lovecore.api.revive.DownedOracle.class, provider.id());
+            if (oracle.isPresent()) return oracle.get().downed(player.getUniqueId());
+        } catch (LinkageError coreMissingOrOld) {
+            // Older servers can still use the existing ReviveMe bridge below.
+        }
+        return provider == me.lovelace.loveTweaks.revivemefix.ReviveProvider.REVIVEME
+                && me.lovelace.loveTweaks.revivemefix.ReviveMeApiBridge.hasDowned(player);
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Публичный API
     // ─────────────────────────────────────────────────────────────────────────
@@ -162,6 +175,12 @@ public class TeleportScrollManager {
             sessions.remove(initiator.getUniqueId());
             Component c = msg("cannot-target-self");
             Notify.event(initiator, c);
+            return true;
+        }
+
+        if (isDowned(target)) {
+            sessions.remove(initiator.getUniqueId());
+            Notify.event(initiator, msg("reason-downed-target", "<player>", target.getName()));
             return true;
         }
 
@@ -451,6 +470,10 @@ public class TeleportScrollManager {
      */
     private String checkConditions(Player initiator, Player target, TeleportSession session) {
         var tsConfig = plugin.getLoveTweaksConfig().getTeleportScrollConfig();
+
+        if (isDowned(target)) {
+            return tsConfig.message("reason-downed-target").replace("<player>", target.getName());
+        }
 
         // Проверка наличия свитка в руке (защита от перекладывания в сундук во время отсчёта)
         if (!me.lovelace.loveTweaks.items.TeleportScroll.isScroll(initiator.getInventory().getItemInMainHand())) {
