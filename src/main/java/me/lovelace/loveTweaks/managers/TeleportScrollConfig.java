@@ -26,6 +26,7 @@ public final class TeleportScrollConfig {
             Map.entry("success-target", "&a✦ К вам телепортировался &e<player>&a!"),
             Map.entry("reason-pvp-self", "(вы в PvP)"),
             Map.entry("reason-pvp-target", "(игрок <player> в PvP)"),
+            Map.entry("reason-downed-target", "&cИгрок <player> тяжело ранен и ожидает помощи. Телепортация к нему недоступна."),
             Map.entry("reason-invisible-self", "(вы в невидимости)"),
             Map.entry("reason-invisible-target", "(игрок <player> в невидимости)"),
             Map.entry("reason-moved-self", "(вы двигались)"),

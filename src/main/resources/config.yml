@@ -481,6 +481,7 @@ teleport-scroll:
     reason-invisible-target: '(<player> в невидимости)'
     reason-pvp-self: '(вы в PvP)'
     reason-pvp-target: '(<player> в PvP)'
+    reason-downed-target: '&cИгрок <player> тяжело ранен и ожидает помощи. Телепортация к нему недоступна.'
     reason-wrong-world: '(<player> не в мире world)'
     reason-dropped: '(свиток убран из руки)'
     # 2026-09-25: раньше эта отмена (не-PLUGIN телепорт инициатора — например, серверная
