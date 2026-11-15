@@ -31,6 +31,7 @@ public final class LungeTrace implements Listener, AutoCloseable {
     final TraceWindow window = new TraceWindow(24);
     final List<String> lines = new ArrayList<>();
     BukkitTask expiry;
+    NativeLungeProbe packets;
     int lunges, interactions, velocity, moves, cancelledLunges;
 
     Session(UUID player, CommandSender recipient) {
@@ -71,6 +72,11 @@ public final class LungeTrace implements Listener, AutoCloseable {
       session.expiry =
           plugin.getServer().getScheduler().runTaskLater(plugin, () -> finish(session.player), 200);
       initial(session, target);
+      try {
+        session.packets = NativeLungeProbe.open(target);
+      } catch (ReflectiveOperationException | RuntimeException failure) {
+        emit(session, "Пакетная диагностика недоступна: " + failure.getClass().getSimpleName());
+      }
     } catch (RuntimeException | LinkageError failure) {
       emit(session, "Проверка не запущена: " + failure.getClass().getSimpleName());
       finish(session.player);
@@ -116,7 +122,11 @@ public final class LungeTrace implements Listener, AutoCloseable {
             + "; транспорт: "
             + yes(p.isInsideVehicle())
             + "; элитры: "
-            + yes(p.isGliding()));
+            + yes(p.isGliding())
+            + "; полёт="
+            + yes(p.isFlying())
+            + "; неуязвимость="
+            + yes(p.isInvulnerable()));
     var speed = p.getAttribute(org.bukkit.attribute.Attribute.ATTACK_SPEED);
     emit(
         session,
@@ -258,6 +268,7 @@ public final class LungeTrace implements Listener, AutoCloseable {
     Session session = sessions.remove(id);
     if (session == null) return;
     if (session.expiry != null) session.expiry.cancel();
+    if (session.packets != null) session.packets.close();
     // Summary is always emitted, even when event traces hit their bound.
     session.lines.clear();
     emit(
@@ -272,6 +283,9 @@ public final class LungeTrace implements Listener, AutoCloseable {
             + session.velocity
             + ", события перемещения="
             + session.moves);
+    if (session.packets != null) {
+      for (String line : session.packets.summary()) emit(session, line);
+    }
     if (session.lunges == 0)
       emit(
           session,
@@ -291,7 +305,10 @@ public final class LungeTrace implements Listener, AutoCloseable {
 
   @Override
   public void close() {
-    for (var session : sessions.values()) if (session.expiry != null) session.expiry.cancel();
+    for (var session : sessions.values()) {
+      if (session.expiry != null) session.expiry.cancel();
+      if (session.packets != null) session.packets.close();
+    }
     sessions.clear();
     HandlerList.unregisterAll(this);
   }
