@@ -138,6 +138,7 @@ public final class LungeTrace implements Listener, AutoCloseable {
             + p.getWalkSpeed());
     item(session, "Основная рука", p.getInventory().getItemInMainHand());
     item(session, "Вторая рука", p.getInventory().getItemInOffHand());
+    for (String line : NativeLungeState.inspect(p)) emit(session, line);
     for (var type : TYPES) {
       String listeners = handlers(type, null);
       emit(
@@ -182,7 +183,14 @@ public final class LungeTrace implements Listener, AutoCloseable {
     if (event instanceof EntityLungeEvent l)
       state = "отменён=" + yes(l.isCancelled()) + ", сила=" + l.getLungePower();
     else if (event instanceof PlayerInteractEvent i)
-      state = i.getAction() + ", предмет=" + i.useItemInHand() + ", блок=" + i.useInteractedBlock();
+      state =
+          i.getAction()
+              + ", предмет="
+              + i.useItemInHand()
+              + ", блок="
+              + i.useInteractedBlock()
+              + ", готовность="
+              + player.getAttackCooldown();
     else if (event instanceof PlayerVelocityEvent v)
       state =
           "отменён="
