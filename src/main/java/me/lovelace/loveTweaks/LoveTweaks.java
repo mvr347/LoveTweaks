@@ -47,6 +47,7 @@ public final class LoveTweaks extends JavaPlugin {
     public me.lovelace.loveTweaks.diagnostics.LungeTrace getLungeTrace(){return lungeTrace;}
     private CustomEnchantManager customEnchantManager;
 
+    private me.lovelace.loveTweaks.repair.Blacksmith blacksmith;
     private NpcIntegration npcIntegration;
     private ChatFilterIntegration chatFilterIntegration;
     private HeraldManager heraldManager;
@@ -102,6 +103,12 @@ public final class LoveTweaks extends JavaPlugin {
 
         // Королевский Глашатай
         npcIntegration = new NpcIntegration(this);
+        try {
+            blacksmith = new me.lovelace.loveTweaks.repair.Blacksmith(this, npcIntegration, () -> loveTweaksConfig.getHeraldNpcKey());
+        } catch (Exception failure) {
+            getLogger().log(java.util.logging.Level.SEVERE, "Кузнец отключён: не удалось загрузить заказы. Файл blacksmith.db сохранён.", failure);
+        }
+        getServer().getPluginManager().registerEvents(new me.lovelace.loveTweaks.repair.AnvilRepairListener(this), this);
         chatFilterIntegration = new ChatFilterIntegration();
         heraldManager = new HeraldManager(this, chatFilterIntegration);
         getLogger().info("Herald manager initialized.");
@@ -226,6 +233,8 @@ public final class LoveTweaks extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (blacksmith != null) try { blacksmith.close(); }
+        catch (Exception failure) { getLogger().log(java.util.logging.Level.SEVERE, "Не удалось закрыть хранилище кузнеца", failure); }
         if(lungeTrace!=null)lungeTrace.close();
         if (magnetTask != null) {
             magnetTask.cancel();
@@ -272,6 +281,7 @@ public final class LoveTweaks extends JavaPlugin {
     public NamespacedKey getEnderChestKey() { return enderChestKey; }
     public TeleportScrollManager getTeleportScrollManager() { return teleportScrollManager; }
     public CoordinateTeleportScrollManager getCoordTeleportScrollManager() { return coordTeleportScrollManager; }
+    public me.lovelace.loveTweaks.repair.Blacksmith getBlacksmith() { return blacksmith; }
     public NpcIntegration getNpcIntegration() { return npcIntegration; }
     public HeraldManager getHeraldManager() { return heraldManager; }
     public EnderChestListener getEnderChestListener() { return enderChestListener; }

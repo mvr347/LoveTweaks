@@ -13,6 +13,7 @@ messages:
   help-givecoordscroll: '&b/lovetweaksadmin givecoordscroll <игрок> &7— Выдать свиток телепортации по координатам'
   help-givepurification: '&b/lovetweaksadmin givepurification <игрок> [кол-во] &7— Выдать зелье очищения'
   help-givebook: '&b/lovetweaksadmin givebook <игрок> <зачарование> [уровень] &7— Выдать книгу кастомного зачарования'
+  help-blacksmith: '&b/lovetweaksadmin blacksmith <create [скин]|bind|unbind|open> &7— Кузнец'
   help-herald: '&b/lovetweaksadmin herald <bind|unbind|clear|open> &7— Управление Королевским Глашатаем'
   help-footer: '&8========================================='
   usage-givescroll: '&eИспользование: &f/lovetweaksadmin givescroll <игрок>'
@@ -679,3 +680,84 @@ revive-inventory-fix:
   debug: false
 
 
+
+# Убирает накопительный штраф предыдущих работ (1, 3, 7, 15...),
+# но сохраняет обычную цену операции в уровнях опыта и расход материалов.
+anvil:
+  remove-prior-work-penalty: true
+
+blacksmith:
+  enabled: true
+  # /lovetweaksadmin blacksmith create [ник_скина] или bind на выбранном NPC.
+  # Провайдер общий с Глашатаем: integrations.npc-provider (global/citizens/loveessential).
+  npc-key: ''
+  npc-name: ''
+  prices:
+    # В минимальных единицах LoveEconomy (по умолчанию медные монеты).
+    # Цена = ceil(цена полного ремонта * доля износа * (1 + сумма уровней чар * множитель)).
+    # Затем применяется economy.price-index LoveCore; minimum действует на каждый предмет.
+    minimum: 5
+    default: 100
+    enchantment-level-multiplier: 0.15
+    # Цена полного ремонта по материалу; точный material выше по приоритету.
+    tiers:
+      WOODEN: 20
+      STONE: 30
+      LEATHER: 30
+      CHAINMAIL: 70
+      COPPER: 50
+      IRON: 100
+      GOLDEN: 150
+      DIAMOND: 400
+      NETHERITE: 800
+    materials:
+      ELYTRA: 1000
+      TRIDENT: 400
+      MACE: 600
+      SHIELD: 60
+      BOW: 60
+      CROSSBOW: 100
+      FISHING_ROD: 30
+      SHEARS: 30
+      FLINT_AND_STEEL: 20
+  time:
+    # Время каждого предмета складывается в общее время заказа; минимум 1 секунда.
+    minimum-seconds: 5
+    seconds-per-item: 30
+    seconds-per-enchantment-level: 2
+  text:
+    title: '&8Мастерская кузнеца'
+    npc-name: '&6Кузнец'
+    info: '&6Ремонт снаряжения'
+    hint-place: '&7Положите предметы кликом или Shift-кликом (до 18).'
+    hint-lock: '&7После оплаты вещи нельзя забрать до готовности.'
+    hint-close: '&7До оплаты закрытие меню возвращает вещи.'
+    close: '&cЗакрыть'
+    empty: '&7Положите повреждённые предметы'
+    pay: '&aОплатить ремонт'
+    no-money: '&cНедостаточно монет в инвентаре'
+    price: '&7Стоимость: <price>'
+    duration: '&7Время ремонта: &f<seconds> сек.'
+    working: '&eПредметы ремонтируются'
+    ready: '&aВаш заказ готов'
+    time-left: '&7Осталось: &f<seconds> сек.'
+    collect: '&aЗабрать отремонтированные вещи'
+    return: '&eВернуть предметы без ремонта'
+    locked: '&cДождитесь завершения ремонта'
+    started: '&aРемонт оплачен. Заберите вещи у кузнеца после готовности.'
+    invalid-item: '&cНужен повреждённый предмет с прочностью, по одному в слот.'
+    inventory-full: '&eВ инвентаре недостаточно места. Оставшиеся вещи хранятся у кузнеца.'
+    storage-error: '&cНе удалось сохранить заказ. Действие отменено; сообщите администрации.'
+    invalid-config: '&cРемонт недоступен: проверьте настройки цены, времени и предметы заказа.'
+    no-economy: '&cЭкономика временно недоступна'
+    disabled: '&cНовые заказы временно не принимаются'
+    join-ready: '&aВаш заказ у кузнеца готов. Вернитесь за вещами.'
+    join-pending: '&eУ кузнеца остались ваши вещи. Вернитесь в мастерскую.'
+    players-only: '&cЭта команда доступна только игрокам.'
+    usage: '&e/lovetweaksadmin blacksmith <create [скин]|bind|unbind|open>'
+    no-provider: '&cNPC-провайдер недоступен. Проверьте integrations.npc-provider.'
+    no-target: '&cВыберите NPC или посмотрите на него, затем повторите bind.'
+    bound: '&aКузнец привязан. ПКМ по NPC открывает мастерскую.'
+    unbound: '&eКузнец отвязан. NPC и заказы сохранены; создайте или привяжите другого.'
+    already-bound: '&eКузнец уже создан. Сначала отвяжите текущего через unbind.'
+    role-conflict: '&cЭтот NPC уже работает Глашатаем. Выберите другого.'

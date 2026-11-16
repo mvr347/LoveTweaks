@@ -36,7 +36,7 @@ import java.util.Locale;
  */
 public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
 
-    private static final List<String> SUBCOMMANDS = List.of("reload", "givescroll", "givecoordscroll", "givepurification", "givebook", "herald", "hunger", "lunge", "help");
+    private static final List<String> SUBCOMMANDS = List.of("reload", "givescroll", "givecoordscroll", "givepurification", "givebook", "herald", "blacksmith", "hunger", "lunge", "help");
     private static final List<String> HERALD_SUBCOMMANDS = List.of("bind", "unbind", "clear", "open");
 
     private final LoveTweaks plugin;
@@ -72,6 +72,10 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
             case "givepurification", "givepurificationpotion" -> handleGivePurification(sender, args);
             case "givebook" -> handleGiveBook(sender, args);
             case "herald" -> handleHerald(sender, args);
+            case "blacksmith" -> {
+                if (plugin.getBlacksmith() != null) plugin.getBlacksmith().command(sender, args);
+                else sender.sendMessage("§cКузнец недоступен: проверьте ошибки загрузки blacksmith.db в консоли.");
+            }
             case "hunger" -> handleHunger(sender, args);
             default -> sendHelp(sender);
         }
@@ -303,6 +307,10 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(msg("npc-not-selected"));
             return;
         }
+        if (npc.get().key().equals(plugin.getConfig().getString("blacksmith.npc-key", ""))) {
+            sender.sendMessage("§cЭтот NPC уже работает кузнецом. Выберите другого.");
+            return;
+        }
         plugin.getLoveTweaksConfig().setHeraldNpc(npc.get().key(), npc.get().name());
         sender.sendMessage(msg("herald-npc-bound", "<npc>", npc.get().name()));
     }
@@ -317,6 +325,7 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(msg("help-givepurification"));
         sender.sendMessage(msg("help-givebook"));
         sender.sendMessage(msg("help-herald"));
+        sender.sendMessage(msg("help-blacksmith"));
         sender.sendMessage(msg("help-footer"));
     }
 
@@ -340,6 +349,9 @@ public class LoveTweaksAdminCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 2 && args[0].equalsIgnoreCase("hunger")) {
             return StringUtil.copyPartialMatches(args[1], List.of("on", "off", "status"), new ArrayList<>());
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("blacksmith")) {
+            return StringUtil.copyPartialMatches(args[1], List.of("create", "bind", "unbind", "open"), new ArrayList<>());
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("herald")) {
             return StringUtil.copyPartialMatches(args[1], HERALD_SUBCOMMANDS, new ArrayList<>());

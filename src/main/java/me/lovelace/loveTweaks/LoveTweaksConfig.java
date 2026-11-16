@@ -117,6 +117,7 @@ public class LoveTweaksConfig {
             Map.entry("help-givescroll", "&b/lovetweaksadmin givescroll <игрок> &7— Выдать свиток телепортации к игроку"),
             Map.entry("help-givecoordscroll", "&b/lovetweaksadmin givecoordscroll <игрок> &7— Выдать свиток телепортации по координатам"),
             Map.entry("help-givepurification", "&b/lovetweaksadmin givepurification <игрок> [кол-во] &7— Выдать зелье очищения"),
+            Map.entry("help-blacksmith", "&b/lovetweaksadmin blacksmith <create [скин]|bind|unbind|open> &7— Кузнец"),
             Map.entry("help-herald", "&b/lovetweaksadmin herald <bind|unbind|clear|open> &7— Управление Королевским Глашатаем"),
             Map.entry("help-footer", "&8========================================="),
             Map.entry("usage-givescroll", "&eИспользование: &f/lovetweaksadmin givescroll <игрок>"),
@@ -257,6 +258,17 @@ public class LoveTweaksConfig {
         config.set("scoreboard", null);
         changed = true;
       }
+
+            // Add the new repair settings without overwriting a server's prices or texts.
+            for (String section : List.of("anvil", "blacksmith")) {
+                ConfigurationSection defaultsSection = defaults.getConfigurationSection(section);
+                if (defaultsSection == null) continue;
+                for (String key : defaultsSection.getKeys(true)) {
+                    if (defaultsSection.isConfigurationSection(key)) continue;
+                    String path = section + "." + key;
+                    if (!config.isSet(path)) { config.set(path, defaultsSection.get(key)); changed = true; }
+                }
+            }
 
             // Миграция секции messages
             ConfigurationSection defMessages = defaults.getConfigurationSection("messages");
