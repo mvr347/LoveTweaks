@@ -5,7 +5,6 @@ import me.lovelace.loveTweaks.integration.NpcBinding;
 import me.lovelace.loveTweaks.items.FirstJoinItem;
 import me.lovelace.loveTweaks.managers.CoordinateTeleportScrollConfig;
 import me.lovelace.loveTweaks.managers.TeleportScrollConfig;
-import me.lovelace.loveTweaks.revivemefix.ReviveProvider;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -72,9 +71,6 @@ public class LoveTweaksConfig {
     private String itemDropLoseMessage;
     private String itemDropStackPartialLoseMessage;
 
-    // Провайдер механики «ранен / оживление» (revive.provider)
-    private ReviveProvider reviveProvider = ReviveProvider.REVIVEME;
-
     // Автовозрождение
     private boolean autoRespawnEnabled;
     private int autoRespawnDelayTicks;
@@ -104,6 +100,7 @@ public class LoveTweaksConfig {
 
     // Ванильные ограничения (Жалобы, Достижения, Друзья)
     private boolean disableAdvancements;
+    private boolean attributeSwapEnabled;
     private boolean disableChatReports;
     private boolean disableFriendsAndReports;
     private String disabledVanillaCommandMessage;
@@ -141,7 +138,7 @@ public class LoveTweaksConfig {
             Map.entry("purification-given-target", "&bВы получили &eЗелье очищения&b!"),
             Map.entry("coord-scroll-not-found", "&cСвиток с id &e<id>&c не найден в coord-teleport-scroll.scrolls."),
             Map.entry("npc-provider-missing", "&cNPC-провайдер &e<provider>&c недоступен (integrations.npc-provider). Проверьте, что нужный плагин установлен и включён."),
-            Map.entry("npc-not-selected", "&cВыберите NPC (для Citizens &e/npc select&c) или посмотрите на него и повторите команду."),
+            Map.entry("npc-not-selected", "&cВыберите NPC (&e/npc select&c) или посмотрите на него и повторите команду."),
             Map.entry("herald-npc-bound", "&aNPC Глашатая привязан: &e<npc>"),
             Map.entry("herald-npc-unbound", "&aNPC Глашатая отвязан."),
             Map.entry("herald-cleared", "&aГолос Королевства сброшен."),
@@ -195,13 +192,6 @@ public class LoveTweaksConfig {
         itemDropStackPartialLoseMessage = config.getString("item-drop-loss.stack-partial-lose-message", "&7Часть предметов (<count> шт.) потерялась при падении!");
         itemDropTerriblePolitenessMultiplier = config.getDouble("item-drop-loss.terrible-politeness-multiplier", 1.6);
 
-        String reviveRaw = config.getString(ReviveProvider.CONFIG_PATH);
-        if (!ReviveProvider.isKnown(reviveRaw)) {
-            plugin.getLogger().warning("Неизвестное значение " + ReviveProvider.CONFIG_PATH + ": '" + reviveRaw
-                    + "' (допустимо global|reviveme|loveessential). Использую reviveme.");
-        }
-        reviveProvider = ReviveProvider.parse(reviveRaw);
-
         autoRespawnEnabled = config.getBoolean("auto-respawn.enabled", true);
         autoRespawnDelayTicks = Math.max(1, config.getInt("auto-respawn.delay-ticks", 5));
 
@@ -209,7 +199,7 @@ public class LoveTweaksConfig {
         coordTeleportScrollConfig.load(config.getConfigurationSection("coord-teleport-scroll"), plugin.getLogger());
 
         heraldEnabled = config.getBoolean("herald.enabled", true);
-        // Legacy herald.npc-id (numeric Citizens id) becomes the String herald.npc-key once, on load.
+        // Legacy herald.npc-id (a numeric id) becomes the String herald.npc-key once, on load.
         if (NpcBinding.migrateLegacy(config.getConfigurationSection("herald"))) {
             plugin.saveConfig();
         }
@@ -227,6 +217,7 @@ public class LoveTweaksConfig {
         loadFirstJoinItems(config);
 
         disableAdvancements = config.getBoolean("vanilla.disable-advancements", true);
+        attributeSwapEnabled = config.getBoolean("vanilla.attribute-swap.enabled", true);
         disableChatReports = config.getBoolean("vanilla.disable-chat-reports", true);
         disableFriendsAndReports = config.getBoolean("vanilla.disable-friends-and-reports", true);
         disabledVanillaCommandMessage = config.getString("vanilla.disabled-command-message", "&cВанильные жалобы, достижения и система друзей отключены на этом сервере.");
@@ -339,23 +330,6 @@ public class LoveTweaksConfig {
                 }
             }
 
-            // Миграция секции revive-inventory-fix
-            if (!config.isConfigurationSection("revive-inventory-fix")) {
-                config.set("revive-inventory-fix", defaults.get("revive-inventory-fix"));
-                changed = true;
-            } else {
-                ConfigurationSection defRevive = defaults.getConfigurationSection("revive-inventory-fix");
-                ConfigurationSection liveRevive = config.getConfigurationSection("revive-inventory-fix");
-                if (defRevive != null && liveRevive != null) {
-                    for (String key : defRevive.getKeys(true)) {
-                        if (!liveRevive.contains(key)) {
-                            liveRevive.set(key, defRevive.get(key));
-                            changed = true;
-                        }
-                    }
-                }
-            }
-
             if (changed) {
                 plugin.saveConfig();
             }
@@ -427,7 +401,6 @@ public class LoveTweaksConfig {
     public String getItemDropDamageMessage() { return itemDropDamageMessage; }
     public String getItemDropLoseMessage() { return itemDropLoseMessage; }
     public String getItemDropStackPartialLoseMessage() { return itemDropStackPartialLoseMessage; }
-    public ReviveProvider getReviveProvider() { return reviveProvider; }
     public boolean isAutoRespawnEnabled() { return autoRespawnEnabled; }
     public int getAutoRespawnDelayTicks() { return autoRespawnDelayTicks; }
     public TeleportScrollConfig getTeleportScrollConfig() { return teleportScrollConfig; }
@@ -459,6 +432,7 @@ public class LoveTweaksConfig {
     public boolean isFirstJoinEnabled() { return firstJoinEnabled; }
     public List<FirstJoinItem> getFirstJoinItems() { return firstJoinItems; }
     public boolean isDisableAdvancements() { return disableAdvancements; }
+    public boolean isAttributeSwapEnabled() { return attributeSwapEnabled; }
     public boolean isDisableChatReports() { return disableChatReports; }
     public boolean isDisableFriendsAndReports() { return disableFriendsAndReports; }
     public String getDisabledVanillaCommandMessage() { return disabledVanillaCommandMessage; }

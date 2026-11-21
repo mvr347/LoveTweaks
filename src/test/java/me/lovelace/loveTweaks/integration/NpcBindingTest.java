@@ -9,18 +9,15 @@ import static org.junit.jupiter.api.Assertions.*;
 class NpcBindingTest {
 
     @Test
-    @DisplayName("Provider defaults to citizens when missing, blank or padded")
-    void providerDefault() {
-        assertEquals("citizens", NpcBinding.normalizeProvider(null));
-        assertEquals("citizens", NpcBinding.normalizeProvider("  "));
-        assertEquals("citizens", NpcBinding.normalizeProvider("global"));
-        assertEquals("citizens", NpcBinding.normalizeProvider(" GLOBAL "));
-        assertEquals("loveessential", NpcBinding.normalizeProvider(" LoveEssential "));
-        assertEquals("citizens", NpcBinding.providerFrom(new YamlConfiguration()));
-
-        YamlConfiguration root = new YamlConfiguration();
-        root.set("integrations.npc-provider", "loveessential");
-        assertEquals("loveessential", NpcBinding.providerFrom(root));
+    @DisplayName("The provider is always LoveEssential; leftover switch values are reported, never used")
+    void providerIsAlwaysLoveEssential() {
+        assertEquals("loveessential", NpcBinding.PROVIDER_ID);
+        assertEquals("citizens", NpcBinding.ignoredProviderValue("citizens"));
+        assertEquals("znpcs", NpcBinding.ignoredProviderValue(" znpcs "));
+        assertNull(NpcBinding.ignoredProviderValue(null));
+        assertNull(NpcBinding.ignoredProviderValue("  "));
+        assertNull(NpcBinding.ignoredProviderValue(" GLOBAL "));
+        assertNull(NpcBinding.ignoredProviderValue("LoveEssential"));
     }
 
     @Test
@@ -109,36 +106,26 @@ class NpcBindingTest {
     @Test
     @DisplayName("Click filter compares provider id and key; foreign providers are ignored")
     void clickFilter() {
-        assertTrue(NpcBinding.matches("citizens", "17", "citizens", "17"));
+        assertTrue(NpcBinding.matches("17", "loveessential", "17"));
+        assertTrue(NpcBinding.matches("ext-1", "LoveEssential", "ext-1"));
         // same key text, but the event comes from another provider
-        assertFalse(NpcBinding.matches("citizens", "17", "loveessential", "17"));
-        assertFalse(NpcBinding.matches("loveessential", "ext-1", "citizens", "ext-1"));
-        assertTrue(NpcBinding.matches("loveessential", "ext-1", "loveessential", "ext-1"));
-        assertFalse(NpcBinding.matches("citizens", "17", "citizens", "18"));
-        assertFalse(NpcBinding.matches("citizens", "", "citizens", ""));
-        assertFalse(NpcBinding.matches("citizens", "17", "citizens", null));
+        assertFalse(NpcBinding.matches("17", "citizens", "17"));
+        assertFalse(NpcBinding.matches("17", "loveessential", "18"));
+        assertFalse(NpcBinding.matches("", "loveessential", ""));
+        assertFalse(NpcBinding.matches("17", "loveessential", null));
+        assertFalse(NpcBinding.matches("17", null, "17"));
     }
 
     @Test
-    @DisplayName("A key that cannot belong to the selected provider is flagged")
-    void foreignKey() {
-        assertFalse(NpcBinding.keyLooksForeign("citizens", "17"));
-        assertTrue(NpcBinding.keyLooksForeign("citizens", "ext-1a2b3c4d"));
-        assertFalse(NpcBinding.keyLooksForeign("loveessential", "17"));
-        assertFalse(NpcBinding.keyLooksForeign("loveessential", "ext-1a2b3c4d"));
-        assertFalse(NpcBinding.keyLooksForeign("citizens", ""));
-    }
-
-    @Test
-    @DisplayName("Shipped config.yml defaults keep today's behaviour (citizens, reviveme, no legacy npc-id)")
+    @DisplayName("Shipped config.yml has no provider switch and no legacy npc-id")
     void shippedDefaults() throws Exception {
         try (java.io.InputStream in = getClass().getClassLoader().getResourceAsStream("config.yml")) {
             assertNotNull(in);
             YamlConfiguration shipped = YamlConfiguration.loadConfiguration(
                     new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8));
-            assertEquals("citizens", NpcBinding.providerFrom(shipped));
-            assertEquals("global", shipped.getString("revive.provider"));
-            assertEquals("global", shipped.getString("integrations.npc-provider"));
+            assertNull(shipped.getString("integrations.npc-provider"));
+            assertNull(shipped.getString("revive.provider"));
+            assertFalse(shipped.isSet("revive-inventory-fix"));
             assertTrue(shipped.isSet("herald.npc-key"));
             assertFalse(shipped.isSet("herald.npc-id"));
             assertEquals("", NpcBinding.readKey(shipped.getConfigurationSection("herald")));
