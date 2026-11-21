@@ -137,7 +137,7 @@ public class LoveTweaksConfig {
             Map.entry("purification-given-sender", "&aЗелье очищения (<amount> шт.) выдано игроку &e<player>&a."),
             Map.entry("purification-given-target", "&bВы получили &eЗелье очищения&b!"),
             Map.entry("coord-scroll-not-found", "&cСвиток с id &e<id>&c не найден в coord-teleport-scroll.scrolls."),
-            Map.entry("npc-provider-missing", "&cNPC-провайдер &e<provider>&c недоступен (integrations.npc-provider). Проверьте, что нужный плагин установлен и включён."),
+            Map.entry("npc-provider-missing", "&cNPC-провайдер &e<provider>&c недоступен. Проверьте, что LoveEssential установлен и включён."),
             Map.entry("npc-not-selected", "&cВыберите NPC (&e/npc select&c) или посмотрите на него и повторите команду."),
             Map.entry("herald-npc-bound", "&aNPC Глашатая привязан: &e<npc>"),
             Map.entry("herald-npc-unbound", "&aNPC Глашатая отвязан."),
