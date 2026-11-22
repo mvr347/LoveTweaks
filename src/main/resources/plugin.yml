@@ -1,7 +1,7 @@
 name: LoveTweaks
 version: '${project.version}'
 main: me.lovelace.loveTweaks.LoveTweaks
-api-version: '26.2'
+api-version: '26.3'
 depend: [LoveCore, LoveEssential]
 softdepend: [PlaceholderAPI, ItemsAdder, LoveChatFilter]
 
