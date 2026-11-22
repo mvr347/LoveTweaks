@@ -23,7 +23,7 @@ import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
-/** Persistent blacksmith service, shared by Citizens and the LoveEssential NPC engine. */
+/** Persistent blacksmith service, bound to a LoveEssential NPC. */
 public final class Blacksmith implements Listener, AutoCloseable {
     static final int[] SLOTS = java.util.stream.IntStream.range(9, 27).toArray();
     static final int PAY = 30, COLLECT = 32, CLOSE = 35;

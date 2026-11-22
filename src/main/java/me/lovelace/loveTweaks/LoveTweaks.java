@@ -22,8 +22,6 @@ import me.lovelace.loveTweaks.listeners.TeleportScrollListener;
 import me.lovelace.loveTweaks.listeners.VanillaProtectionListener;
 import me.lovelace.loveTweaks.managers.CoordinateTeleportScrollManager;
 import me.lovelace.loveTweaks.managers.TeleportScrollManager;
-import me.lovelace.loveTweaks.revivemefix.ReviveMeInventoryModule;
-import me.lovelace.loveTweaks.revivemefix.ReviveProvider;
 import org.bukkit.GameMode;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
@@ -58,7 +56,8 @@ public final class LoveTweaks extends JavaPlugin {
     private MilkListener milkListener;
     private BrewingListener brewingListener;
     private me.lovelace.loveTweaks.listeners.VanillaProtectionListener vanillaProtectionListener;
-    private ReviveMeInventoryModule reviveMeInventoryModule;
+    private me.lovelace.loveTweaks.vanilla.AttributeSwapToggle attributeSwapToggle;
+    private org.bukkit.scheduler.BukkitTask attributeSwapTask;
 
     @Override
     public void onEnable() {
@@ -76,6 +75,11 @@ public final class LoveTweaks extends JavaPlugin {
 
         loveTweaksConfig = new LoveTweaksConfig(this);
         getLogger().info("LoveTweaks config loaded.");
+
+        attributeSwapToggle = me.lovelace.loveTweaks.vanilla.AttributeSwapToggle.forPaper(getLogger());
+        applyAttributeSwap();
+        // Paper rebuilds its config on /paper reload, which resets the switch; keep re-applying it.
+        attributeSwapTask = getServer().getScheduler().runTaskTimer(this, this::applyAttributeSwap, 600L, 600L);
 
         enderChestKey = new NamespacedKey(this, "ender_chest_inventory");
 
@@ -139,12 +143,6 @@ public final class LoveTweaks extends JavaPlugin {
         getLogger().info("Custom enchantments initialized.");
         magnetTask = getServer().getScheduler().runTaskTimer(this, new MagnetTask(this, customEnchantManager),
                 MagnetTask.INTERVAL_TICKS, MagnetTask.INTERVAL_TICKS);
-
-        // Фикс пропажи инвентаря ReviveMe при downed_keep_inventory: false — снимает снимок
-        // инвентаря в момент Downed и дропает его сам при финальной смерти, без гонки по тикам
-        // с собственной пост-смертной обработкой ReviveMe (см. revive-inventory-fix в config.yml).
-        reviveMeInventoryModule = new ReviveMeInventoryModule(this);
-        reviveMeInventoryModule.enable(getConfig().getConfigurationSection("revive-inventory-fix"), loveTweaksConfig.getReviveProvider());
 
         // Единая административная команда: /lovetweaksadmin (алиас /lovetweaks — см. plugin.yml)
         LoveTweaksAdminCommand adminCommand = new LoveTweaksAdminCommand(this);
@@ -236,6 +234,11 @@ public final class LoveTweaks extends JavaPlugin {
         if (blacksmith != null) try { blacksmith.close(); }
         catch (Exception failure) { getLogger().log(java.util.logging.Level.SEVERE, "Не удалось закрыть хранилище кузнеца", failure); }
         if(lungeTrace!=null)lungeTrace.close();
+        if (attributeSwapTask != null) {
+            attributeSwapTask.cancel();
+            attributeSwapTask = null;
+        }
+        if (attributeSwapToggle != null) attributeSwapToggle.restore();
         if (magnetTask != null) {
             magnetTask.cancel();
             magnetTask = null;
@@ -252,7 +255,6 @@ public final class LoveTweaks extends JavaPlugin {
         if (coordTeleportScrollManager != null) coordTeleportScrollManager.cancelAll();
         if (milkListener != null) milkListener.clearAll();
         if (enderChestListener != null) enderChestListener.closeAll();
-        if (reviveMeInventoryModule != null) reviveMeInventoryModule.disable();
         getLogger().info("LoveTweaks disabled.");
     }
 
@@ -271,9 +273,15 @@ public final class LoveTweaks extends JavaPlugin {
         if (enderChestListener != null) enderChestListener.closeAll();
         heraldManager.resize(loveTweaksConfig.getHeraldSlots());
         if (vanillaProtectionListener != null) vanillaProtectionListener.applyGameRules();
-        if (reviveMeInventoryModule != null) reviveMeInventoryModule.reload(getConfig().getConfigurationSection("revive-inventory-fix"), loveTweaksConfig.getReviveProvider());
+        applyAttributeSwap();
         startHungerTask();
         startHeraldBroadcastTask();
+    }
+
+    private void applyAttributeSwap() {
+        if (attributeSwapToggle == null) return;
+        if (loveTweaksConfig.isAttributeSwapEnabled()) attributeSwapToggle.apply(true);
+        else attributeSwapToggle.restore();
     }
 
     public static LoveTweaks getInstance() { return instance; }

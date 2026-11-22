@@ -1,19 +1,21 @@
 package me.lovelace.loveTweaks.integration;
 
+import dev.lovelace.lovecore.api.provider.Providers;
 import org.bukkit.configuration.ConfigurationSection;
 
 /**
- * Pure (Bukkit-server-free) helpers for the NPC provider choice and the stored NPC binding.
+ * Pure (Bukkit-server-free) helpers for the stored NPC binding.
  * <p>
- * The binding used to be a numeric Citizens id ({@code herald.npc-id}); it is now a String key
- * ({@code herald.npc-key}) because other providers (LoveEssential: {@code ext-xxxxxxxx}) use
- * non-numeric keys. A number is still a valid key for the {@code citizens} provider.
+ * The binding used to be a numeric id ({@code herald.npc-id}); it is now a String key
+ * ({@code herald.npc-key}): LoveEssential's {@code ext-xxxxxxxx} id, its name or its visible number.
+ * 2026-11-21: LoveEssential is the only NPC provider, so there is no provider choice any more.
  */
 public final class NpcBinding {
 
-    public static final String PROVIDER_PATH = "integrations.npc-provider";
-    public static final String DEFAULT_PROVIDER = "citizens";
-    public static final String CITIZENS = "citizens";
+    /** The only supported NPC provider. */
+    public static final String PROVIDER_ID = Providers.LOVE_ESSENTIAL;
+    /** Leftover key of the removed provider switch: read only to report that its value is ignored. */
+    public static final String LEGACY_PROVIDER_PATH = "integrations.npc-provider";
 
     static final String KEY_PATH = "npc-key";
     static final String LEGACY_ID_PATH = "npc-id";
@@ -21,29 +23,15 @@ public final class NpcBinding {
     private NpcBinding() {
     }
 
-    /** Config value that follows {@code integrations.provider} of LoveCore. */
-    public static final String GLOBAL = "global";
-
     /**
-     * Normalises the configured provider id. {@code global}, blank or missing follows {@code integrations.provider}
-     * of LoveCore (without LoveCore: {@code citizens}); an explicit id is trimmed and lower-cased.
+     * The leftover {@code integrations.npc-provider} value that is ignored, or {@code null} when it is absent,
+     * blank, {@code global} or already {@code loveessential}.
      */
-    public static String normalizeProvider(String raw) {
-        String value = raw == null ? "" : raw.trim().toLowerCase(java.util.Locale.ROOT);
-        if (value.isEmpty() || value.equals(GLOBAL)) {
-            try {
-                return dev.lovelace.lovecore.api.LoveCore.providerId(
-                        dev.lovelace.lovecore.api.provider.ProviderKind.NPC, GLOBAL);
-            } catch (LinkageError coreMissingOrOld) {
-                return DEFAULT_PROVIDER;
-            }
-        }
+    public static String ignoredProviderValue(String raw) {
+        if (raw == null) return null;
+        String value = raw.trim();
+        if (value.isEmpty() || value.equalsIgnoreCase("global") || value.equalsIgnoreCase(PROVIDER_ID)) return null;
         return value;
-    }
-
-    /** Reads {@code integrations.npc-provider} from the root config. */
-    public static String providerFrom(ConfigurationSection root) {
-        return normalizeProvider(root == null ? null : root.getString(PROVIDER_PATH));
     }
 
     /**
@@ -97,40 +85,14 @@ public final class NpcBinding {
         herald.set(LEGACY_ID_PATH, null);
     }
 
-    /** A Citizens NPC key is the numeric Citizens id written as text. */
-    public static boolean isNumericKey(String key) {
-        if (key == null || key.isEmpty()) {
-            return false;
-        }
-        for (int i = 0; i < key.length(); i++) {
-            if (!Character.isDigit(key.charAt(i))) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Citizens requires a numeric key. LoveEssential accepts its stable keys and visible-number
-     * aliases, so a numeric key alone does not establish that its provider is wrong.
-     * Used only for a warning: the key is never rewritten.
-     */
-    public static boolean keyLooksForeign(String provider, String key) {
-        if (key == null || key.isEmpty()) {
-            return false;
-        }
-        boolean numeric = isNumericKey(key);
-        return CITIZENS.equals(provider) && !numeric;
-    }
-
     /**
      * Whether an NPC seen by an event is the bound one. {@code NpcClickEvent} fires for every
      * provider, so the provider id must be compared as well as the key.
      */
-    public static boolean matches(String configuredProvider, String boundKey, String npcProviderId, String npcKey) {
+    public static boolean matches(String boundKey, String npcProviderId, String npcKey) {
         if (boundKey == null || boundKey.isEmpty() || npcKey == null) {
             return false;
         }
-        return configuredProvider.equals(normalizeProvider(npcProviderId)) && boundKey.equals(npcKey);
+        return PROVIDER_ID.equalsIgnoreCase(npcProviderId == null ? "" : npcProviderId.trim()) && boundKey.equals(npcKey);
     }
 }

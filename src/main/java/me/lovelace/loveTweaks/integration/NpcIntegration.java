@@ -12,17 +12,17 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * NPC access through LoveCore's {@link NpcProvider} contract. The provider named in
- * {@code integrations.npc-provider} is resolved on every use, never cached, because providers
- * register late (LoveEssential, Citizens adapter). If it is missing, one warning naming it is
- * logged and only the NPC feature (the Herald binding) stops working.
+ * NPC access through LoveCore's {@link NpcProvider} contract. The LoveEssential provider is resolved
+ * on every use, never cached, because it registers late. If it is missing, one warning naming it is
+ * logged and only the NPC feature (the Herald binding) stops working. 2026-11-21: the provider switch
+ * was removed; a leftover {@code integrations.npc-provider} value is ignored and reported once.
  */
 public final class NpcIntegration {
 
     /** Identification of an NPC for binding: provider key and display name. */
     public record NpcRef(String key, String name) {}
 
-    private final java.util.function.Supplier<String> configured;
+    private final java.util.function.Supplier<String> leftoverProvider;
     private final java.util.function.Function<String, Optional<NpcProvider>> resolver;
     private final java.util.function.Consumer<String> warn;
     private final java.util.function.BooleanSupplier warningsReady;
@@ -30,15 +30,16 @@ public final class NpcIntegration {
     private final Set<String> warned = new HashSet<>();
 
     public NpcIntegration(LoveTweaks plugin) {
-        this(() -> NpcBinding.providerFrom(plugin.getConfig()),
+        this(() -> plugin.getConfig().getString(NpcBinding.LEGACY_PROVIDER_PATH),
                 id -> LoveCore.provider(NpcProvider.class, id), plugin.getLogger()::warning, startupGrace());
     }
 
-    public NpcIntegration(java.util.function.Supplier<String> configured,
+    /** @param leftoverProvider supplies the raw value of the removed {@code integrations.npc-provider} key, or null */
+    public NpcIntegration(java.util.function.Supplier<String> leftoverProvider,
                           java.util.function.Function<String, Optional<NpcProvider>> resolver,
                           java.util.function.Consumer<String> warn,
                           java.util.function.BooleanSupplier warningsReady) {
-        this.configured = configured;
+        this.leftoverProvider = leftoverProvider;
         this.resolver = resolver;
         this.warn = warn;
         this.warningsReady = warningsReady;
@@ -50,7 +51,7 @@ public final class NpcIntegration {
     }
 
     public String providerId() {
-        return configured.get();
+        return NpcBinding.PROVIDER_ID;
     }
 
     /** Forgets which missing providers were already reported (after a config reload). */
@@ -58,8 +59,9 @@ public final class NpcIntegration {
         warned.clear();
     }
 
-    /** Resolves the configured provider now; warns once per provider id when it is unavailable. */
+    /** Resolves the LoveEssential provider now; warns once when it is unavailable. */
     public Optional<NpcProvider> provider() {
+        warnAboutLeftoverProvider();
         String id = providerId();
         Optional<NpcProvider> found = Optional.empty();
         try {
@@ -76,17 +78,27 @@ public final class NpcIntegration {
         return found;
     }
 
+    private void warnAboutLeftoverProvider() {
+        String ignored = NpcBinding.ignoredProviderValue(leftoverProvider.get());
+        if (ignored == null) return;
+        synchronized (this) {
+            if (!warned.add("leftover:" + ignored)) return;
+        }
+        warn.accept(NpcBinding.LEGACY_PROVIDER_PATH + ": значение '" + ignored + "' игнорируется, NPC берутся только из "
+                + "LoveEssential; удалите ключ из config.yml.");
+    }
+
     private void warnMissing(String id) {
         synchronized (this) {
             if (!warned.add(id)) {
                 return;
             }
         }
-        warn.accept("NPC-провайдер '" + id + "' (integrations.npc-provider) недоступен: "
-                + "он не зарегистрирован в LoveCore. Привязка NPC Глашатая не работает, пока провайдер не появится.");
+        warn.accept("NPC-провайдер '" + id + "' недоступен: он не зарегистрирован в LoveCore "
+                + "(установлен ли LoveEssential?). Привязка NPC Глашатая не работает, пока провайдер не появится.");
     }
 
-    /** True if the entity is the NPC bound under {@code boundKey} in the configured provider. */
+    /** True if the entity is the NPC bound under {@code boundKey} in LoveEssential. */
     public boolean isBound(String boundKey, Entity entity) {
         if (boundKey == null || boundKey.isEmpty() || entity == null) {
             return false;
@@ -99,7 +111,7 @@ public final class NpcIntegration {
 
     /** Provider id and key comparison for an NPC coming from an event (events fire for every provider). */
     public boolean matches(String boundKey, NpcHandle handle) {
-        return handle != null && NpcBinding.matches(providerId(), boundKey, handle.providerId(), handle.key());
+        return handle != null && NpcBinding.matches(boundKey, handle.providerId(), handle.key());
     }
 
     /** The NPC an admin is targeting (the provider's own notion: selected NPC or look direction). */
@@ -109,12 +121,8 @@ public final class NpcIntegration {
                 .map(handle -> new NpcRef(handle.key(), handle.name() == null ? "" : handle.name()));
     }
 
-    /** One-time diagnostic: warns when the stored key obviously belongs to another provider. */
+    /** Startup diagnostic: reports a leftover {@code integrations.npc-provider} value that is being ignored. */
     public void checkBinding(String boundKey) {
-        if (NpcBinding.keyLooksForeign(providerId(), boundKey)) {
-            warn.accept("herald.npc-key '" + boundKey + "' не похож на ключ NPC провайдера '"
-                    + providerId() + "'. После смены integrations.npc-provider привяжите NPC заново: "
-                    + "/lovetweaksadmin herald bind.");
-        }
+        warnAboutLeftoverProvider();
     }
 }

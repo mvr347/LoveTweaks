@@ -104,7 +104,7 @@ coord-teleport-scroll:
 herald:
   enabled: true
 
-  # Ключ NPC (id Citizens или ключ LoveEssential), привязывается командой /lovetweaks herald bind
+  # Ключ NPC LoveEssential (ext-xxxxxxxx, имя или номер), привязывается командой /lovetweaks herald bind
   npc-key: ''
   npc-name: ''
 
@@ -126,7 +126,7 @@ herald:
 post:
   enabled: true
 
-  # ID NPC Citizens, привязывается командой /lovetweaks post bind
+  # Ключ NPC LoveEssential, привязывается командой /lovetweaks post bind
   npc-id: -1
   npc-name: ''
 
@@ -203,8 +203,8 @@ first-join:
 
 ### Мягкие зависимости
 
-- **Citizens** или **LoveEssential** — NPC для Глашатая и Почтмейстера; выбор: `integrations.npc-provider: global|citizens|loveessential` (по умолчанию `global`: как решено в `integrations.provider` LoveCore), доступ через контракт `NpcProvider` в LoveCore
-- **ReviveMe** или **LoveEssential** — механика «ранен/оживление»; выбор: `revive.provider: global|reviveme|loveessential` (по умолчанию `global`: как в `integrations.provider` LoveCore; при `loveessential` фиксы ReviveMe не регистрируются)
+- **LoveEssential** — NPC для Глашатая, Почтмейстера и кузнеца, доступ через контракт `NpcProvider` в LoveCore; других провайдеров NPC нет (2026-11-21)
+- **LoveEssential** — механика «ранен/оживление» (модуль revive); поддержка ReviveMe и её фиксов инвентаря удалена 2026-11-21
 - **LoveCore** — единая экономика, служба территорий (для риска посылок)
 - **PlaceholderAPI** — плейсхолдеры статистики и времени игры
 - **ItemsAdder** — кастомные предметы
@@ -261,7 +261,7 @@ NPC-провайдер выбирается через LoveCore и провер�
 реальное отсутствие или потеря уже работавшего провайдера по-прежнему диагностируется.
 После появления LoveEssential интеграция восстанавливается без перезапуска потребителя.
 Видимый номер LoveEssential разрешается в постоянный ключ NPC; новые привязки сохраняют
-ключ, выданный провайдером. Число само по себе не означает, что выбран Citizens.
+ключ, выданный провайдером.
 
 Сохранённые привязки сравниваются по постоянному ключу; старый видимый номер не
 переназначает роль автоматически при повторном использовании номера. Если после
@@ -277,8 +277,7 @@ NPC-провайдер выбирается через LoveCore и провер�
 Однократная миграция сохраняет исходные YAML рядом с ними как `.pre-style-20261101.bak`.
 После обновления можно менять оформление самостоятельно: перезапуск его не сбрасывает.
 
-Старая совместимость с ReviveMe загружается только при наличии самого плагина через его события.
-Для сборки LoveTweaks ReviveMe API больше не требуется; при провайдере LoveEssential этот мост не активируется.
+Поддержка ReviveMe удалена (2026-11-21): механику «ранен/оживление» ведёт только LoveEssential.
 
 ## Проверка рывка копья
 
@@ -299,11 +298,10 @@ NPC-провайдер выбирается через LoveCore и провер�
 
 1. Установите новый `LoveTweaks.jar` и перезапустите сервер. Новые секции `anvil` и
    `blacksmith` автоматически добавятся в существующий `config.yml`.
-2. Для NPC движка LoveEssential укажите `integrations.npc-provider: loveessential`
-   или оставьте `global`, если этот провайдер уже выбран в LoveCore. Поддерживается и Citizens.
+2. NPC берётся из LoveEssential (других провайдеров нет): убедитесь, что он установлен и включён.
 3. Встаньте на место кузнеца и выполните `/lovetweaksadmin blacksmith create`.
    Для определённого скина: `/lovetweaksadmin blacksmith create НикСкина`.
-   Плагин создаст NPC через выбранный провайдер, сохранит его ключ и привяжет мастерскую.
+   Плагин создаст NPC через LoveEssential, сохранит его ключ и привяжет мастерскую.
 4. Вместо создания можно выбрать существующего NPC или посмотреть на него и выполнить
    `/lovetweaksadmin blacksmith bind`. Один NPC LoveTweaks не может одновременно быть
    Глашатаем и кузнецом.

@@ -3,7 +3,7 @@ version: '${project.version}'
 main: me.lovelace.loveTweaks.LoveTweaks
 api-version: '26.2'
 depend: [LoveCore, LoveEssential]
-softdepend: [PlaceholderAPI, Citizens, ItemsAdder, LoveChatFilter, ReviveMe]
+softdepend: [PlaceholderAPI, ItemsAdder, LoveChatFilter]
 
 commands:
   scrollcancel:

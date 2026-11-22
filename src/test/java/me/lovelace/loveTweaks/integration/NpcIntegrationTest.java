@@ -23,7 +23,7 @@ class NpcIntegrationTest {
                                 (p, m, a) -> null);
         var integration =
                 new NpcIntegration(
-                        () -> "loveessential",
+                        () -> null,
                         id -> ready[0] ? Optional.of(provider) : Optional.empty(),
                         warnings::add,
                         () -> grace[0]);
@@ -39,5 +39,20 @@ class NpcIntegrationTest {
         integration.provider();
         integration.provider();
         assertEquals(2, warnings.size());
+    }
+
+    @Test
+    void leftoverProviderValueIsIgnoredWithOneWarning() {
+        var warnings = new ArrayList<String>();
+        var provider = (NpcProvider) Proxy.newProxyInstance(NpcProvider.class.getClassLoader(),
+                new Class<?>[] {NpcProvider.class}, (p, m, a) -> null);
+        var asked = new ArrayList<String>();
+        var integration = new NpcIntegration(() -> "citizens", id -> { asked.add(id); return Optional.of(provider); },
+                warnings::add, () -> true);
+        assertSame(provider, integration.provider().orElseThrow());
+        integration.provider();
+        assertEquals(java.util.List.of("loveessential", "loveessential"), asked);
+        assertEquals(1, warnings.size());
+        assertTrue(warnings.get(0).contains("citizens"), warnings.get(0));
     }
 }

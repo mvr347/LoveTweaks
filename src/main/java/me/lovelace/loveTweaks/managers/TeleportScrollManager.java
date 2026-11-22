@@ -87,16 +87,13 @@ public class TeleportScrollManager {
     }
 
     private boolean isDowned(Player player) {
-        var provider = plugin.getLoveTweaksConfig().getReviveProvider();
         try {
-            var oracle = dev.lovelace.lovecore.api.LoveCore.provider(
-                    dev.lovelace.lovecore.api.revive.DownedOracle.class, provider.id());
-            if (oracle.isPresent()) return oracle.get().downed(player.getUniqueId());
+            return dev.lovelace.lovecore.api.LoveCore.loveEssential(dev.lovelace.lovecore.api.revive.DownedOracle.class)
+                    .map(oracle -> oracle.downed(player.getUniqueId()))
+                    .orElse(false);
         } catch (LinkageError coreMissingOrOld) {
-            // Older servers can still use the existing ReviveMe bridge below.
+            return false;
         }
-        return provider == me.lovelace.loveTweaks.revivemefix.ReviveProvider.REVIVEME
-                && me.lovelace.loveTweaks.revivemefix.ReviveMeApiBridge.hasDowned(player);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
