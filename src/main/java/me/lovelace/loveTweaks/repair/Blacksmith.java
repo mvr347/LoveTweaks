@@ -35,6 +35,7 @@ public final class Blacksmith implements Listener, AutoCloseable {
     private final BukkitTask task;
     private final CurrencyFormatter currency = new CurrencyFormatter();
     private boolean closed;
+    private final CraftsmanHub hub;
 
     public static final class Menu implements InventoryHolder {
         private final UUID owner;
@@ -51,6 +52,7 @@ public final class Blacksmith implements Listener, AutoCloseable {
         try { service = new RepairService(store, this::settings, () -> LoveCore.service(LoveEconomy.class), clock, plugin); }
         catch (Exception failure) { store.close(); throw failure; }
         Bukkit.getPluginManager().registerEvents(this, plugin);
+        hub = new CraftsmanHub(plugin, this);
         task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             for (Player player : Bukkit.getOnlinePlayers()) {
                 if (player.getOpenInventory().getTopInventory() != null && player.getOpenInventory().getTopInventory().getHolder() instanceof Menu menu)
@@ -123,7 +125,10 @@ public final class Blacksmith implements Listener, AutoCloseable {
     public void npcClick(NpcClickEvent event) {
         if (!npcs.matches(settings().npcKey(), event.npc())) return;
         event.setCancelled(true);
-        if (event.click() == NpcClick.RIGHT) open(event.getPlayer());
+        if (event.click() != NpcClick.RIGHT) return;
+        // One craftsman for repairs, anchors and banners: the hub is shown when there is more than repair to pick.
+        if (hub.shouldOpen()) hub.open(event.getPlayer());
+        else open(event.getPlayer());
     }
     @EventHandler(ignoreCancelled = true)
     public void protectNpc(EntityDamageByEntityEvent event) {
