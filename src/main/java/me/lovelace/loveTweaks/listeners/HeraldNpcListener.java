@@ -28,7 +28,8 @@ public final class HeraldNpcListener implements Listener {
     }
 
     /** NpcClickEvent fires for every provider; {@link NpcIntegration#matches} drops foreign ones. */
-    @EventHandler(priority = EventPriority.NORMAL)
+    // ignoreCancelled: a dialog window of another plugin (LoveContracts) that took the click must not open this menu too
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onNpcClick(NpcClickEvent event) {
         if (!plugin.getLoveTweaksConfig().isHeraldEnabled()) {
             return;
